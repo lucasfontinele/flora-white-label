@@ -18,17 +18,17 @@
   the iteration process.
 -->
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+**Language/Version**: [TypeScript/Node.js versions or NEEDS CLARIFICATION]
 
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+**Primary Dependencies**: [Next.js/React/Tailwind/React Query/React Hook Form/Zod for web; Fastify/Prisma/PostgreSQL/JWT/Stripe for API; or NEEDS CLARIFICATION]
 
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+**Storage**: [PostgreSQL via Prisma, browser/local state, external service, or N/A]
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Testing**: [package-level tests/manual verification plus pnpm typecheck/build gates or NEEDS CLARIFICATION]
 
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Target Platform**: [Next.js web app, Fastify API runtime, or both]
 
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Project Type**: [pnpm monorepo package scope: web/api/shared/root config]
 
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
 
@@ -40,7 +40,20 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Monorepo Boundaries**: Identify every affected package (`packages/web`,
+  `packages/api`, future `packages/shared`, or root config). Confirm the plan
+  does not import private internals across packages.
+- **Shared Contracts**: List DTOs, enums, API payloads, status values, and
+  TypeScript interfaces touched by the feature. Confirm shared concepts are
+  documented in contracts and placed in `packages/shared` when available.
+- **Tenant Isolation**: Explain how `organizationId` or equivalent tenant scope
+  is enforced for reads, writes, reports, background work, and UI state.
+- **Clean Layering**: Confirm API behavior stays within domain/application,
+  communication/http, and infrastructure boundaries; confirm web behavior stays
+  within route groups and feature folders.
+- **Verifiable Delivery**: Define the independent test/demo for each user story
+  and the automated or manual verification required for contracts, tenant
+  isolation, validation, persistence, auth, and critical flows.
 
 ## Project Structure
 
@@ -65,39 +78,25 @@ specs/[###-feature]/
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
+# FloraApp monorepo layout
+packages/
+├── web/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   ├── (associated)/
+│   │   └── (organization)/
 │   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+│   ├── lib/
+│   └── styles/
+├── api/
+│   ├── prisma/
+│   └── src/
+│       ├── application/
+│       ├── communication/
+│       ├── domain/
+│       ├── exception/
+│       └── infrastructure/
+└── shared/              # Planned package for shared contracts/types
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real

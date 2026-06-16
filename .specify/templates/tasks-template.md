@@ -9,7 +9,7 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Include automated tests when a story changes API contracts, tenant isolation, validation, persistence, auth, payments, documents, inventory, reports, or other critical behavior. Otherwise include explicit manual verification tasks tied to the independent test in spec.md.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -21,10 +21,11 @@ description: "Task list template for feature implementation"
 
 ## Path Conventions
 
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- **Web app**: `packages/web/app`, `packages/web/components`, `packages/web/lib`
+- **API**: `packages/api/src`, `packages/api/prisma`
+- **Shared contracts**: `packages/shared` once the shared package exists
+- **Root config**: `package.json`, `pnpm-workspace.yaml`, shared TypeScript/tooling config
+- Paths shown below are examples - adjust based on plan.md structure
 
 <!--
   ============================================================================
@@ -63,12 +64,12 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Define or update shared contracts/DTOs/enums in specs contracts or packages/shared
+- [ ] T005 Setup database schema and Prisma migrations for tenant-owned entities
+- [ ] T006 [P] Implement authentication/authorization and organization scoping framework
+- [ ] T007 [P] Setup API routing, middleware, and structured error handling
+- [ ] T008 Create base domain entities/use cases that all stories depend on
+- [ ] T009 Configure environment, logging, health, and readiness concerns
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -80,21 +81,22 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (include when required by constitution) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Contract/API test for [endpoint] in packages/api/src/[path]/[name].test.ts
+- [ ] T011 [P] [US1] Integration or component test for [user journey] in packages/web/[path]/[name].test.tsx
+- [ ] T012 [US1] Verify tenant isolation for [organization-owned behavior]
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T013 [P] [US1] Create/update [Entity1] model or Prisma schema in packages/api/prisma/schema.prisma
+- [ ] T014 [P] [US1] Create/update shared contract/type in packages/shared or specs contracts
+- [ ] T015 [US1] Implement use case/service in packages/api/src/application/[path]/[service].ts
+- [ ] T016 [US1] Implement route/controller in packages/api/src/communication/[path]/[file].ts
+- [ ] T017 [US1] Implement web route/feature code in packages/web/app/[route]/[feature]
+- [ ] T018 [US1] Add validation, structured errors, and logging for user story 1 operations
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -106,17 +108,17 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 (include when required by constitution) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T019 [P] [US2] Contract/API test for [endpoint] in packages/api/src/[path]/[name].test.ts
+- [ ] T020 [P] [US2] Integration or component test for [user journey] in packages/web/[path]/[name].test.tsx
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T021 [P] [US2] Create/update [Entity] model or contract in the owning package
+- [ ] T022 [US2] Implement [Service] in packages/api/src/application/[path]/[service].ts
+- [ ] T023 [US2] Implement [endpoint/feature] in packages/api/src/communication/[path]/[file].ts
+- [ ] T024 [US2] Integrate web feature in packages/web/app/[route]/[feature] if needed
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -128,16 +130,17 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 (include when required by constitution) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T025 [P] [US3] Contract/API test for [endpoint] in packages/api/src/[path]/[name].test.ts
+- [ ] T026 [P] [US3] Integration or component test for [user journey] in packages/web/[path]/[name].test.tsx
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T027 [P] [US3] Create/update [Entity] model or contract in the owning package
+- [ ] T028 [US3] Implement [Service] in packages/api/src/application/[path]/[service].ts
+- [ ] T029 [US3] Implement [endpoint/feature] in packages/api/src/communication/[path]/[file].ts
+- [ ] T030 [US3] Implement web route/feature code in packages/web/app/[route]/[feature]
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -152,11 +155,13 @@ Examples of foundational tasks (adjust based on your project):
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] TXXX [P] Documentation updates in docs/
-- [ ] TXXX Code cleanup and refactoring
+- [ ] TXXX Clean-code pass for naming, layering, duplication, and package boundaries
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Additional tests or manual verification notes required by constitution
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Run `pnpm typecheck`
+- [ ] TXXX Run `pnpm build`
 
 ---
 
@@ -179,10 +184,10 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests (if included) MUST be written and FAIL before implementation
-- Models before services
-- Services before endpoints
-- Core implementation before integration
+- Tests required by constitution MUST be written and FAIL before implementation
+- Contracts and tenant model before services
+- Domain/application services before endpoints
+- API endpoint behavior before web integration when the web depends on new API behavior
 - Story complete before moving to next priority
 
 ### Parallel Opportunities
@@ -199,13 +204,13 @@ Examples of foundational tasks (adjust based on your project):
 ## Parallel Example: User Story 1
 
 ```bash
-# Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
+# Launch all tests for User Story 1 together (when required):
+Task: "Contract/API test for [endpoint] in packages/api/src/[path]/[name].test.ts"
+Task: "Integration/component test for [journey] in packages/web/[path]/[name].test.tsx"
 
-# Launch all models for User Story 1 together:
-Task: "Create [Entity1] model in src/models/[entity1].py"
-Task: "Create [Entity2] model in src/models/[entity2].py"
+# Launch independent model/contract tasks together:
+Task: "Update Prisma model in packages/api/prisma/schema.prisma"
+Task: "Update shared contract in packages/shared or specs contracts"
 ```
 
 ---

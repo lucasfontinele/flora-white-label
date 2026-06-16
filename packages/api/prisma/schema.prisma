@@ -4,5 +4,62 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum OperatorLimitType {
+  limited
+  unlimited
+}
+
+model Address {
+  id           String        @id @default(cuid())
+  cep          String
+  logradouro   String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  organization Organization?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("addresses")
+}
+
+model SubscriptionPlan {
+  id                String            @id @default(cuid())
+  code              String            @unique
+  name              String            @unique
+  priceInCents      Int
+  maxActiveUsers    Int
+  operatorLimitType OperatorLimitType
+  maxOperators      Int?
+  organizations     Organization[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("subscription_plans")
+}
+
+model Organization {
+  id                    String           @id @default(cuid())
+  legalName             String
+  tradeName             String
+  cnpj                  String           @unique
+  foundationDate        DateTime
+  primaryCnae           String
+  secondaryCnaes        String[]         @default([])
+  institutionalEmail    String
+  whatsapp              String
+  addressId             String           @unique
+  subscriptionPlanId    String
+  createdByMasterUserId String
+  address               Address          @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  subscriptionPlan      SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([subscriptionPlanId])
+  @@map("organizations")
 }

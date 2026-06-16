@@ -6,13 +6,24 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "dev:web": "pnpm --filter @flora/web dev",
     "dev:api": "pnpm --filter @flora/api dev",
     "build:web": "pnpm --filter @flora/web build",
     "build:api": "pnpm --filter @flora/api build",
     "typecheck:web": "pnpm --filter @flora/web typecheck",
     "typecheck:api": "pnpm --filter @flora/api typecheck",
+    "test:web": "pnpm --filter @flora/web test",
+    "test:api": "pnpm --filter @flora/api test",
     "prisma:generate": "pnpm --filter @flora/api prisma:generate",
     "prisma:migrate": "pnpm --filter @flora/api prisma:migrate"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^6.0.2",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.9"
   }
 }

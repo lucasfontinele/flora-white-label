@@ -1,0 +1,311 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Organization Registration
+  version: 0.1.0
+  description: >
+    Contract for Master-created organizations, reusable Brazilian address data,
+    default subscription plan lookup, and cent-based monetary values.
+servers:
+  - url: http://localhost:3333
+    description: Local API runtime
+security:
+  - masterAuth: []
+paths:
+  /subscription-plans:
+    get:
+      summary: List available subscription plans
+      description: Returns the platform plan catalog available during organization registration.
+      operationId: listSubscriptionPlans
+      responses:
+        "200":
+          description: Available plans
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    minItems: 3
+                    items:
+                      $ref: "#/components/schemas/SubscriptionPlan"
+  /organizations:
+    post:
+      summary: Create an organization
+      description: Creates a tenant organization from company data, address data, and a selected plan.
+      operationId: createOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Organization"
+        "400":
+          description: Invalid registration data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid Master authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Authenticated user is not authorized as Master
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Organization CNPJ already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /organizations/{organizationId}:
+    get:
+      summary: Get organization by id
+      description: Returns an organization visible to an authorized Master user.
+      operationId: getOrganization
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Organization found
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Organization"
+        "401":
+          description: Missing or invalid Master authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Authenticated user is not authorized as Master
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Organization not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    masterAuth:
+      type: http
+      scheme: bearer
+      description: Authenticated platform-level Master context.
+  schemas:
+    CreateOrganizationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - company
+        - address
+        - subscriptionPlanId
+      properties:
+        company:
+          $ref: "#/components/schemas/CompanyData"
+        address:
+          $ref: "#/components/schemas/AddressInput"
+        subscriptionPlanId:
+          type: string
+          minLength: 1
+    CompanyData:
+      type: object
+      additionalProperties: false
+      required:
+        - legalName
+        - tradeName
+        - cnpj
+        - foundationDate
+        - primaryCnae
+        - institutionalEmail
+        - whatsapp
+      properties:
+        legalName:
+          type: string
+          minLength: 1
+        tradeName:
+          type: string
+          minLength: 1
+        cnpj:
+          type: string
+          description: CNPJ with or without formatting; must normalize to 14 digits and pass CNPJ validation.
+        foundationDate:
+          type: string
+          format: date
+        primaryCnae:
+          type: string
+          minLength: 1
+        secondaryCnaes:
+          type: array
+          items:
+            type: string
+          default: []
+        institutionalEmail:
+          type: string
+          format: email
+        whatsapp:
+          type: string
+          minLength: 10
+    AddressInput:
+      type: object
+      additionalProperties: false
+      required:
+        - cep
+        - logradouro
+        - number
+        - neighborhood
+        - city
+        - state
+      properties:
+        cep:
+          type: string
+          description: CEP with or without formatting; must normalize to 8 digits.
+        logradouro:
+          type: string
+          minLength: 1
+        number:
+          type: string
+          minLength: 1
+        complement:
+          type: string
+        neighborhood:
+          type: string
+          minLength: 1
+        city:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+    Organization:
+      type: object
+      required:
+        - id
+        - company
+        - address
+        - subscriptionPlan
+        - createdByMasterUserId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        company:
+          $ref: "#/components/schemas/CompanyData"
+        address:
+          allOf:
+            - $ref: "#/components/schemas/AddressInput"
+            - type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+        subscriptionPlan:
+          $ref: "#/components/schemas/SubscriptionPlan"
+        createdByMasterUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SubscriptionPlan:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - priceInCents
+        - maxActiveUsers
+        - operatorLimitType
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          enum:
+            - starter
+            - growth
+            - unlimited
+        name:
+          type: string
+          enum:
+            - Starter
+            - Growth
+            - Unlimited
+        priceInCents:
+          type: integer
+          minimum: 0
+        maxActiveUsers:
+          type: integer
+          minimum: 1
+        operatorLimitType:
+          type: string
+          enum:
+            - limited
+            - unlimited
+        maxOperators:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          description: Null only when operatorLimitType is unlimited.
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              examples:
+                - VALIDATION_ERROR
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - CONFLICT
+                - NOT_FOUND
+            message:
+              type: string
+            details:
+              description: Optional field-level or domain-specific error details.

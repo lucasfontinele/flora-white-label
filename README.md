@@ -62,11 +62,13 @@ No estado atual, o front-end já apresenta fluxos navegáveis para associado e o
 │   │       ├── communication/http
 │   │       ├── exception
 │   │       └── infrastructure
-│   └── web
-│       ├── app
-│       ├── components
-│       ├── lib
-│       └── public
+│   ├── web
+│   │   ├── app
+│   │   ├── components
+│   │   ├── lib
+│   │   └── public
+│   └── shared
+│       └── futuro pacote de DTOs, enums, contratos de API e tipos TypeScript
 ├── docs
 │   └── screenshots
 ├── package.json
@@ -299,6 +301,14 @@ Responsabilidades atuais:
 - `env.ts`: leitura e validação básica de ambiente.
 - `prisma-client.ts`: instância compartilhada do Prisma Client.
 - `exception`: exceções de aplicação com status HTTP e código padronizado.
+
+## Contratos compartilhados
+
+O monorepo está preparado para receber `packages/shared`, pacote responsável por
+DTOs, enums, contratos de API e tipos TypeScript usados por mais de uma
+aplicação. Até esse pacote existir, mudanças de contrato devem ser documentadas
+nos artefatos da feature e mantidas consistentes entre `packages/web` e
+`packages/api`.
 
 ## Qualidade e verificação
 

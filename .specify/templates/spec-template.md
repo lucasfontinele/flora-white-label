@@ -73,10 +73,14 @@
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right edge cases.
+  For FloraApp features, include tenant isolation, white-label configuration,
+  validation failures, and cross-role access cases when applicable.
 -->
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+- How does the system prevent data from another organization from appearing in this flow?
+- How does the feature behave when organization branding/settings are missing or incomplete?
 
 ## Requirements *(mandatory)*
 
@@ -92,6 +96,8 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-00X**: System MUST enforce organization scope for all organization-owned data touched by this feature.
+- **FR-00Y**: System MUST define any API payload, enum, status value, or shared TypeScript interface changed by this feature.
 
 *Example of marking unclear requirements:*
 
@@ -102,6 +108,16 @@
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
+- **Tenant Ownership**: [Identify `organizationId` or equivalent tenant key for organization-owned entities]
+- **Shared Contracts**: [List DTOs, enums, API payloads, and TypeScript types shared across packages]
+
+### Constitution Alignment *(mandatory)*
+
+- **Affected Packages**: [packages/web, packages/api, future packages/shared, root config, or N/A]
+- **Tenant/White-Label Impact**: [organization scope, branding/settings impact, or N/A]
+- **Contract/Typing Impact**: [DTOs, enums, API contracts, TypeScript interfaces, or N/A]
+- **Clean-Code Boundaries**: [feature folders, API layers, and dependency direction]
+- **Verification Scope**: [independent demo/test plus contract, tenant, validation, persistence, auth, or UI checks]
 
 ## Success Criteria *(mandatory)*
 
