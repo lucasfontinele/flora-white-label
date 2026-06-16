@@ -18,7 +18,7 @@ type NavItem = {
 };
 
 type AppShellProps = {
-  variant: "associated" | "organization";
+  variant: "associated" | "master" | "organization";
   title: string;
   subtitle?: string;
   nav: NavItem[];
@@ -33,7 +33,20 @@ type AppShellProps = {
 export function AppShell({ variant, title, subtitle, nav, user, children, actions }: AppShellProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const organization = variant === "organization";
+  const backoffice = variant === "master" || variant === "organization";
+  const tenantLabel =
+    variant === "master"
+      ? "Backoffice Master"
+      : variant === "organization"
+        ? "Operação · Vida Verde"
+        : "Portal do associado";
+  const searchPlaceholder =
+    variant === "master"
+      ? "Buscar organização, CNPJ ou plano"
+      : variant === "organization"
+        ? "Buscar pedido, associado ou produto"
+        : "Buscar pedido ou produto";
+  const mobileNavItems = nav.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-background text-foreground lg:flex">
@@ -42,18 +55,18 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
           <aside
             className={cn(
               "flex h-full w-[min(84vw,320px)] flex-col shadow-xl",
-              organization ? "bg-petrol-700 text-white" : "bg-card",
+              backoffice ? "bg-petrol-700 text-white" : "bg-card",
             )}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className={cn("flex h-[72px] items-center gap-3 px-5", organization && "border-b border-white/10")}>
+            <div className={cn("flex h-[72px] items-center gap-3 px-5", backoffice && "border-b border-white/10")}>
               <Image src="/brand/logo-mark.svg" alt="Flora" width={42} height={42} className="h-10 w-auto" />
               <div className="min-w-0 flex-1">
-                <p className={cn("truncate text-sm font-bold", organization ? "text-white" : "text-[var(--text-primary)]")}>
+                <p className={cn("truncate text-sm font-bold", backoffice ? "text-white" : "text-[var(--text-primary)]")}>
                   Flora
                 </p>
-                <p className={cn("truncate text-xs", organization ? "text-white/60" : "text-[var(--text-tertiary)]")}>
-                  {organization ? "Operação · Vida Verde" : "Portal do associado"}
+                <p className={cn("truncate text-xs", backoffice ? "text-white/60" : "text-[var(--text-tertiary)]")}>
+                  {tenantLabel}
                 </p>
               </div>
               <Button size="icon" variant="ghost" aria-label="Fechar menu" onClick={() => setMenuOpen(false)}>
@@ -71,7 +84,7 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
                     onClick={() => setMenuOpen(false)}
                     className={cn(
                       "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors",
-                      organization
+                      backoffice
                         ? active
                           ? "bg-white/14 text-white"
                           : "text-white/72 hover:bg-white/8 hover:text-white"
@@ -98,13 +111,13 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
       <aside
         className={cn(
           "hidden h-screen w-[var(--sidebar-width)] shrink-0 flex-col lg:sticky lg:top-0 lg:flex",
-          organization ? "bg-petrol-700 text-white" : "border-r border-border bg-card",
+          backoffice ? "bg-petrol-700 text-white" : "border-r border-border bg-card",
         )}
       >
         <div
           className={cn(
             "flex h-[82px] items-center gap-3 px-5",
-            organization && "border-b border-white/10",
+            backoffice && "border-b border-white/10",
           )}
         >
           <Image
@@ -116,11 +129,11 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
             className="h-10 w-auto"
           />
           <div className="min-w-0">
-            <p className={cn("truncate text-sm font-bold", organization ? "text-white" : "text-[var(--text-primary)]")}>
+            <p className={cn("truncate text-sm font-bold", backoffice ? "text-white" : "text-[var(--text-primary)]")}>
               Flora
             </p>
-            <p className={cn("truncate text-xs", organization ? "text-white/60" : "text-[var(--text-tertiary)]")}>
-              {organization ? "Operação · Vida Verde" : "Portal do associado"}
+            <p className={cn("truncate text-xs", backoffice ? "text-white/60" : "text-[var(--text-tertiary)]")}>
+              {tenantLabel}
             </p>
           </div>
         </div>
@@ -135,7 +148,7 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
                 href={item.href}
                 className={cn(
                   "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors",
-                  organization
+                  backoffice
                     ? active
                       ? "bg-white/14 text-white"
                       : "text-white/72 hover:bg-white/8 hover:text-white"
@@ -159,22 +172,22 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
         <div
           className={cn(
             "flex items-center gap-3 border-t p-4",
-            organization ? "border-white/10" : "border-border",
+            backoffice ? "border-white/10" : "border-border",
           )}
         >
-          <Avatar name={user.name} inverse={organization} />
+          <Avatar name={user.name} inverse={backoffice} />
           <div className="min-w-0 flex-1">
-            <p className={cn("truncate text-sm font-bold", organization && "text-white")}>
+            <p className={cn("truncate text-sm font-bold", backoffice && "text-white")}>
               {user.name}
             </p>
-            <p className={cn("truncate text-xs", organization ? "text-white/55" : "text-[var(--text-tertiary)]")}>
+            <p className={cn("truncate text-xs", backoffice ? "text-white/55" : "text-[var(--text-tertiary)]")}>
               {user.detail}
             </p>
           </div>
           <Icon
-            name={organization ? "log-out" : "settings"}
+            name={backoffice ? "log-out" : "settings"}
             size={18}
-            className={organization ? "text-white/50" : "text-[var(--text-tertiary)]"}
+            className={backoffice ? "text-white/50" : "text-[var(--text-tertiary)]"}
           />
         </div>
       </aside>
@@ -201,7 +214,7 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
           <div className="hidden w-[min(34vw,360px)] md:block">
             <Input
               aria-label="Buscar"
-              placeholder={organization ? "Buscar pedido, associado ou produto" : "Buscar pedido ou produto"}
+              placeholder={searchPlaceholder}
               leadingIcon={<Icon name="search" size={18} />}
               className="h-10"
             />
@@ -215,8 +228,13 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
 
         <main className="mx-auto w-full max-w-content px-4 py-5 md:px-7 md:py-7">{children}</main>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-white/94 px-2 py-2 backdrop-blur lg:hidden">
-          {nav.slice(0, 5).map((item) => {
+        <nav
+          className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-white/94 px-2 py-2 backdrop-blur lg:hidden"
+          style={{
+            gridTemplateColumns: `repeat(${Math.max(1, mobileNavItems.length)}, minmax(0, 1fr))`,
+          }}
+        >
+          {mobileNavItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (

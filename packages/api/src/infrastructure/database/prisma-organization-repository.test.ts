@@ -85,4 +85,46 @@ describe("PrismaOrganizationRepository", () => {
 
     await expect(repository.create(createInput)).rejects.toThrow(ConflictException);
   });
+
+  it("lists organizations with selected plan and pagination metadata", async () => {
+    const organization = {
+      id: "org_1",
+      ...createInput.company,
+      address: { id: "addr_1", ...createInput.address },
+      addressId: "addr_1",
+      createdAt: new Date("2026-06-16T00:00:00.000Z"),
+      createdByMasterUserId: "master_1",
+      subscriptionPlan: plan,
+      subscriptionPlanId: "plan_starter",
+      updatedAt: new Date("2026-06-16T00:00:00.000Z"),
+    };
+    const prisma = {
+      organization: {
+        count: vi.fn().mockResolvedValue(1),
+        findMany: vi.fn().mockResolvedValue([organization]),
+        findUnique: vi.fn(),
+      },
+    };
+    const repository = new PrismaOrganizationRepository(prisma as never);
+
+    const result = await repository.list({ page: 2, perPage: 10 });
+
+    expect(prisma.organization.findMany).toHaveBeenCalledWith({
+      include: {
+        address: true,
+        subscriptionPlan: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: 10,
+      take: 10,
+    });
+    expect(prisma.organization.count).toHaveBeenCalledTimes(1);
+    expect(result.pagination).toEqual({
+      page: 2,
+      perPage: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    expect(result.data[0]?.subscriptionPlan.name).toBe("Starter");
+  });
 });

@@ -1,11 +1,7 @@
+import type { CreateOrganizationRequest, CreateOrganizationResponse } from "@flora/shared/organizations";
 import { apiFetch } from "@/lib/http";
-import type { CreateOrganizationInput, CreatedOrganization } from "../types";
 
-type CreateOrganizationResponse = {
-  data: CreatedOrganization;
-};
-
-export async function createOrganization(input: CreateOrganizationInput) {
+export async function createOrganization(input: CreateOrganizationRequest) {
   return apiFetch<CreateOrganizationResponse>("/organizations", {
     body: JSON.stringify(input),
     method: "POST",

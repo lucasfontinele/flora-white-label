@@ -113,6 +113,7 @@ A API possui um exemplo em `packages/api/.env.example`:
 NODE_ENV=development
 HOST=0.0.0.0
 PORT=3333
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 DATABASE_URL="postgresql://flora:flora@localhost:5432/flora?schema=public"
 ```
 
@@ -123,6 +124,16 @@ cp packages/api/.env.example packages/api/.env
 ```
 
 O arquivo `.env` não deve ser versionado.
+
+Chaves usadas pela API:
+
+| Chave | Descrição |
+| --- | --- |
+| `NODE_ENV` | Ambiente de execução: `development`, `test` ou `production`. |
+| `HOST` | Interface usada pelo Fastify. Em desenvolvimento, use `0.0.0.0`. |
+| `PORT` | Porta HTTP da API. O padrão local é `3333`. |
+| `CORS_ORIGINS` | Lista separada por vírgula das origens web permitidas. |
+| `DATABASE_URL` | URL PostgreSQL usada pelo Prisma. |
 
 ## Rodando o projeto
 
@@ -245,7 +256,17 @@ datasource db {
 }
 ```
 
-No momento, o schema ainda não possui models de domínio. O endpoint `/ready` já usa o Prisma para executar `SELECT 1`, então ele depende de `DATABASE_URL` válido e banco acessível.
+O schema possui as tabelas de organizações, endereços e planos de assinatura. O endpoint `/ready` usa o Prisma para executar `SELECT 1`, então ele depende de `DATABASE_URL` válido e banco acessível.
+
+Para subir o PostgreSQL local pelo Docker Compose:
+
+```bash
+docker compose up -d postgres
+pnpm prisma:generate
+pnpm prisma:migrate
+```
+
+O Compose cria o banco `flora` com usuário `flora` e senha `flora`, compatível com o `DATABASE_URL` de `packages/api/.env.example`.
 
 ## Arquitetura do front-end
 

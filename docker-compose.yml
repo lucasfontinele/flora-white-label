@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flora
+      POSTGRES_USER: flora
+      POSTGRES_PASSWORD: flora
+    ports:
+      - "5432:5432"
+    volumes:
+      - flora_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flora -d flora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  flora_postgres_data:

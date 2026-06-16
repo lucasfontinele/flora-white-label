@@ -1,0 +1,420 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Master Organizations
+  version: 0.2.0
+  description: >
+    Contract for the first Master organization housekeeping slice: list
+    organizations, list subscription plans, and create organizations using
+    shared DTOs and temporary Master headers.
+servers:
+  - url: http://localhost:3333
+    description: Local API runtime
+security:
+  - masterUserId: []
+    masterRole: []
+paths:
+  /subscription-plans:
+    get:
+      summary: List available subscription plans
+      operationId: listSubscriptionPlans
+      responses:
+        "200":
+          description: Available plans
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSubscriptionPlansResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /organizations:
+    get:
+      summary: List organizations
+      description: Returns Master-visible organization summaries for the table.
+      operationId: listOrganizations
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: perPage
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Organizations page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListOrganizationsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create an organization
+      description: Creates a tenant organization from company data, address data, and a selected plan.
+      operationId: createOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateOrganizationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  securitySchemes:
+    masterUserId:
+      type: apiKey
+      in: header
+      name: x-master-user-id
+      description: Temporary local Master user identifier until final auth exists.
+    masterRole:
+      type: apiKey
+      in: header
+      name: x-master-role
+      description: Must be `master` for temporary Master authorization.
+  responses:
+    ValidationError:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing temporary Master authentication
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: User is not authorized as Master
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Organization CNPJ already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ListSubscriptionPlansResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubscriptionPlan"
+    ListOrganizationsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    CreateOrganizationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: "#/components/schemas/Organization"
+    CreateOrganizationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - company
+        - address
+        - subscriptionPlanId
+      properties:
+        company:
+          $ref: "#/components/schemas/CompanyData"
+        address:
+          $ref: "#/components/schemas/AddressInput"
+        subscriptionPlanId:
+          type: string
+          minLength: 1
+    CompanyData:
+      type: object
+      additionalProperties: false
+      required:
+        - legalName
+        - tradeName
+        - cnpj
+        - foundationDate
+        - primaryCnae
+        - secondaryCnaes
+        - institutionalEmail
+        - whatsapp
+      properties:
+        legalName:
+          type: string
+          minLength: 1
+        tradeName:
+          type: string
+          minLength: 1
+        cnpj:
+          type: string
+          description: CNPJ with or without formatting; API normalizes to 14 digits.
+        foundationDate:
+          type: string
+          format: date
+        primaryCnae:
+          type: string
+          description: CNAE with or without formatting; API normalizes to 7 digits.
+          pattern: "^[0-9./-]+$"
+          minLength: 7
+          maxLength: 9
+        secondaryCnaes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[0-9./-]+$"
+            minLength: 7
+            maxLength: 9
+          default: []
+        institutionalEmail:
+          type: string
+          format: email
+        phone:
+          type: string
+          description: Optional Brazilian phone with or without formatting; API normalizes to digits.
+          minLength: 10
+        site:
+          type: string
+          format: uri
+        instagram:
+          type: string
+          format: uri
+        facebook:
+          type: string
+          format: uri
+        linkedin:
+          type: string
+          format: uri
+        whatsapp:
+          type: string
+          minLength: 10
+    AddressInput:
+      type: object
+      additionalProperties: false
+      required:
+        - cep
+        - logradouro
+        - number
+        - neighborhood
+        - city
+        - state
+      properties:
+        cep:
+          type: string
+          description: CEP with or without formatting; API normalizes to 8 digits.
+        logradouro:
+          type: string
+          minLength: 1
+        number:
+          type: string
+          minLength: 1
+        complement:
+          type: string
+        neighborhood:
+          type: string
+          minLength: 1
+        city:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+    Address:
+      allOf:
+        - $ref: "#/components/schemas/AddressInput"
+        - type: object
+          additionalProperties: false
+          required:
+            - id
+          properties:
+            id:
+              type: string
+    Organization:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - company
+        - address
+        - subscriptionPlan
+        - createdByMasterUserId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        company:
+          $ref: "#/components/schemas/CompanyData"
+        address:
+          $ref: "#/components/schemas/Address"
+        subscriptionPlan:
+          $ref: "#/components/schemas/SubscriptionPlan"
+        createdByMasterUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    OrganizationListItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - tradeName
+        - legalName
+        - cnpj
+        - city
+        - state
+        - subscriptionPlan
+        - createdAt
+      properties:
+        id:
+          type: string
+        tradeName:
+          type: string
+        legalName:
+          type: string
+        cnpj:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        subscriptionPlan:
+          $ref: "#/components/schemas/SubscriptionPlan"
+        createdAt:
+          type: string
+          format: date-time
+    SubscriptionPlan:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - code
+        - name
+        - priceInCents
+        - maxActiveUsers
+        - operatorLimitType
+        - maxOperators
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          enum:
+            - starter
+            - growth
+            - unlimited
+        name:
+          type: string
+          enum:
+            - Starter
+            - Growth
+            - Unlimited
+        priceInCents:
+          type: integer
+          minimum: 0
+        maxActiveUsers:
+          type: integer
+          minimum: 1
+        operatorLimitType:
+          type: string
+          enum:
+            - limited
+            - unlimited
+        maxOperators:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+    Pagination:
+      type: object
+      additionalProperties: false
+      required:
+        - page
+        - perPage
+        - total
+        - totalPages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              examples:
+                - VALIDATION_ERROR
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - CONFLICT
+            message:
+              type: string
+            details:
+              description: Optional field-level or domain-specific error details.

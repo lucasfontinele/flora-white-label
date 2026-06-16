@@ -3,8 +3,11 @@ import { createAddress, type AddressInput } from "../addresses/address.js";
 import {
   isFutureDate,
   isValidBrazilianPhone,
+  isValidCnae,
   isValidCnpj,
   isValidEmail,
+  isValidUrl,
+  normalizeCnae,
   normalizeCnpj,
   normalizePhone,
   normalizeText,
@@ -16,11 +19,16 @@ export type OrganizationRegistrationInput = {
   address: AddressInput;
   company: {
     cnpj: string;
+    facebook?: string;
     foundationDate: string;
+    instagram?: string;
     institutionalEmail: string;
+    linkedin?: string;
     legalName: string;
+    phone?: string;
     primaryCnae: string;
     secondaryCnaes?: string[];
+    site?: string;
     tradeName: string;
     whatsapp: string;
   };
@@ -49,17 +57,23 @@ export function parseOrganizationRegistrationInput(
   const company = input.company;
   const foundationDateValue = readString(company.foundationDate);
   const foundationDate = foundationDateValue ? parseDateOnly(foundationDateValue) : null;
-  const secondaryCnaes = Array.isArray(company.secondaryCnaes)
-    ? company.secondaryCnaes.map((value) => normalizeText(String(value))).filter(Boolean)
-    : [];
+  const secondaryCnaesInput = Array.isArray(company.secondaryCnaes) ? company.secondaryCnaes : [];
+  const secondaryCnaes = secondaryCnaesInput
+    .map((value) => normalizeCnae(String(value)))
+    .filter(Boolean);
 
   const normalizedCompany = {
     cnpj: normalizeCnpj(readString(company.cnpj)),
+    facebook: optionalString(company.facebook),
     foundationDate,
+    instagram: optionalString(company.instagram),
     institutionalEmail: normalizeText(readString(company.institutionalEmail)),
+    linkedin: optionalString(company.linkedin),
     legalName: normalizeText(readString(company.legalName)),
-    primaryCnae: normalizeText(readString(company.primaryCnae)),
+    phone: optionalPhone(company.phone),
+    primaryCnae: normalizeCnae(readString(company.primaryCnae)),
     secondaryCnaes,
+    site: optionalString(company.site),
     tradeName: normalizeText(readString(company.tradeName)),
     whatsapp: normalizePhone(readString(company.whatsapp)),
   };
@@ -71,9 +85,26 @@ export function parseOrganizationRegistrationInput(
   if (foundationDate && isFutureDate(foundationDate, options.now)) {
     issues.push("Data de fundação não pode ser futura.");
   }
-  if (!normalizedCompany.primaryCnae) issues.push("CNAE principal obrigatório.");
+  if (!isValidCnae(readString(company.primaryCnae))) issues.push("CNAE principal inválido.");
+  if (secondaryCnaesInput.some((value) => !isValidCnae(String(value)))) {
+    issues.push("CNAE secundário inválido.");
+  }
+  if (new Set(secondaryCnaes).size !== secondaryCnaes.length) {
+    issues.push("CNAEs secundários não podem conter duplicidade.");
+  }
   if (!isValidEmail(normalizedCompany.institutionalEmail)) issues.push("E-mail institucional inválido.");
+  if (normalizedCompany.phone && !isValidBrazilianPhone(normalizedCompany.phone)) {
+    issues.push("Telefone inválido.");
+  }
   if (!isValidBrazilianPhone(normalizedCompany.whatsapp)) issues.push("WhatsApp inválido.");
+  for (const [field, value] of [
+    ["Site", normalizedCompany.site],
+    ["Instagram", normalizedCompany.instagram],
+    ["Facebook", normalizedCompany.facebook],
+    ["LinkedIn", normalizedCompany.linkedin],
+  ] as const) {
+    if (value && !isValidUrl(value)) issues.push(`${field} inválido.`);
+  }
 
   const subscriptionPlanId = normalizeText(readString(input.subscriptionPlanId));
   if (!subscriptionPlanId) issues.push("Plano obrigatório.");
@@ -120,5 +151,10 @@ function readString(value: unknown) {
 }
 
 function optionalString(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : undefined;
+  return typeof value === "string" && value.trim() ? normalizeText(value) : undefined;
+}
+
+function optionalPhone(value: unknown) {
+  const normalized = normalizePhone(readString(value));
+  return normalized || undefined;
 }

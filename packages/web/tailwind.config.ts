@@ -9,6 +9,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Tailwind's default opacity scale only covers multiples of 5, so color
+      // opacity modifiers such as `bg-white/14` or `text-white/72` silently emit
+      // no CSS. Expand the scale to every integer 0-100 so those utilities (used
+      // for the active nav item, header and auth surfaces) actually render.
+      opacity: Object.fromEntries(
+        Array.from({ length: 101 }, (_, value) => [value, `${value / 100}`]),
+      ),
       colors: {
         background: "var(--surface-page)",
         foreground: "var(--text-primary)",

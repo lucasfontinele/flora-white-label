@@ -23,3 +23,7 @@ export const organizationNav: Array<{
   { label: "Relatórios", href: "/operacional/reports", icon: "bar-chart-3" },
   { label: "Gestão de acessos", href: "/operacional/access", icon: "shield-check" },
 ];
+
+export const masterNav: Array<{ label: string; href: string; icon: IconName }> = [
+  { label: "Organizações", href: "/organizations", icon: "store" },
+];

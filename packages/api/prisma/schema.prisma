@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum OperatorLimitType {
@@ -51,7 +52,12 @@ model Organization {
   primaryCnae           String
   secondaryCnaes        String[]         @default([])
   institutionalEmail    String
+  phone                 String?
   whatsapp              String
+  site                  String?
+  instagram             String?
+  facebook              String?
+  linkedin              String?
   addressId             String           @unique
   subscriptionPlanId    String
   createdByMasterUserId String

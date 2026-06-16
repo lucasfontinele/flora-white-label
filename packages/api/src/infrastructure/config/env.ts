@@ -1,6 +1,7 @@
 type NodeEnv = "development" | "production" | "test";
 
 export type Env = {
+  corsOrigins: string[];
   host: string;
   nodeEnv: NodeEnv;
   port: number;
@@ -22,7 +23,19 @@ function readPort(value: string | undefined): number {
   return port;
 }
 
+function readCorsOrigins(value: string | undefined): string[] {
+  if (!value) {
+    return ["http://localhost:3000", "http://127.0.0.1:3000"];
+  }
+
+  return value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 export const env: Env = {
+  corsOrigins: readCorsOrigins(process.env.CORS_ORIGINS),
   host: process.env.HOST ?? "0.0.0.0",
   nodeEnv: readNodeEnv(process.env.NODE_ENV),
   port: readPort(process.env.PORT),

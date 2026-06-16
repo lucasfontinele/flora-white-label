@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { ConflictException } from "../../exception/index.js";
 import type { CreateOrganizationRecordInput, Organization } from "../../domain/organizations/organization.js";
 import type { SubscriptionPlan } from "../../domain/subscription-plans/subscription-plan.js";
+import type { ListOrganizationsInput, ListOrganizationsResult } from "../../application/organizations/organization-repository.js";
 import { prisma as defaultPrisma } from "./prisma-client.js";
 
 export class PrismaOrganizationRepository {
@@ -46,6 +47,31 @@ export class PrismaOrganizationRepository {
       throw error;
     }
   }
+
+  async list(input: ListOrganizationsInput): Promise<ListOrganizationsResult> {
+    const [organizations, total] = await Promise.all([
+      this.client.organization.findMany({
+        include: {
+          address: true,
+          subscriptionPlan: true,
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (input.page - 1) * input.perPage,
+        take: input.perPage,
+      }),
+      this.client.organization.count(),
+    ]);
+
+    return {
+      data: organizations.map(mapOrganization),
+      pagination: {
+        page: input.page,
+        perPage: input.perPage,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / input.perPage),
+      },
+    };
+  }
 }
 
 function mapOrganization(organization: {
@@ -61,14 +87,19 @@ function mapOrganization(organization: {
   };
   addressId: string;
   cnpj: string;
+  facebook?: string | null;
   createdAt: Date;
   createdByMasterUserId: string;
   foundationDate: Date;
   id: string;
+  instagram?: string | null;
   institutionalEmail: string;
+  linkedin?: string | null;
   legalName: string;
+  phone?: string | null;
   primaryCnae: string;
   secondaryCnaes: string[];
+  site?: string | null;
   subscriptionPlan: {
     code: string;
     id: string;
@@ -98,12 +129,17 @@ function mapOrganization(organization: {
     cnpj: organization.cnpj,
     createdAt: organization.createdAt,
     createdByMasterUserId: organization.createdByMasterUserId,
+    facebook: organization.facebook ?? undefined,
     foundationDate: organization.foundationDate,
     id: organization.id,
+    instagram: organization.instagram ?? undefined,
     institutionalEmail: organization.institutionalEmail,
+    linkedin: organization.linkedin ?? undefined,
     legalName: organization.legalName,
+    phone: organization.phone ?? undefined,
     primaryCnae: organization.primaryCnae,
     secondaryCnaes: organization.secondaryCnaes,
+    site: organization.site ?? undefined,
     subscriptionPlan: mapPlan(organization.subscriptionPlan),
     subscriptionPlanId: organization.subscriptionPlanId,
     tradeName: organization.tradeName,

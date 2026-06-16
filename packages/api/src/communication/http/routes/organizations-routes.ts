@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { CreateOrganizationUseCase } from "../../../application/organizations/create-organization-use-case.js";
+import { ListOrganizationsUseCase } from "../../../application/organizations/list-organizations-use-case.js";
 import type { OrganizationRepository } from "../../../application/organizations/organization-repository.js";
 import type { SubscriptionPlanRepository } from "../../../application/subscription-plans/subscription-plan-repository.js";
 import { PrismaOrganizationRepository } from "../../../infrastructure/database/prisma-organization-repository.js";
@@ -19,6 +20,20 @@ export function organizationsRoutes(options: OrganizationsRoutesOptions = {}): F
       organizationRepository,
       subscriptionPlanRepository,
     );
+    const listOrganizationsUseCase = new ListOrganizationsUseCase(organizationRepository);
+
+    app.get("/organizations", async (request) => {
+      const masterUser = await request.requireMaster();
+      const query = request.query as { page?: string; perPage?: string };
+
+      return listOrganizationsUseCase.execute(
+        {
+          page: parseQueryInteger(query.page),
+          perPage: parseQueryInteger(query.perPage),
+        },
+        masterUser,
+      );
+    });
 
     app.post("/organizations", async (request, reply) => {
       const masterUser = await request.requireMaster();
@@ -29,4 +44,11 @@ export function organizationsRoutes(options: OrganizationsRoutesOptions = {}): F
       });
     });
   };
+}
+
+function parseQueryInteger(value: string | undefined) {
+  if (!value) return undefined;
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) ? parsed : undefined;
 }

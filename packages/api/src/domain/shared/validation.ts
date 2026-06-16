@@ -76,6 +76,23 @@ export function isValidBrazilianPhone(value: string) {
   return length === 10 || length === 11;
 }
 
+export function normalizeCnae(value: string) {
+  return onlyDigits(value);
+}
+
+export function isValidCnae(value: string) {
+  return normalizeCnae(value).length === 7 && /^[\d./-]+$/.test(value.trim());
+}
+
+export function isValidUrl(value: string) {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

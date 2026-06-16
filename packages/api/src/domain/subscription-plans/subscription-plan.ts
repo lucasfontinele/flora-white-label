@@ -1,17 +1,14 @@
+import type {
+  OperatorLimitType as SharedOperatorLimitType,
+  PlanCode,
+  SubscriptionPlanDto,
+} from "@flora/shared/organizations";
 import { ValidationException } from "../../exception/index.js";
 
-export type SubscriptionPlanCode = "starter" | "growth" | "unlimited";
-export type OperatorLimitType = "limited" | "unlimited";
+export type SubscriptionPlanCode = PlanCode;
+export type OperatorLimitType = SharedOperatorLimitType;
 
-export type SubscriptionPlan = {
-  code: SubscriptionPlanCode;
-  id: string;
-  maxActiveUsers: number;
-  maxOperators: number | null;
-  name: "Starter" | "Growth" | "Unlimited";
-  operatorLimitType: OperatorLimitType;
-  priceInCents: number;
-};
+export type SubscriptionPlan = SubscriptionPlanDto;
 
 export function createSubscriptionPlan(input: SubscriptionPlan): SubscriptionPlan {
   const issues: string[] = [];
