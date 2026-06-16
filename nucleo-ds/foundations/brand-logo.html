@@ -1,0 +1,28 @@
+<!-- @dsCard group="Brand" viewport="700x240" name="Logo" subtitle="Wordmark, mark, and dark-surface lockup (placeholder)" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+  .panel { border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; display: flex; align-items: center; justify-content: center; }
+  .panel.dark { background: var(--surface-inverse); border-color: transparent; }
+  .panel.mark { gap: 20px; }
+  img { height: 40px; }
+  .full { grid-column: 1 / -1; }
+  .cap { grid-column: 1 / -1; font: var(--font-body-sm); color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+  <div class="panel"><img src="../assets/logo-wordmark.svg" alt="Núcleo"></div>
+  <div class="panel dark"><img src="../assets/logo-wordmark-light.svg" alt="Núcleo"></div>
+  <div class="panel mark">
+    <img src="../assets/logo-mark.svg" alt="" style="height:48px">
+    <img src="../assets/logo-mark.svg" alt="" style="height:32px">
+    <img src="../assets/logo-mark.svg" alt="" style="height:24px">
+  </div>
+  <div class="panel dark"><img src="../assets/logo-mark.svg" alt="" style="height:44px"></div>
+  <div class="cap">Placeholder mark — abstract "nucleus / hub", deliberately no cannabis leaf. Replace with the real wordmark when available.</div>
+</body>
+</html>

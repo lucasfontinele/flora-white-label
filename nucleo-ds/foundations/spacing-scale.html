@@ -1,0 +1,26 @@
+<!-- @dsCard group="Spacing" viewport="700x190" name="Spacing scale" subtitle="8px base grid with 4px micro-steps" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); display: grid; gap: 10px; }
+  .row { display: flex; align-items: center; gap: 14px; }
+  .bar { background: var(--accent-300); height: 16px; border-radius: 3px; }
+  .tok { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); width: 150px; flex: none; }
+  .tok b { color: var(--text-primary); }
+</style>
+</head>
+<body>
+  <div class="row"><span class="tok"><b>--space-1</b> · 4</span><div class="bar" style="width:4px"></div></div>
+  <div class="row"><span class="tok"><b>--space-2</b> · 8</span><div class="bar" style="width:8px"></div></div>
+  <div class="row"><span class="tok"><b>--space-3</b> · 12</span><div class="bar" style="width:12px"></div></div>
+  <div class="row"><span class="tok"><b>--space-4</b> · 16</span><div class="bar" style="width:16px"></div></div>
+  <div class="row"><span class="tok"><b>--space-5</b> · 24</span><div class="bar" style="width:24px"></div></div>
+  <div class="row"><span class="tok"><b>--space-6</b> · 32</span><div class="bar" style="width:32px"></div></div>
+  <div class="row"><span class="tok"><b>--space-7</b> · 40</span><div class="bar" style="width:40px"></div></div>
+  <div class="row"><span class="tok"><b>--space-8</b> · 48</span><div class="bar" style="width:48px"></div></div>
+  <div class="row"><span class="tok"><b>--space-9</b> · 64</span><div class="bar" style="width:64px"></div></div>
+</body>
+</html>

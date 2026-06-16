@@ -1,0 +1,41 @@
+<!-- @dsCard group="Colors" viewport="700x200" name="Neutrals & semantic surfaces" subtitle="Off-white page, white cards, near-black text" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface-card); display:grid; gap:18px; }
+  .row { display: flex; gap: 8px; }
+  .sw { flex: 1; }
+  .chip { height: 52px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+  .meta b { display: block; font-weight: var(--weight-semibold); color: var(--text-primary); font-size: var(--text-xs); margin-top:6px; }
+  .meta span { color: var(--text-secondary); font-family: var(--font-mono); font-size: 10px; }
+  .sem { display:flex; gap:10px; }
+  .sem .item { flex:1; border:1px solid var(--border-subtle); border-radius: var(--radius-md); padding:12px; }
+  .sem .item .dot { width:100%; height:24px; border-radius: var(--radius-xs); margin-bottom:8px; }
+  .lbl { font:var(--font-body-sm); font-weight:600; color:var(--text-primary); }
+  .tok { font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--neutral-0)"></div><div class="meta"><b>0</b><span>#FFFFFF</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-50)"></div><div class="meta"><b>50</b><span>#F8FAF9</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-100)"></div><div class="meta"><b>100</b><span>#F1F4F3</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-200)"></div><div class="meta"><b>200</b><span>#E5E7EB</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-300)"></div><div class="meta"><b>300</b><span>#D1D5DB</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-400)"></div><div class="meta"><b>400</b><span>#9CA3AF</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-500)"></div><div class="meta"><b>500</b><span>#6B7280</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-700)"></div><div class="meta"><b>700</b><span>#374151</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--neutral-900)"></div><div class="meta"><b>900</b><span>#111827</span></div></div>
+  </div>
+  <div class="sem">
+    <div class="item"><div class="dot" style="background:var(--surface-page)"></div><div class="lbl">Background</div><div class="tok">--surface-page</div></div>
+    <div class="item"><div class="dot" style="background:var(--surface-card)"></div><div class="lbl">Surface</div><div class="tok">--surface-card</div></div>
+    <div class="item"><div class="dot" style="background:var(--text-primary)"></div><div class="lbl">Text primary</div><div class="tok">--text-primary</div></div>
+    <div class="item"><div class="dot" style="background:var(--text-secondary)"></div><div class="lbl">Text secondary</div><div class="tok">--text-secondary</div></div>
+    <div class="item"><div class="dot" style="background:var(--border-subtle)"></div><div class="lbl">Border</div><div class="tok">--border-subtle</div></div>
+  </div>
+</body>
+</html>

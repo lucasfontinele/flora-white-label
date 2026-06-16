@@ -1,0 +1,33 @@
+<!-- @dsCard group="Spacing" viewport="700x200" name="Radius & shadow" subtitle="Soft corners, discreet elevation" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-page); display: grid; gap: 22px; }
+  .grp { display: flex; gap: 16px; align-items: flex-end; }
+  .ra { width: 70px; height: 56px; background: var(--green-100); border: 1.5px solid var(--green-300); }
+  .sh { width: 90px; height: 56px; background: var(--surface-card); border-radius: var(--radius-md); }
+  .cap { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="grp">
+    <div><div class="ra" style="border-radius:var(--radius-xs)"></div><div class="cap">xs · 4</div></div>
+    <div><div class="ra" style="border-radius:var(--radius-sm)"></div><div class="cap">sm · 8</div></div>
+    <div><div class="ra" style="border-radius:var(--radius-md)"></div><div class="cap">md · 12</div></div>
+    <div><div class="ra" style="border-radius:var(--radius-lg)"></div><div class="cap">lg · 16</div></div>
+    <div><div class="ra" style="border-radius:var(--radius-xl)"></div><div class="cap">xl · 24</div></div>
+    <div><div class="ra" style="border-radius:var(--radius-pill)"></div><div class="cap">pill</div></div>
+  </div>
+  <div class="grp">
+    <div><div class="sh" style="box-shadow:var(--shadow-xs)"></div><div class="cap">xs</div></div>
+    <div><div class="sh" style="box-shadow:var(--shadow-sm)"></div><div class="cap">sm</div></div>
+    <div><div class="sh" style="box-shadow:var(--shadow-md)"></div><div class="cap">md</div></div>
+    <div><div class="sh" style="box-shadow:var(--shadow-lg)"></div><div class="cap">lg</div></div>
+    <div><div class="sh" style="box-shadow:var(--shadow-xl)"></div><div class="cap">xl</div></div>
+    <div><div class="sh" style="box-shadow:var(--shadow-primary)"></div><div class="cap">primary</div></div>
+  </div>
+</body>
+</html>

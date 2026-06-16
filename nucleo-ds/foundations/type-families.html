@@ -1,0 +1,37 @@
+<!-- @dsCard group="Type" viewport="700x230" name="Families & weights" subtitle="Plus Jakarta Sans + JetBrains Mono" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); display: grid; gap: 20px; grid-template-columns: 1fr 1fr; }
+  .name { font: var(--font-body-sm); color: var(--text-secondary); margin-bottom: 6px; }
+  .name b { color: var(--text-primary); font-weight: 700; }
+  .big { font-family: var(--font-sans); font-size: 40px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); line-height: 1; }
+  .mono { font-family: var(--font-mono); font-size: 22px; font-weight: 500; color: var(--green-700); }
+  .weights { grid-column: 1 / -1; display: flex; gap: 22px; flex-wrap: wrap; align-items: baseline; }
+  .weights span { font-family: var(--font-sans); font-size: 22px; color: var(--text-primary); }
+  .glyphs { font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="name"><b>Plus Jakarta Sans</b> — UI & display</div>
+    <div class="big">Aa Bb Cc Çç</div>
+    <div class="glyphs">ã é í ó ú ç ñ · 0123456789</div>
+  </div>
+  <div>
+    <div class="name"><b>JetBrains Mono</b> — codes & data</div>
+    <div class="mono">#PED-20482</div>
+    <div class="glyphs">R$ 1.250,00 · BR48 21 9X</div>
+  </div>
+  <div class="weights">
+    <span style="font-weight:400">Regular 400</span>
+    <span style="font-weight:500">Medium 500</span>
+    <span style="font-weight:600">Semibold 600</span>
+    <span style="font-weight:700">Bold 700</span>
+    <span style="font-weight:800">Extra 800</span>
+  </div>
+</body>
+</html>

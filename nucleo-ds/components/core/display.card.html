@@ -1,0 +1,56 @@
+<!-- @dsCard group="Components" viewport="700x340" name="Badges, Card, Avatar, Tabs & Banner" subtitle="Status pills, surfaces, identity, navigation, alerts" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:24px;background:var(--surface-page)}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Badge, Card, Avatar, Tabs, Banner, Icon } = window.FolhaDesignSystem_e132f0;
+function Demo(){
+  return (
+    <div>
+      <div className="row">
+        <Badge tone="primary" dot>Aprovado</Badge>
+        <Badge tone="warning" dot>Em análise</Badge>
+        <Badge tone="info" dot>Em separação</Badge>
+        <Badge tone="success" dot>Entregue</Badge>
+        <Badge tone="error" dot>Recusado</Badge>
+        <Badge tone="neutral">Rascunho</Badge>
+        <Badge tone="petrol">Rastreável</Badge>
+      </div>
+      <div className="row">
+        <Avatar name="Maria Souza"/>
+        <Avatar name="João Lima" tone="petrol"/>
+        <Avatar name="Ana Reis" tone="neutral" size={48}/>
+        <Tabs defaultValue="ativos" tabs={[
+          {value:'ativos',label:'Ativos',count:4},
+          {value:'historico',label:'Histórico'},
+          {value:'docs',label:'Documentos',count:2},
+        ]}/>
+      </div>
+      <div className="row" style={{alignItems:'stretch'}}>
+        <Card style={{flex:1,minWidth:240}}>
+          <div style={{font:'var(--font-label)',color:'var(--text-secondary)',marginBottom:6}}>Pedido</div>
+          <div style={{font:'var(--font-heading)'}}>#PED-20482</div>
+          <div style={{marginTop:10}}><Badge tone="info" dot>Em separação</Badge></div>
+        </Card>
+        <Banner tone="success" title="Documento verificado" icon={<Icon name="shield-check" size={18}/>} style={{flex:2,minWidth:280}}>
+          A receita do paciente foi aprovada pela associação.
+        </Banner>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!-- @dsCard group="Colors" viewport="700x190" name="Accent & feedback" subtitle="Active highlights + status colors with subtle tints" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface-card); display: grid; gap: 18px; }
+  .row { display: flex; gap: 10px; }
+  .sw { flex: 1; }
+  .chip { height: 56px; border-radius: var(--radius-sm); border: 1px solid rgba(0,0,0,0.04); display:flex; align-items:flex-end; padding:8px; }
+  .chip.tint { height: 28px; }
+  .meta b { display: block; font-weight: var(--weight-semibold); color: var(--text-primary); font-size: var(--text-xs); margin-top:6px; }
+  .meta span { color: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; }
+  .tag { font: var(--font-body-sm); font-weight:600; color:#fff; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--accent-300)"></div><div class="meta"><b>Accent 300</b><span>#A6E0C0</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--accent-500)"></div><div class="meta"><b>Accent 500</b><span>#63C18C</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--success-500)"></div><div class="meta"><b>Success</b><span>#22C55E</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--warning-500)"></div><div class="meta"><b>Warning</b><span>#F59E0B</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--error-500)"></div><div class="meta"><b>Error</b><span>#EF4444</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--info-500)"></div><div class="meta"><b>Info</b><span>#3B82F6</span></div></div>
+  </div>
+  <div class="row">
+    <div class="sw"><div class="chip tint" style="background:var(--success-50)"></div></div>
+    <div class="sw"><div class="chip tint" style="background:var(--warning-50)"></div></div>
+    <div class="sw"><div class="chip tint" style="background:var(--error-50)"></div></div>
+    <div class="sw"><div class="chip tint" style="background:var(--info-50)"></div></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "flora-app",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "dev:web": "pnpm --filter @flora/web dev",
+    "dev:api": "pnpm --filter @flora/api dev",
+    "build:web": "pnpm --filter @flora/web build",
+    "build:api": "pnpm --filter @flora/api build",
+    "typecheck:web": "pnpm --filter @flora/web typecheck",
+    "typecheck:api": "pnpm --filter @flora/api typecheck",
+    "prisma:generate": "pnpm --filter @flora/api prisma:generate",
+    "prisma:migrate": "pnpm --filter @flora/api prisma:migrate"
+  }
+}
