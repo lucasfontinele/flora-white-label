@@ -14,10 +14,8 @@
     "typecheck:web": "pnpm --filter @flora/web typecheck",
     "typecheck:api": "pnpm --filter @flora/api typecheck",
     "test:web": "pnpm --filter @flora/web test",
-    "test:api": "pnpm --filter @flora/api test",
     "prisma:generate": "pnpm --filter @flora/api prisma:generate",
-    "prisma:migrate": "pnpm --filter @flora/api prisma:migrate",
-    "prisma:seed": "pnpm --filter @flora/api exec prisma db seed"
+    "prisma:migrate": "pnpm --filter @flora/api prisma:migrate"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
