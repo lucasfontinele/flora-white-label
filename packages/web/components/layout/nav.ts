@@ -25,5 +25,7 @@ export const organizationNav: Array<{
 ];
 
 export const masterNav: Array<{ label: string; href: string; icon: IconName }> = [
+  { label: "Visão geral", href: "/painel", icon: "layout-dashboard" },
   { label: "Organizações", href: "/organizations", icon: "store" },
+  { label: "Planos", href: "/planos", icon: "credit-card" },
 ];

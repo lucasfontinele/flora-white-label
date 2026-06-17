@@ -5,9 +5,17 @@ import { AppShell } from "@/components/layout/app-shell";
 import { masterNav } from "@/components/layout/nav";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
+  "/painel": {
+    title: "Visão geral",
+    subtitle: "Indicadores gerais da operação Flora em toda a rede de organizações.",
+  },
   "/organizations": {
     title: "Organizações",
     subtitle: "Controle as associações cadastradas, planos e dados principais.",
+  },
+  "/planos": {
+    title: "Planos",
+    subtitle: "Configure os planos de assinatura disponíveis para as organizações.",
   },
   "/organizations/new": {
     title: "Cadastrar organização",
