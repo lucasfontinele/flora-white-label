@@ -1,5 +1,7 @@
 "use client";
 
+import { BecomePatientCallout } from "@/components/associated/become-patient-callout";
+import { useMemberAccount } from "@/components/associated/member-account-context";
 import { usePatientSelection } from "@/components/associated/patient-context";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,22 +10,32 @@ import { associatedUser, tenant } from "@/lib/data";
 
 export function ProfileView() {
   const { selectedPatient } = usePatientSelection();
+  const { applicationStatus } = useMemberAccount();
 
   return (
     <div className="grid max-w-4xl gap-5 lg:grid-cols-[0.85fr_1.15fr]">
       <Card className="p-6">
         <Avatar name={associatedUser.name} size="lg" />
-        <h2 className="mt-5 text-2xl font-extrabold">{associatedUser.name}</h2>
+        <p className="mt-5 text-xs font-bold uppercase tracking-wide text-[var(--text-tertiary)]">Responsável</p>
+        <h2 className="mt-1 text-2xl font-extrabold">{associatedUser.name}</h2>
         <p className="mt-1 text-[var(--text-secondary)]">{associatedUser.email}</p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Badge tone="success" dot>
             Cadastro ativo
           </Badge>
           <Badge tone="primary">{associatedUser.since}</Badge>
+          {applicationStatus === "approved" ? (
+            <Badge tone="success" dot>
+              Também é paciente
+            </Badge>
+          ) : null}
+        </div>
+        <div className="mt-5">
+          <BecomePatientCallout variant="inline" />
         </div>
       </Card>
       <Card className="p-6">
-        <h2 className="font-heading">Paciente gerenciado</h2>
+        <h2 className="font-heading">Paciente representado</h2>
         <dl className="mt-5 grid gap-4 sm:grid-cols-2">
           <Info label="Paciente" value={selectedPatient.name} />
           <Info label="Vínculo" value={selectedPatient.relationship} />

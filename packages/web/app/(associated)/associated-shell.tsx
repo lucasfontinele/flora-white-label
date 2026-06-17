@@ -25,7 +25,11 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   },
   "/profile": {
     title: "Perfil",
-    subtitle: "Dados do associado e paciente gerenciado.",
+    subtitle: "Dados do responsável e pacientes representados.",
+  },
+  "/tornar-se-paciente": {
+    title: "Tornar-me paciente",
+    subtitle: "Solicite seu próprio cadastro como paciente da associação.",
   },
 };
 

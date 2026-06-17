@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BecomePatientCallout } from "@/components/associated/become-patient-callout";
 import { PatientSelector } from "@/components/associated/patient-selector";
 import { usePatientSelection } from "@/components/associated/patient-context";
 import { OrderCard } from "@/components/domain/order-card";
@@ -23,6 +24,8 @@ export function AssociatedDashboard() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PatientSelector />
+
+      <BecomePatientCallout variant="banner" />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MiniStatus icon="file-check" label="Receita válida até" value={selectedPatient.prescriptionDue} />

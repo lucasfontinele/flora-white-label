@@ -1,14 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import { useMemberAccount } from "./member-account-context";
 import { usePatientSelection } from "./patient-context";
 import { cn } from "@/lib/utils";
 
 export function PatientSelector() {
   const { patients, selectedPatient, selectedPatientId, selectPatient } = usePatientSelection();
+  const { applicationStatus } = useMemberAccount();
 
   return (
     <Card className="overflow-hidden border-[var(--petrol-700)] bg-petrol-700 text-white">
@@ -25,6 +28,21 @@ export function PatientSelector() {
             {selectedPatient.registrationStatus}
           </Badge>
         </div>
+
+        {applicationStatus === "pending" ? (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-white/12 bg-white/8 px-3 py-2 text-sm font-semibold text-white">
+            <Icon name="clock" size={16} className="text-[var(--accent-500)]" />
+            Sua solicitação para se tornar paciente está em análise
+          </div>
+        ) : applicationStatus === "none" ? (
+          <Link
+            href="/tornar-se-paciente"
+            className="mt-4 inline-flex items-center gap-2 rounded-md border border-white/12 bg-white/8 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/14"
+          >
+            <Icon name="user-plus" size={16} />
+            Tornar-me paciente também
+          </Link>
+        ) : null}
 
         <label className="mt-5 block md:hidden">
           <span className="mb-2 block text-sm font-bold text-white/76">Selecionar paciente</span>
