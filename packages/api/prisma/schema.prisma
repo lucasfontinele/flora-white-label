@@ -1,9 +1,7 @@
-// Prisma schema — technical foundation only.
+// Prisma schema.
 //
-// Intentionally contains no business models yet. It is the minimum required
-// for `prisma generate` to produce a Prisma Client and for the datasource to
-// be configured via DATABASE_URL. Real models/migrations are out of scope for
-// this boilerplate step.
+// Models for the initial patient-registration domain slice. `Organization`
+// does not exist yet, so `organizationId` is kept as a scalar field for now.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,4 +10,79 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String      @id @default(uuid())
+  organizationId String
+  email          String
+  passwordHashed String
+  profile        UserProfile
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([organizationId, email])
+  @@map("users")
+}
+
+model Guardian {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  document       String
+  birthdate      DateTime
+  gender         Gender
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  patients Patient[]
+
+  @@unique([organizationId, document])
+  @@map("guardians")
+}
+
+model Patient {
+  id              String   @id @default(uuid())
+  organizationId  String
+  guardianId      String
+  name            String
+  document        String
+  birthdate       DateTime
+  gender          Gender
+  underPrivileged Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  guardian    Guardian            @relation(fields: [guardianId], references: [id])
+  assessments PatientAssessment[]
+
+  @@unique([organizationId, document])
+  @@map("patients")
+}
+
+model PatientAssessment {
+  id         String    @id @default(uuid())
+  patientId  String
+  guardianId String
+  isApproved Boolean   @default(false)
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@map("patient_assessments")
+}
+
+enum UserProfile {
+  Master
+  Patient
+  Guardian
+}
+
+enum Gender {
+  M
+  F
+  O
+  NA @map("N/A")
 }
