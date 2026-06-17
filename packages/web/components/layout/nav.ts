@@ -16,6 +16,7 @@ export const organizationNav: Array<{
 }> = [
   { label: "Visão geral", href: "/operacional/dashboard", icon: "layout-dashboard" },
   { label: "Pedidos", href: "/operacional/orders", icon: "inbox", count: 12 },
+  { label: "Aprovações", href: "/operacional/approvals", icon: "clipboard-check", count: 5 },
   { label: "Associados", href: "/operacional/members", icon: "users" },
   { label: "Produtos", href: "/operacional/products", icon: "package" },
   { label: "Strains", href: "/operacional/strains", icon: "flask" },

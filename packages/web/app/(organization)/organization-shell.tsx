@@ -13,6 +13,10 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
     title: "Pedidos",
     subtitle: "Fila operacional com filtros, documentos e status.",
   },
+  "/operacional/approvals": {
+    title: "Aprovações",
+    subtitle: "Valide cadastros que enviaram documentos para entrar na associação.",
+  },
   "/operacional/members": {
     title: "Associados",
     subtitle: "Cadastro, responsáveis e vínculos de pacientes.",
@@ -43,7 +47,9 @@ export function OrganizationShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const normalized = pathname.startsWith("/operacional/orders/")
     ? "/operacional/orders"
-    : pathname;
+    : pathname.startsWith("/operacional/approvals/")
+      ? "/operacional/approvals"
+      : pathname;
   const current = titles[normalized] ?? titles["/operacional/dashboard"];
 
   return (
