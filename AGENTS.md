@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/002-master-organization-form/plan.md
+at specs/003-user-authentication/plan.md
 <!-- SPECKIT END -->

@@ -16,7 +16,8 @@
     "test:web": "pnpm --filter @flora/web test",
     "test:api": "pnpm --filter @flora/api test",
     "prisma:generate": "pnpm --filter @flora/api prisma:generate",
-    "prisma:migrate": "pnpm --filter @flora/api prisma:migrate"
+    "prisma:migrate": "pnpm --filter @flora/api prisma:migrate",
+    "prisma:seed": "pnpm --filter @flora/api exec prisma db seed"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

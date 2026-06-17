@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { SignOutButton } from "./sign-out-button";
 
 type NavItem = {
   label: string;
@@ -184,11 +185,7 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
               {user.detail}
             </p>
           </div>
-          <Icon
-            name={backoffice ? "log-out" : "settings"}
-            size={18}
-            className={backoffice ? "text-white/50" : "text-[var(--text-tertiary)]"}
-          />
+          <SignOutButton inverse={backoffice} />
         </div>
       </aside>
 

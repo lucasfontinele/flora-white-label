@@ -13,6 +13,10 @@
     "./organizations": {
       "types": "./src/organizations.ts",
       "import": "./dist/organizations.js"
+    },
+    "./authentication": {
+      "types": "./src/authentication.ts",
+      "import": "./dist/authentication.js"
     }
   },
   "scripts": {

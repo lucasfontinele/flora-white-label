@@ -3,11 +3,16 @@ import { env } from "../../infrastructure/config/env.js";
 import { registerCors } from "./plugins/cors.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { masterAuthPlugin } from "./plugins/master-auth.js";
+import { authenticationPlugin, type AuthenticationPluginOptions } from "./plugins/authentication.js";
+import { authenticationRoutes, type AuthenticationRoutesOptions } from "./routes/authentication-routes.js";
 import { organizationsRoutes, type OrganizationsRoutesOptions } from "./routes/organizations-routes.js";
 import { subscriptionPlansRoutes, type SubscriptionPlansRoutesOptions } from "./routes/subscription-plans-routes.js";
 import { technicalRoutes } from "./routes/technical-routes.js";
 
-export type BuildServerOptions = OrganizationsRoutesOptions & SubscriptionPlansRoutesOptions;
+export type BuildServerOptions = AuthenticationRoutesOptions &
+  AuthenticationPluginOptions &
+  OrganizationsRoutesOptions &
+  SubscriptionPlansRoutesOptions;
 
 export async function buildServer(options: BuildServerOptions = {}) {
   const app = Fastify({
@@ -19,7 +24,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
   registerErrorHandler(app);
   await registerCors(app);
   await masterAuthPlugin(app, {});
+  await authenticationPlugin(app, options);
   await app.register(technicalRoutes);
+  await app.register(authenticationRoutes(options));
   await app.register(subscriptionPlansRoutes(options));
   await app.register(organizationsRoutes(options));
 

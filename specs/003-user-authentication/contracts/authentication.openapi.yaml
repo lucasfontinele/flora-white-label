@@ -1,0 +1,272 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Authentication
+  version: 0.3.0
+  description: >
+    Contract for login-only authentication, JWT access and refresh credentials,
+    current session lookup, refresh rotation, and logout/session invalidation.
+servers:
+  - url: http://localhost:3333
+    description: Local API runtime
+paths:
+  /auth/login:
+    post:
+      summary: Sign in with email and password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated session and token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+  /auth/refresh:
+    post:
+      summary: Refresh an authenticated session
+      operationId: refreshSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshSessionRequest"
+      responses:
+        "200":
+          description: Rotated token pair and current session summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshSessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/me:
+    get:
+      summary: Return the current authenticated session
+      operationId: getCurrentSession
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current authenticated user and session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/logout:
+    post:
+      summary: Invalidate the current session
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Session signed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    ValidationError:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InvalidCredentials:
+      description: Credentials are invalid or account cannot sign in
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing, expired, revoked, or invalid session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    UserType:
+      type: string
+      enum:
+        - MASTER
+        - ORGANIZATION
+        - STANDARD
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          description: At least one lowercase letter and at least one number are required when provisioning passwords.
+    RefreshSessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - user
+            - session
+            - tokens
+          properties:
+            user:
+              $ref: "#/components/schemas/AuthenticatedUser"
+            session:
+              $ref: "#/components/schemas/AuthSession"
+            tokens:
+              $ref: "#/components/schemas/AuthTokenPair"
+    RefreshSessionResponse:
+      $ref: "#/components/schemas/LoginResponse"
+    CurrentSessionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - user
+            - session
+          properties:
+            user:
+              $ref: "#/components/schemas/AuthenticatedUser"
+            session:
+              $ref: "#/components/schemas/AuthSession"
+    LogoutResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - signedOut
+          properties:
+            signedOut:
+              type: boolean
+              const: true
+    AuthenticatedUser:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email
+        - type
+        - organizationId
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        type:
+          $ref: "#/components/schemas/UserType"
+        organizationId:
+          type:
+            - string
+            - "null"
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - userId
+        - organizationId
+        - expiresAt
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        organizationId:
+          type:
+            - string
+            - "null"
+        expiresAt:
+          type: string
+          format: date-time
+    AuthTokenPair:
+      type: object
+      additionalProperties: false
+      required:
+        - tokenType
+        - accessToken
+        - accessTokenExpiresAt
+        - refreshToken
+        - refreshTokenExpiresAt
+      properties:
+        tokenType:
+          type: string
+          const: Bearer
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object

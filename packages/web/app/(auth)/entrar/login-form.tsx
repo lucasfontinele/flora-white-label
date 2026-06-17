@@ -1,34 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-
-const loginSchema = z.object({
-  email: z.string().email("Informe um e-mail válido."),
-  password: z.string().min(6, "Informe sua senha."),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+import { signIn } from "./requests/sign-in";
+import { loginSchema, type LoginSchema } from "./schemas/login-schema";
 
 export function LoginForm() {
+  const router = useRouter();
   const {
+    handleSubmit,
     register,
-    formState: { errors },
-  } = useForm<LoginFormData>({
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "voce@email.com",
-      password: "123456",
+      email: "",
+      password: "",
     },
   });
 
+  async function onSubmit(data: LoginSchema) {
+    try {
+      const result = await signIn(data);
+      router.push(result.redirectTo);
+      router.refresh();
+    } catch {
+      setError("root", {
+        message: "Credenciais inválidas.",
+      });
+    }
+  }
+
   return (
-    <form className="space-y-5">
+    <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-1.5">
         <label className="text-sm font-bold text-[var(--text-primary)]" htmlFor="email">
           E-mail
@@ -57,6 +67,8 @@ export function LoginForm() {
         {errors.password ? <p className="text-sm text-error">{errors.password.message}</p> : null}
       </div>
 
+      {errors.root ? <p className="text-sm font-medium text-error">{errors.root.message}</p> : null}
+
       <div className="flex justify-end">
         <Link
           href="/entrar"
@@ -67,11 +79,8 @@ export function LoginForm() {
       </div>
 
       <div className="grid gap-3">
-        <Button asChild fullWidth>
-          <Link href="/dashboard">Entrar como associado</Link>
-        </Button>
-        <Button asChild fullWidth variant="secondary">
-          <Link href="/operacional/dashboard">Entrar na operação</Link>
+        <Button fullWidth type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Entrando..." : "Entrar"}
         </Button>
       </div>
 

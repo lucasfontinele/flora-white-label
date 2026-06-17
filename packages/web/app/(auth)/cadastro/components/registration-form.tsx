@@ -15,7 +15,7 @@ import { getAddressByCep } from "../requests/get-address-by-cep";
 import { registrationSchema, type RegistrationSchema } from "../schemas/registration-schema";
 import { useRegistrationDraftStore } from "../stores/registration-draft-store";
 
-type StepKind = "profile" | "personal" | "pet" | "contact" | "address" | "legalGuardian";
+type StepKind = "profile" | "personal" | "access" | "pet" | "contact" | "address" | "legalGuardian";
 
 type RegistrationStep = {
   description: string;
@@ -26,7 +26,8 @@ type RegistrationStep = {
 
 const profileStepFields: Array<keyof RegistrationSchema> = ["role"];
 const personalStepFields: Array<keyof RegistrationSchema> = ["fullName", "cpf", "birthDate", "nickname", "gender"];
-const contactStepFields: Array<keyof RegistrationSchema> = ["email", "phone"];
+const accessStepFields: Array<keyof RegistrationSchema> = ["email", "password", "passwordConfirmation"];
+const contactStepFields: Array<keyof RegistrationSchema> = ["phone"];
 const addressStepFields: Array<keyof RegistrationSchema> = [
   "cep",
   "street",
@@ -62,6 +63,13 @@ const petTutorStepFields: Array<keyof RegistrationSchema> = [
   "petDiagnosis",
 ];
 
+const accessStep: RegistrationStep = {
+  kind: "access",
+  title: "Acesso",
+  description: "E-mail e senha que serão usados para entrar na plataforma.",
+  fields: accessStepFields,
+};
+
 const patientSteps: RegistrationStep[] = [
   { kind: "profile", title: "Perfil", description: "Escolha como você participa do cuidado.", fields: profileStepFields },
   {
@@ -70,6 +78,7 @@ const patientSteps: RegistrationStep[] = [
     description: "Identificação inicial do cadastro.",
     fields: personalStepFields,
   },
+  accessStep,
   { kind: "contact", title: "Contato", description: "Canais usados pela associação.", fields: contactStepFields },
   {
     kind: "address",
@@ -87,6 +96,7 @@ const petTutorSteps: RegistrationStep[] = [
     description: "Identificação inicial do tutor do PET.",
     fields: personalStepFields,
   },
+  accessStep,
   {
     kind: "pet",
     title: "Dados do PET",
@@ -173,6 +183,8 @@ const defaultValues: RegistrationFormData = {
   nickname: "",
   gender: "prefiro_nao_informar",
   email: "",
+  password: "",
+  passwordConfirmation: "",
   phone: "",
   cep: "",
   street: "",
@@ -498,13 +510,13 @@ export function RegistrationForm() {
         />
       ) : null}
 
+      {currentStep.kind === "access" ? <AccessStep errors={errors} register={register} /> : null}
+
       {currentStep.kind === "pet" ? (
         <PetStep birthDateField={petBirthDateField} errors={errors} register={register} />
       ) : null}
 
-      {currentStep.kind === "contact" ? (
-        <ContactStep errors={errors} phoneField={phoneField} register={register} />
-      ) : null}
+      {currentStep.kind === "contact" ? <ContactStep errors={errors} phoneField={phoneField} /> : null}
 
       {currentStep.kind === "address" ? (
         <AddressStep
@@ -665,22 +677,63 @@ function PersonalStep({
   );
 }
 
-function ContactStep({
+function AccessStep({
   errors,
-  phoneField,
   register,
 }: {
   errors: FieldErrors<RegistrationFormData>;
-  phoneField: UseFormRegisterReturn<"phone">;
   register: ReturnType<typeof useForm<RegistrationFormData>>["register"];
 }) {
   return (
     <Card className="p-5 md:p-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Field className="xl:col-span-2" error={errors.email?.message} label="E-mail" required>
+      <div className="mb-5 flex items-start gap-3 rounded-md bg-primary-subtle p-4">
+        <Icon name="lock" size={20} className="text-primary" />
+        <div>
+          <h3 className="font-heading">Informações de acesso</h3>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Defina o e-mail e a senha que o responsável usará para entrar na plataforma.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field className="md:col-span-2" error={errors.email?.message} label="E-mail" required>
           <Input autoComplete="email" leadingIcon={<Icon name="mail" size={18} />} type="email" {...register("email")} />
         </Field>
-        <Field className="xl:col-span-1" error={errors.phone?.message} label="Telefone" required>
+        <Field error={errors.password?.message} label="Senha" required>
+          <Input
+            autoComplete="new-password"
+            leadingIcon={<Icon name="lock" size={18} />}
+            placeholder="Mínimo de 8 caracteres"
+            type="password"
+            {...register("password")}
+          />
+        </Field>
+        <Field error={errors.passwordConfirmation?.message} label="Confirmar senha" required>
+          <Input
+            autoComplete="new-password"
+            leadingIcon={<Icon name="lock" size={18} />}
+            placeholder="Repita a senha"
+            type="password"
+            {...register("passwordConfirmation")}
+          />
+        </Field>
+      </div>
+    </Card>
+  );
+}
+
+function ContactStep({
+  errors,
+  phoneField,
+}: {
+  errors: FieldErrors<RegistrationFormData>;
+  phoneField: UseFormRegisterReturn<"phone">;
+}) {
+  return (
+    <Card className="p-5 md:p-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field error={errors.phone?.message} label="Telefone" required>
           <Input
             autoComplete="tel"
             inputMode="tel"

@@ -12,6 +12,37 @@ enum OperatorLimitType {
   unlimited
 }
 
+enum UserType {
+  MASTER
+  ORGANIZATION
+  STANDARD
+}
+
+enum UserSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum RefreshTokenStatus {
+  ACTIVE
+  ROTATED
+  REVOKED
+  EXPIRED
+  REUSED
+}
+
+enum AuthenticationAuditEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  REFRESH_SUCCESS
+  REFRESH_FAILURE
+  LOGOUT
+  SESSION_REVOKED
+  AUTHORIZATION_REJECTED
+  REFRESH_REUSE_DETECTED
+}
+
 model Address {
   id           String        @id @default(cuid())
   cep          String
@@ -58,9 +89,11 @@ model Organization {
   instagram             String?
   facebook              String?
   linkedin              String?
+  isActive              Boolean          @default(true)
   addressId             String           @unique
   subscriptionPlanId    String
   createdByMasterUserId String
+  users                 User[]
   address               Address          @relation(fields: [addressId], references: [id], onDelete: Restrict)
   subscriptionPlan      SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict)
   createdAt             DateTime         @default(now())
@@ -68,4 +101,85 @@ model Organization {
 
   @@index([subscriptionPlanId])
   @@map("organizations")
+}
+
+model User {
+  id          String        @id @default(cuid())
+  email       String        @unique
+  passwordHash String
+  type        UserType
+  organizationId String?
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  isActive    Boolean       @default(true)
+  lastLoginAt DateTime?
+  sessions    UserSession[]
+  auditEvents AuthenticationAuditEvent[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model UserSession {
+  id            String                    @id @default(cuid())
+  userId        String
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        UserSessionStatus         @default(ACTIVE)
+  userAgent     String?
+  ipAddress     String?
+  lastUsedAt    DateTime                  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?
+  refreshTokens RefreshToken[]
+  auditEvents   AuthenticationAuditEvent[]
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model RefreshToken {
+  id                String             @id @default(cuid())
+  sessionId         String
+  session           UserSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tokenHash         String             @unique
+  status            RefreshTokenStatus @default(ACTIVE)
+  expiresAt         DateTime
+  rotatedAt         DateTime?
+  replacedByTokenId String?
+  replacedByToken   RefreshToken?      @relation("RefreshTokenRotation", fields: [replacedByTokenId], references: [id], onDelete: SetNull)
+  replacesTokens    RefreshToken[]     @relation("RefreshTokenRotation")
+  usedAt            DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model AuthenticationAuditEvent {
+  id           String                       @id @default(cuid())
+  userId       String?
+  user         User?                        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId    String?
+  session      UserSession?                 @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  type         AuthenticationAuditEventType
+  emailAttempt String?
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json?
+  createdAt    DateTime                     @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([type])
+  @@map("authentication_audit_events")
 }

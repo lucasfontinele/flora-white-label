@@ -20,6 +20,8 @@ const registrationBaseSchema = z.object({
     message: "Selecione uma opção de gênero.",
   }),
   email: emailSchema,
+  password: z.string().min(8, "A senha deve ter ao menos 8 caracteres."),
+  passwordConfirmation: z.string().min(1, "Confirme a senha."),
   phone: z.string().refine((value) => {
     const length = digits(value).length;
     return length === 10 || length === 11;
@@ -62,6 +64,10 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, cont
   };
 
   const hasText = (value?: string) => Boolean(value?.trim());
+
+  if (data.password && data.password !== data.passwordConfirmation) {
+    addIssue("passwordConfirmation", "As senhas não conferem.");
+  }
 
   if (data.role === "pet_tutor") {
     if (digits(data.cpf ?? "").length !== 11) {

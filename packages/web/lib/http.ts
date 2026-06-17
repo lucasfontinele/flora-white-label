@@ -21,16 +21,21 @@ export class ApiRequestError extends Error {
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 const masterUserId = process.env.NEXT_PUBLIC_MASTER_USER_ID ?? "master_local";
 
-export async function apiFetch<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+type ApiFetchInit = RequestInit & {
+  skipMasterHeaders?: boolean;
+};
+
+export async function apiFetch<T>(input: RequestInfo | URL, init?: ApiFetchInit): Promise<T> {
   const headers = new Headers(init?.headers);
+  const { skipMasterHeaders, ...requestInit } = init ?? {};
 
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
   if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  if (!headers.has("x-master-user-id")) headers.set("x-master-user-id", masterUserId);
-  if (!headers.has("x-master-role")) headers.set("x-master-role", "master");
+  if (!skipMasterHeaders && !headers.has("x-master-user-id")) headers.set("x-master-user-id", masterUserId);
+  if (!skipMasterHeaders && !headers.has("x-master-role")) headers.set("x-master-role", "master");
 
   const response = await fetch(resolveApiUrl(input), {
-    ...init,
+    ...requestInit,
     headers,
   });
 
