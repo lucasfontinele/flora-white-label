@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { CreatePatientRegistrationRequest } from "@flora/shared/patients";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
@@ -11,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { createPatientRegistration } from "../requests/create-patient-registration";
 import { getAddressByCep } from "../requests/get-address-by-cep";
 import { registrationSchema, type RegistrationSchema } from "../schemas/registration-schema";
 import { useRegistrationDraftStore } from "../stores/registration-draft-store";
@@ -44,7 +46,6 @@ const legalGuardianStepFields: Array<keyof RegistrationSchema> = [
   "guardianRg",
   "guardianRelationship",
   "guardianBirthDate",
-  "guardianEmail",
   "guardianPhone",
   "guardianCep",
   "guardianStreet",
@@ -198,7 +199,6 @@ const defaultValues: RegistrationFormData = {
   guardianRg: "",
   guardianRelationship: "pai_mae",
   guardianBirthDate: "",
-  guardianEmail: "",
   guardianPhone: "",
   guardianCep: "",
   guardianStreet: "",
@@ -231,6 +231,7 @@ export function RegistrationForm() {
   const [guardianCepStatus, setGuardianCepStatus] = useState<"idle" | "loading" | "found" | "error">("idle");
   const [lastCepLookup, setLastCepLookup] = useState("");
   const [lastGuardianCepLookup, setLastGuardianCepLookup] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const draftAppliedRef = useRef(false);
   const clearDraft = useRegistrationDraftStore((state) => state.clearDraft);
@@ -442,9 +443,15 @@ export function RegistrationForm() {
   }
 
   async function onSubmit(data: RegistrationFormData) {
-    await Promise.resolve(data);
-    clearDraft();
-    setSubmitted(true);
+    setSubmitError(null);
+
+    try {
+      await createPatientRegistration(data as CreatePatientRegistrationRequest);
+      clearDraft();
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Não foi possível enviar o cadastro.");
+    }
   }
 
   if (submitted) {
@@ -504,7 +511,7 @@ export function RegistrationForm() {
         <PersonalStep
           birthDateField={birthDateField}
           cpfField={cpfField}
-          cpfRequired={role === "pet_tutor"}
+          cpfRequired
           errors={errors}
           register={register}
         />
@@ -540,6 +547,15 @@ export function RegistrationForm() {
           phoneField={guardianPhoneField}
           register={register}
         />
+      ) : null}
+
+      {submitError ? (
+        <Card className="border-error bg-error-subtle p-4 text-error">
+          <div className="flex items-start gap-3">
+            <Icon name="alert-triangle" size={20} />
+            <p className="text-sm font-semibold">{submitError}</p>
+          </div>
+        </Card>
       ) : null}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
@@ -875,15 +891,10 @@ function LegalGuardianStep({
             >
               <option value="pai_mae">Pai/Mãe</option>
               <option value="tutor">Tutor</option>
+              <option value="filho">Filho</option>
+              <option value="cuidador">Cuidador</option>
+              <option value="procurador">Procurador</option>
             </select>
-          </Field>
-          <Field className="md:col-span-1 xl:col-span-5" error={errors.guardianEmail?.message} label="E-mail" required>
-            <Input
-              autoComplete="email"
-              leadingIcon={<Icon name="mail" size={18} />}
-              type="email"
-              {...register("guardianEmail")}
-            />
           </Field>
           <Field className="md:col-span-2 xl:col-span-4" error={errors.guardianPhone?.message} label="Telefone celular" required>
             <Input

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { associatedUser } from "@/lib/data";
+import { useScenario } from "./scenario-context";
 
 // Front-end model for the logged-in Member (Responsável). A Responsável manages
 // patients but is not necessarily a Patient — they may apply to become one.
@@ -32,6 +32,8 @@ function isStatus(value: string | null): value is PatientApplicationStatus {
 }
 
 export function MemberAccountProvider({ children }: { children: React.ReactNode }) {
+  const { scenario } = useScenario();
+  const responsible = scenario.responsible;
   const [applicationStatus, setApplicationStatus] = useState<PatientApplicationStatus>("none");
 
   useEffect(() => {
@@ -39,18 +41,21 @@ export function MemberAccountProvider({ children }: { children: React.ReactNode 
     if (isStatus(stored)) setApplicationStatus(stored);
   }, []);
 
+  // Persona "responsável por ele mesmo" já é paciente — sobrepõe a solicitação.
+  const effectiveStatus: PatientApplicationStatus = responsible.isPatient ? "approved" : applicationStatus;
+
   const value = useMemo<MemberAccountValue>(
     () => ({
-      responsibleName: associatedUser.name,
-      applicationStatus,
-      isPatient: applicationStatus === "approved",
+      responsibleName: responsible.name,
+      applicationStatus: effectiveStatus,
+      isPatient: effectiveStatus === "approved",
       submitApplication: (draft) => {
         setApplicationStatus("pending");
         window.localStorage.setItem(STATUS_KEY, "pending");
         window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       },
     }),
-    [applicationStatus],
+    [responsible.name, effectiveStatus],
   );
 
   return <MemberAccountContext.Provider value={value}>{children}</MemberAccountContext.Provider>;

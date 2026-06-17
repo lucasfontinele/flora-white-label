@@ -1,9 +1,13 @@
+import type { AuthenticatedUserProfileDto, UserRole } from "./patients.js";
+
 export type UserType = "MASTER" | "ORGANIZATION" | "STANDARD";
 
 export type AuthenticatedUserDto = {
   email: string;
   id: string;
   organizationId: string | null;
+  profile?: AuthenticatedUserProfileDto | null;
+  role?: UserRole | null;
   type: UserType;
 };
 

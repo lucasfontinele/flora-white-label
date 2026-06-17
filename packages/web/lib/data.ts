@@ -32,17 +32,48 @@ export type AssociatedOrder = {
   products?: ProductLine[];
 };
 
+export type PatientKind = "humano" | "pet";
+
 export type PatientProfile = {
   id: string;
   name: string;
-  relationship: "Paciente" | "Filho" | "Mãe" | "Pai";
+  relationship: "Paciente" | "Filho" | "Mãe" | "Pai" | "Titular" | "Pet";
   initials: string;
+  memberId: string;
   birthDate: string;
   condition: string;
   registrationStatus: "Ativo" | "Em análise";
   prescriptionDue: string;
   anvisaDue: string;
   nextReview: string;
+  kind?: PatientKind;
+  species?: string;
+};
+
+// Responsável (associado) logado. Carrega também os campos da carteirinha e
+// `isPatient` (persona "responsável por ele mesmo" — o associado é o paciente).
+export type ResponsibleProfile = {
+  name: string;
+  email: string;
+  phone: string;
+  since: string;
+  activePatientId: string;
+  isPatient: boolean;
+  memberId: string;
+  memberSince: string;
+  memberType: string;
+  membershipStatus: string;
+  document: string;
+  validThrough: string;
+};
+
+// Cenário de demonstração: combina um responsável e seus pacientes para
+// pré-visualizar as variações da home (mock; selecionável no topo da tela).
+export type AssociatedScenario = {
+  id: string;
+  label: string;
+  responsible: ResponsibleProfile;
+  patients: PatientProfile[];
 };
 
 export type AssociatedDocument = {
@@ -50,6 +81,36 @@ export type AssociatedDocument = {
   name: string;
   due: string;
   status: "Aprovado" | "Em análise" | "Recusado";
+};
+
+// Forma farmacêutica do produto — define o ícone e a unidade de consumo.
+export type ProductForm = "Óleo" | "Flor" | "Goma" | "Pomada" | "Concentrado";
+
+// Unidade em que o limite é medido. Frascos/gomas/pomadas/concentrados são
+// contados por quantidade; flores in natura são medidas em gramas ("g").
+export type ConsumptionUnit = "frasco" | "g" | "unidade" | "embalagem";
+
+// Janela em que o limite se renova. Receitas digitais (MEMED) trazem limites
+// por mês ("02 frascos/mês") ou por ano ("12 embalagens/ano").
+export type LimitPeriod = "mensal" | "anual";
+
+// Limite de compra liberado por receita para um paciente, no período vigente.
+// `allowed` é o teto do período; `used` é o que já foi adquirido nele.
+// `organizationId` amarra o limite à associação: o portal é white-label (uma
+// associação por contexto), então a receita só vale na organização que a importou.
+export type PurchaseLimit = {
+  id: string;
+  organizationId: string;
+  patientId: string;
+  product: string;
+  brand: string;
+  form: ProductForm;
+  unit: ConsumptionUnit;
+  period: LimitPeriod;
+  allowed: number;
+  used: number;
+  prescriptionDue: string;
+  posology: string;
 };
 
 export type OperatorOrder = {
@@ -66,16 +127,28 @@ export type OperatorOrder = {
 };
 
 export const tenant = {
+  id: "org-vida-verde",
   name: "Associação Vida Verde",
   shortName: "Vida Verde",
   portal: "Portal do associado",
 };
 
-export const associatedUser = {
+export const associatedUser: ResponsibleProfile = {
   name: "Camila Duarte",
   activePatientId: "joao-silva",
   email: "camila.duarte@email.com",
+  phone: "(11) 98876-5432",
   since: "desde 2024",
+  isPatient: false,
+  // --- Carteirinha digital / comprovante de filiação (mock de protótipo) ---
+  // TODO(api): preencher a partir de AuthenticatedUserProfileDto + dados de
+  // filiação do associado (número, data de adesão, situação, validade).
+  memberId: "4624",
+  memberSince: "12/06/2024",
+  memberType: "Responsável",
+  membershipStatus: "Ativado",
+  document: "***.456.789-**",
+  validThrough: "12/2026",
 };
 
 export const associatedPatients: PatientProfile[] = [
@@ -84,6 +157,7 @@ export const associatedPatients: PatientProfile[] = [
     name: "João Silva",
     relationship: "Filho",
     initials: "JS",
+    memberId: "4625",
     birthDate: "14 ago 2016",
     condition: "TEA",
     registrationStatus: "Ativo",
@@ -96,6 +170,7 @@ export const associatedPatients: PatientProfile[] = [
     name: "Marina Duarte",
     relationship: "Mãe",
     initials: "MD",
+    memberId: "4626",
     birthDate: "02 fev 1958",
     condition: "Dor crônica",
     registrationStatus: "Ativo",
@@ -108,12 +183,129 @@ export const associatedPatients: PatientProfile[] = [
     name: "Antônio Duarte",
     relationship: "Pai",
     initials: "AD",
+    memberId: "4627",
     birthDate: "19 set 1954",
     condition: "Sono",
     registrationStatus: "Em análise",
     prescriptionDue: "pendente de aprovação",
     anvisaDue: "renovar cadastro",
     nextReview: "aguardando documento",
+  },
+];
+
+// Reaproveita os dados ricos (pedidos, limites, documentos já existem por id) de
+// um paciente base e sobrescreve só o que muda na persona — assim cada cenário
+// mostra uma home populada.
+function scenarioPatient(baseId: string, overrides: Partial<PatientProfile>): PatientProfile {
+  const base = associatedPatients.find((patient) => patient.id === baseId) ?? associatedPatients[0];
+  return { ...base, ...overrides };
+}
+
+// Cenários de demonstração para pré-visualizar as variações da home (mock).
+// Selecionável no seletor do topo. O "Padrão" mantém o comportamento atual.
+export const associatedScenarios: AssociatedScenario[] = [
+  {
+    id: "padrao",
+    label: "Padrão · responsável por 3",
+    responsible: associatedUser,
+    patients: associatedPatients,
+  },
+  {
+    id: "self",
+    label: "Responsável por ele mesmo",
+    responsible: {
+      name: "Lucas Fontinele",
+      email: "lucas.fontinele@email.com",
+      phone: "(71) 99654-1240",
+      since: "desde 2025",
+      activePatientId: "joao-silva",
+      isPatient: true,
+      memberId: "4624",
+      memberSince: "11/06/2025",
+      memberType: "Titular",
+      membershipStatus: "Ativado",
+      document: "069.***.***-40",
+      validThrough: "06/2027",
+    },
+    patients: [
+      scenarioPatient("joao-silva", {
+        name: "Lucas Fontinele",
+        relationship: "Titular",
+        initials: "LF",
+        kind: "humano",
+        condition: "Dor crônica e ansiedade",
+        birthDate: "23 mar 1994",
+        memberId: "4624",
+      }),
+    ],
+  },
+  {
+    id: "two-people",
+    label: "Responsável por duas pessoas",
+    responsible: { ...associatedUser, activePatientId: "joao-silva" },
+    patients: [
+      scenarioPatient("joao-silva", { name: "João Silva", relationship: "Filho", kind: "humano" }),
+      scenarioPatient("marina-duarte", { name: "Marina Duarte", relationship: "Mãe", kind: "humano" }),
+    ],
+  },
+  {
+    id: "person-pet",
+    label: "Responsável por uma pessoa e um pet",
+    responsible: {
+      name: "Renata Lopes",
+      email: "renata.lopes@email.com",
+      phone: "(71) 99812-3300",
+      since: "desde 2024",
+      activePatientId: "joao-silva",
+      isPatient: false,
+      memberId: "5180",
+      memberSince: "02/02/2024",
+      memberType: "Responsável",
+      membershipStatus: "Ativado",
+      document: "***.412.880-**",
+      validThrough: "02/2027",
+    },
+    patients: [
+      scenarioPatient("joao-silva", { name: "Pedro Lopes", relationship: "Filho", initials: "PL", kind: "humano", condition: "TEA" }),
+      scenarioPatient("marina-duarte", {
+        name: "Thor",
+        relationship: "Pet",
+        initials: "TH",
+        kind: "pet",
+        species: "Canina · Golden Retriever",
+        condition: "Epilepsia",
+        birthDate: "10 jan 2019",
+      }),
+    ],
+  },
+  {
+    id: "only-pet",
+    label: "Associado com um pet",
+    responsible: {
+      name: "Bruno Antunes",
+      email: "bruno.antunes@email.com",
+      phone: "(71) 99500-7788",
+      since: "desde 2026",
+      activePatientId: "joao-silva",
+      isPatient: false,
+      memberId: "5402",
+      memberSince: "20/05/2026",
+      memberType: "Tutor",
+      membershipStatus: "Ativado",
+      document: "***.778.001-**",
+      validThrough: "05/2028",
+    },
+    patients: [
+      scenarioPatient("joao-silva", {
+        name: "Mel",
+        relationship: "Pet",
+        initials: "ME",
+        kind: "pet",
+        species: "Felina · SRD",
+        condition: "Dor crônica",
+        birthDate: "05 set 2020",
+      }),
+    ],
   },
 ];
 
@@ -300,6 +492,164 @@ export const associatedDocuments: AssociatedDocument[] = [
   { patientId: "antonio-duarte", name: "Laudo médico", due: "pendente de envio", status: "Recusado" },
   { patientId: "antonio-duarte", name: "Documento de identidade", due: "sem vencimento", status: "Aprovado" },
 ];
+
+// Limites de compra liberados por receita (mock de protótipo). Os valores foram
+// extraídos de receitas digitais reais (MEMED) — limites por mês ("frascos/mês")
+// e por ano ("embalagens/ano"). Flores são medidas em gramas (g): cada embalagem
+// de 10 g vira 120 g/ano. Antônio (cadastro em análise) não tem limites liberados.
+// TODO(api): derivar de uma receita validada + histórico de pedidos do paciente.
+// Todos pertencem à associação atual (white-label) — `organizationId` é injetado
+// a partir de `tenant.id` no map abaixo.
+const rawPurchaseLimits: Omit<PurchaseLimit, "organizationId">[] = [
+  {
+    id: "lim-js-01",
+    patientId: "joao-silva",
+    product: "Óleo Fullspectrum CBD 6% (1800mg/30ml)",
+    brand: "Acaflor",
+    form: "Óleo",
+    unit: "frasco",
+    period: "mensal",
+    allowed: 2,
+    used: 1,
+    prescriptionDue: "12 dez 2026",
+    posology: "6 gotas sublingual 2x ao dia",
+  },
+  {
+    id: "lim-js-02",
+    patientId: "joao-silva",
+    product: "Óleo misto THC/CBD 1:1 6% (1800mg/30ml)",
+    brand: "Acaflor",
+    form: "Óleo",
+    unit: "frasco",
+    period: "mensal",
+    allowed: 2,
+    used: 2,
+    prescriptionDue: "12 dez 2026",
+    posology: "5 gotas sublingual 2x ao dia",
+  },
+  {
+    id: "lim-js-03",
+    patientId: "joao-silva",
+    product: "Pomada rica em THC 2% (15g)",
+    brand: "Aliança Medicinal",
+    form: "Pomada",
+    unit: "unidade",
+    period: "mensal",
+    allowed: 3,
+    used: 1,
+    prescriptionDue: "12 dez 2026",
+    posology: "Aplicar 1 a 3x ao dia",
+  },
+  {
+    id: "lim-js-04",
+    patientId: "joao-silva",
+    product: "Concentrado sem solvente THC 50% (1g)",
+    brand: "Abecmed",
+    form: "Concentrado",
+    unit: "unidade",
+    period: "mensal",
+    allowed: 5,
+    used: 4,
+    prescriptionDue: "12 dez 2026",
+    posology: "Vaporizar 0,1 a 0,2g por sessão",
+  },
+  {
+    id: "lim-js-05",
+    patientId: "joao-silva",
+    product: "Flores in natura ricas em CBD",
+    brand: "Acaflor",
+    form: "Flor",
+    unit: "g",
+    period: "anual",
+    allowed: 120,
+    used: 35,
+    prescriptionDue: "12 dez 2026",
+    posology: "Vaporizar 0,2 a 0,3g de 1 a 3x ao dia",
+  },
+  {
+    id: "lim-js-06",
+    patientId: "joao-silva",
+    product: "Flores in natura equilibradas CBD/THC",
+    brand: "Acaflor",
+    form: "Flor",
+    unit: "g",
+    period: "anual",
+    allowed: 120,
+    used: 104,
+    prescriptionDue: "12 dez 2026",
+    posology: "Vaporizar 0,2 a 0,3g de 1 a 3x ao dia",
+  },
+  {
+    id: "lim-js-07",
+    patientId: "joao-silva",
+    product: "Gomas CBN 180mg (30un)",
+    brand: "FlowerMed",
+    form: "Goma",
+    unit: "embalagem",
+    period: "anual",
+    allowed: 12,
+    used: 5,
+    prescriptionDue: "12 dez 2026",
+    posology: "Mastigar 1 unidade à noite",
+  },
+  {
+    id: "lim-js-08",
+    patientId: "joao-silva",
+    product: "Óleo Full Spectrum 3.000mg (30ml)",
+    brand: "FlowerMed",
+    form: "Óleo",
+    unit: "frasco",
+    period: "anual",
+    allowed: 12,
+    used: 3,
+    prescriptionDue: "12 dez 2026",
+    posology: "6 gotas sublingual 2x ao dia",
+  },
+  {
+    id: "lim-md-01",
+    patientId: "marina-duarte",
+    product: "Óleo Fullspectrum CBD/THC 1:1 6% (30ml)",
+    brand: "Aliança Medicinal",
+    form: "Óleo",
+    unit: "frasco",
+    period: "mensal",
+    allowed: 2,
+    used: 0,
+    prescriptionDue: "08 nov 2026",
+    posology: "5 gotas sublingual 2x ao dia",
+  },
+  {
+    id: "lim-md-02",
+    patientId: "marina-duarte",
+    product: "Pomada rica em THC 2% (15g)",
+    brand: "Aliança Medicinal",
+    form: "Pomada",
+    unit: "unidade",
+    period: "mensal",
+    allowed: 3,
+    used: 2,
+    prescriptionDue: "08 nov 2026",
+    posology: "Aplicar 1 a 3x ao dia",
+  },
+  {
+    id: "lim-md-03",
+    patientId: "marina-duarte",
+    product: "Flores in natura ricas em THC",
+    brand: "Abecmed",
+    form: "Flor",
+    unit: "g",
+    period: "anual",
+    allowed: 180,
+    used: 150,
+    prescriptionDue: "08 nov 2026",
+    posology: "Vaporizar 0,1 a 0,2g por sessão",
+  },
+];
+
+export const purchaseLimits: PurchaseLimit[] = rawPurchaseLimits.map((limit) => ({
+  ...limit,
+  organizationId: tenant.id,
+}));
 
 export const operatorOrders: OperatorOrder[] = [
   {

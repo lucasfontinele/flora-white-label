@@ -1,6 +1,20 @@
 import { z } from "zod";
 
 const digits = (value: string) => value.replace(/\D/g, "");
+const isValidCpf = (value: string) => {
+  const cpf = digits(value);
+
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  const numbers = cpf.split("").map(Number);
+  const calculateDigit = (length: number) => {
+    const sum = numbers.slice(0, length).reduce((acc, digit, index) => acc + digit * (length + 1 - index), 0);
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return calculateDigit(9) === numbers[9] && calculateDigit(10) === numbers[10];
+};
 
 const emailSchema = z.string().email("Informe um e-mail válido.");
 const petSpeciesValues = ["Canina", "Felina", "Equina", "Aviária", "Exótica", "Silvestre", "Outras"] as const;
@@ -12,15 +26,18 @@ const registrationBaseSchema = z.object({
   fullName: z.string().trim().min(3, "Informe o nome completo."),
   cpf: z
     .string()
-    .optional()
-    .refine((value) => !value || digits(value).length === 11, "Informe um CPF válido."),
+    .refine((value) => isValidCpf(value), "Informe um CPF válido."),
   birthDate: z.string().refine((value) => digits(value).length === 8, "Informe a data de nascimento."),
   nickname: z.string().optional(),
   gender: z.enum(["masculino", "feminino", "outro", "prefiro_nao_informar"], {
     message: "Selecione uma opção de gênero.",
   }),
   email: emailSchema,
-  password: z.string().min(8, "A senha deve ter ao menos 8 caracteres."),
+  password: z
+    .string()
+    .min(8, "A senha deve ter ao menos 8 caracteres.")
+    .regex(/[a-z]/, "A senha deve ter ao menos uma letra minúscula.")
+    .regex(/\d/, "A senha deve ter ao menos um número."),
   passwordConfirmation: z.string().min(1, "Confirme a senha."),
   phone: z.string().refine((value) => {
     const length = digits(value).length;
@@ -36,9 +53,8 @@ const registrationBaseSchema = z.object({
   guardianFullName: z.string().optional(),
   guardianCpf: z.string().optional(),
   guardianRg: z.string().optional(),
-  guardianRelationship: z.enum(["pai_mae", "tutor"]).optional(),
+  guardianRelationship: z.enum(["pai_mae", "tutor", "filho", "cuidador", "procurador"]).optional(),
   guardianBirthDate: z.string().optional(),
-  guardianEmail: z.string().optional(),
   guardianPhone: z.string().optional(),
   guardianCep: z.string().optional(),
   guardianStreet: z.string().optional(),
@@ -49,7 +65,7 @@ const registrationBaseSchema = z.object({
   guardianCity: z.string().optional(),
   petName: z.string().optional(),
   petSpecies: z.string().optional(),
-  petBreed: z.string().optional(),
+  petBreed: z.string().max(100, "A raça deve ter no máximo 100 caracteres.").optional(),
   petBirthDate: z.string().optional(),
   petDiagnosis: z.string().optional(),
 });
@@ -70,10 +86,6 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, cont
   }
 
   if (data.role === "pet_tutor") {
-    if (digits(data.cpf ?? "").length !== 11) {
-      addIssue("cpf", "Informe um CPF válido.");
-    }
-
     if (!hasText(data.petName) || data.petName!.trim().length < 2) {
       addIssue("petName", "Informe o nome do PET.");
     }
@@ -93,7 +105,7 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, cont
     addIssue("guardianFullName", "Informe o nome completo do responsável.");
   }
 
-  if (digits(data.guardianCpf ?? "").length !== 11) {
+  if (!isValidCpf(data.guardianCpf ?? "")) {
     addIssue("guardianCpf", "Informe um CPF válido.");
   }
 
@@ -107,10 +119,6 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, cont
 
   if (digits(data.guardianBirthDate ?? "").length !== 8) {
     addIssue("guardianBirthDate", "Informe a data de nascimento.");
-  }
-
-  if (!data.guardianEmail || !emailSchema.safeParse(data.guardianEmail).success) {
-    addIssue("guardianEmail", "Informe um e-mail válido.");
   }
 
   const guardianPhoneLength = digits(data.guardianPhone ?? "").length;

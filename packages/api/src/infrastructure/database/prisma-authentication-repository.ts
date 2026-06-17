@@ -12,19 +12,44 @@ import type { AuthenticationUser } from "../../domain/authentication/user.js";
 import type { PersistedRefreshToken, RefreshTokenStatus } from "../../domain/authentication/refresh-token.js";
 import type { UserSession, UserSessionStatus } from "../../domain/authentication/user-session.js";
 import { prisma as defaultPrisma } from "./prisma-client.js";
+import {
+  mapAuthenticatedUserProfile,
+  type PatientGuardianRecord,
+  type PatientRecord,
+} from "./prisma-patient-profile-mappers.js";
+
+const authenticationUserInclude = {
+  organization: {
+    select: {
+      isActive: true,
+    },
+  },
+  patient: {
+    include: {
+      address: true,
+      pet: true,
+    },
+  },
+  patientGuardians: {
+    include: {
+      address: true,
+      patient: {
+        include: {
+          address: true,
+          pet: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  },
+} as const;
 
 export class PrismaAuthenticationRepository implements AuthenticationRepository {
   constructor(private readonly client: PrismaClient = defaultPrisma) {}
 
   async findUserByEmail(email: string): Promise<AuthenticationUser | null> {
     const user = await this.client.user.findUnique({
-      include: {
-        organization: {
-          select: {
-            isActive: true,
-          },
-        },
-      },
+      include: authenticationUserInclude,
       where: { email },
     });
 
@@ -33,13 +58,7 @@ export class PrismaAuthenticationRepository implements AuthenticationRepository 
 
   async findUserById(userId: string): Promise<AuthenticationUser | null> {
     const user = await this.client.user.findUnique({
-      include: {
-        organization: {
-          select: {
-            isActive: true,
-          },
-        },
-      },
+      include: authenticationUserInclude,
       where: { id: userId },
     });
 
@@ -84,13 +103,7 @@ export class PrismaAuthenticationRepository implements AuthenticationRepository 
     const session = await this.client.userSession.findUnique({
       include: {
         user: {
-          include: {
-            organization: {
-              select: {
-                isActive: true,
-              },
-            },
-          },
+          include: authenticationUserInclude,
         },
       },
       where: { id: sessionId },
@@ -111,13 +124,7 @@ export class PrismaAuthenticationRepository implements AuthenticationRepository 
         session: {
           include: {
             user: {
-              include: {
-                organization: {
-                  select: {
-                    isActive: true,
-                  },
-                },
-              },
+              include: authenticationUserInclude,
             },
           },
         },
@@ -228,7 +235,10 @@ function mapUser(user: {
   isActive: boolean;
   organization?: { isActive: boolean } | null;
   organizationId: string | null;
+  patient?: PatientRecord | null;
+  patientGuardians?: PatientGuardianRecord[];
   passwordHash: string;
+  role?: string | null;
   type: string;
 }): AuthenticationUser {
   return {
@@ -238,8 +248,14 @@ function mapUser(user: {
     organizationId: user.organizationId,
     organizationIsActive: user.organization?.isActive ?? null,
     passwordHash: user.passwordHash,
+    profile: mapAuthenticatedUserProfile(user),
+    role: isUserRole(user.role) ? user.role : null,
     type: user.type as AuthenticationUser["type"],
   };
+}
+
+function isUserRole(value: string | null | undefined): value is NonNullable<AuthenticationUser["role"]> {
+  return value === "TUTOR" || value === "PATIENT";
 }
 
 function mapSession(

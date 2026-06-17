@@ -2,7 +2,7 @@ export type RegistrationRole = "pet_tutor" | "legal_guardian" | "patient";
 
 export type Gender = "masculino" | "feminino" | "outro" | "prefiro_nao_informar";
 
-export type GuardianRelationship = "pai_mae" | "tutor";
+export type GuardianRelationship = "pai_mae" | "tutor" | "filho" | "cuidador" | "procurador";
 
 export type PetSpecies = "Canina" | "Felina" | "Equina" | "Aviária" | "Exótica" | "Silvestre" | "Outras";
 
@@ -14,6 +14,8 @@ export type RegistrationFormData = {
   nickname?: string;
   gender: Gender;
   email: string;
+  password: string;
+  passwordConfirmation: string;
   phone: string;
   cep: string;
   street: string;
@@ -27,7 +29,6 @@ export type RegistrationFormData = {
   guardianRg?: string;
   guardianRelationship?: GuardianRelationship;
   guardianBirthDate?: string;
-  guardianEmail?: string;
   guardianPhone?: string;
   guardianCep?: string;
   guardianStreet?: string;

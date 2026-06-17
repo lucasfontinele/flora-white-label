@@ -17,6 +17,10 @@
     "./authentication": {
       "types": "./src/authentication.ts",
       "import": "./dist/authentication.js"
+    },
+    "./patients": {
+      "types": "./src/patients.ts",
+      "import": "./dist/patients.js"
     }
   },
   "scripts": {

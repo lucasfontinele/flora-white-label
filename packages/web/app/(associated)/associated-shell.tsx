@@ -4,7 +4,9 @@ import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { associatedNav } from "@/components/layout/nav";
 import { usePatientSelection } from "@/components/associated/patient-context";
-import { associatedUser, tenant } from "@/lib/data";
+import { useScenario } from "@/components/associated/scenario-context";
+import { ScenarioSwitcher } from "@/components/associated/scenario-switcher";
+import { tenant } from "@/lib/data";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/dashboard": {
@@ -18,6 +20,10 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   "/catalog": {
     title: "Catálogo educativo",
     subtitle: "Informações descritivas para consulta junto à orientação médica.",
+  },
+  "/limites": {
+    title: "Limites de compra",
+    subtitle: "Quantidades liberadas pela receita do paciente no período vigente.",
   },
   "/documents": {
     title: "Meus documentos",
@@ -36,6 +42,7 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
 export function AssociatedShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { selectedPatient } = usePatientSelection();
+  const { scenario } = useScenario();
   const current = titles[pathname] ?? titles["/dashboard"];
 
   return (
@@ -45,9 +52,10 @@ export function AssociatedShell({ children }: { children: React.ReactNode }) {
       subtitle={current.subtitle}
       nav={associatedNav}
       user={{
-        name: associatedUser.name,
+        name: scenario.responsible.name,
         detail: `${selectedPatient.name} · ${tenant.shortName}`,
       }}
+      actions={<ScenarioSwitcher />}
     >
       {children}
     </AppShell>
