@@ -74,6 +74,69 @@ model PatientAssessment {
   @@map("patient_assessments")
 }
 
+model SubscriptionPlan {
+  id             String   @id @default(uuid())
+  priceInCents   Int
+  operatorsLimit Int
+  patientsLimit  Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organizations Organization[]
+
+  @@map("subscription_plans")
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  title        String?
+  zipcode      String
+  street       String
+  neighborhood String
+  complement   String?
+  city         String
+  state        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organizations Organization[]
+
+  @@map("addresses")
+}
+
+model Organization {
+  id             String   @id @default(uuid())
+  tradeName      String
+  legalName      String
+  cnpj           String   @unique
+  primaryCnae    String
+  secondaryCnaes String[]
+  currentPlanId  String
+  addressId      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  currentPlan SubscriptionPlan      @relation(fields: [currentPlanId], references: [id])
+  address     Address               @relation(fields: [addressId], references: [id])
+  settings    OrganizationSettings?
+
+  @@map("organizations")
+}
+
+model OrganizationSettings {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  logoUrl        String?
+  primaryColor   String?
+  secondaryColor String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("organization_settings")
+}
+
 enum UserProfile {
   Master
   Patient
