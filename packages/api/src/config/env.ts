@@ -13,6 +13,15 @@ const envSchema = z.object({
   HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(3333),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0),
+    ),
 });
 
 const parsed = envSchema.safeParse(process.env);

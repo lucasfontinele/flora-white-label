@@ -1,4 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
+import { env } from "../../../../config/env.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { prismaPlugin } from "./plugins/prisma.js";
@@ -14,6 +16,12 @@ import swaggerUi from "@fastify/swagger-ui";
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: true,
+  });
+
+  await app.register(cors, {
+    origin: env.CORS_ALLOWED_ORIGINS,
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
   await app.register(errorHandlerPlugin);

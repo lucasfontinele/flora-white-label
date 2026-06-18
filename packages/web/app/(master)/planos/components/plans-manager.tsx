@@ -1,58 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import { useSubscriptionPlans } from "../queries/use-subscription-plans";
 import type { SubscriptionPlanPayload } from "../schemas/subscription-plan-schema";
-import type { SubscriptionPlanRecord } from "../types";
+import type { BackofficeSubscriptionPlan, SubscriptionPlanRecord } from "../types";
 import { PlanForm, emptyPlanDraft, formatBRL, planRecordToDraft } from "./plan-form";
 
-// Seed = the platform default plans from the SubscriptionPlan domain
-// (specs/001-organization-registration/data-model.md). Front-end prototype only:
-// changes live in component state. Replace with a real CRUD API when wiring the backend.
-const seedPlans: SubscriptionPlanRecord[] = [
-  {
-    id: "plan_starter",
-    code: "starter",
-    name: "Starter",
-    priceInCents: 59700,
+// Maps GET /backoffice/subscription-plans into the local card record. The backend
+// model has no operator-limit type, so a numeric operatorsLimit is always "limited".
+function planToRecord(plan: BackofficeSubscriptionPlan): SubscriptionPlanRecord {
+  return {
+    id: plan.id,
+    code: plan.title.trim().toLowerCase(),
+    name: plan.title,
+    description: plan.description,
+    priceInCents: plan.priceInCents,
     operatorLimitType: "limited",
-    maxOperators: 10,
-    maxActiveUsers: 50,
-    createdAt: "2026-01-10T00:00:00.000Z",
-    updatedAt: "2026-01-10T00:00:00.000Z",
-  },
-  {
-    id: "plan_growth",
-    code: "growth",
-    name: "Growth",
-    priceInCents: 99700,
-    operatorLimitType: "limited",
-    maxOperators: 30,
-    maxActiveUsers: 100,
-    createdAt: "2026-01-10T00:00:00.000Z",
-    updatedAt: "2026-01-10T00:00:00.000Z",
-  },
-  {
-    id: "plan_unlimited",
-    code: "unlimited",
-    name: "Unlimited",
-    priceInCents: 209700,
-    operatorLimitType: "unlimited",
-    maxOperators: null,
-    maxActiveUsers: 3000,
-    createdAt: "2026-01-10T00:00:00.000Z",
-    updatedAt: "2026-01-10T00:00:00.000Z",
-  },
-];
+    maxOperators: plan.operatorsLimit,
+    maxActiveUsers: plan.patientsLimit,
+    createdAt: plan.createdAt,
+    updatedAt: plan.updatedAt,
+  };
+}
 
 type EditingState = { mode: "new" } | { mode: "edit"; id: string } | null;
 
 export function PlansManager() {
-  const [plans, setPlans] = useState<SubscriptionPlanRecord[]>(seedPlans);
+  const plansQuery = useSubscriptionPlans();
+  // Create/edit/delete remain a front-end prototype on local state, seeded from
+  // the GET integration. Only the listing is wired to the backend for now.
+  const [plans, setPlans] = useState<SubscriptionPlanRecord[]>([]);
   const [editing, setEditing] = useState<EditingState>(null);
+
+  useEffect(() => {
+    if (plansQuery.data) {
+      setPlans(plansQuery.data.data.map(planToRecord));
+    }
+  }, [plansQuery.data]);
 
   const editingRecord = editing?.mode === "edit" ? plans.find((plan) => plan.id === editing.id) : undefined;
 
@@ -105,7 +93,7 @@ export function PlansManager() {
         />
       ) : null}
 
-      {plans.length === 0 ? (
+      {plans.length === 0 && !plansQuery.isLoading ? (
         <Card>
           <CardContent className="py-10">
             <h2 className="font-heading text-lg text-[var(--text-primary)]">Nenhum plano cadastrado</h2>
@@ -140,11 +128,17 @@ function PlanCard({
   return (
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-heading text-lg text-[var(--text-primary)]">{plan.name}</p>
-          <Badge tone="neutral" size="sm" className="mt-1 font-mono">
-            {plan.code}
-          </Badge>
+        <div className="min-w-0 flex flex-col gap-y-2">
+          <div className="flex items-center gap-x-2">
+            <p className="truncate font-heading text-lg text-[var(--text-primary)]">{plan.name}</p>
+
+            {plan.description ? (
+              <Badge tone="neutral" size="sm" className="mt-1 font-mono">
+                Unlimited
+              </Badge>
+            ) : null}
+          </div>
+          <p className="text-[var(--text-secondary)] text-sm">{plan.description}</p>
         </div>
         <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[var(--green-700)]">
           <Icon name="credit-card" size={20} />
