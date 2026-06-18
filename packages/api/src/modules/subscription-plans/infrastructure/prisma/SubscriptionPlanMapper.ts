@@ -12,6 +12,7 @@ export class SubscriptionPlanMapper {
         price: MoneyInCents.create(record.priceInCents),
         operatorsLimit: record.operatorsLimit,
         patientsLimit: record.patientsLimit,
+        unlimitedOperators: record.unlimitedOperators,
       },
       record.id,
     );
@@ -25,6 +26,7 @@ export class SubscriptionPlanMapper {
       priceInCents: record.priceInCents,
       operatorsLimit: record.operatorsLimit,
       patientsLimit: record.patientsLimit,
+      unlimitedOperators: record.unlimitedOperators,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
@@ -38,6 +40,7 @@ export class SubscriptionPlanMapper {
       priceInCents: plan.priceInCents,
       operatorsLimit: plan.operatorsLimit,
       patientsLimit: plan.patientsLimit,
+      unlimitedOperators: plan.unlimitedOperators,
     };
   }
 
@@ -48,6 +51,7 @@ export class SubscriptionPlanMapper {
       priceInCents: plan.priceInCents,
       operatorsLimit: plan.operatorsLimit,
       patientsLimit: plan.patientsLimit,
+      unlimitedOperators: plan.unlimitedOperators,
     };
   }
 }

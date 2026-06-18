@@ -8,6 +8,7 @@ export interface SubscriptionPlanProps {
   price: MoneyInCents;
   operatorsLimit: number;
   patientsLimit: number;
+  unlimitedOperators?: boolean;
 }
 
 /**
@@ -34,7 +35,11 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
       }
     }
 
-    if (!Number.isInteger(props.operatorsLimit) || props.operatorsLimit <= 0) {
+    const unlimitedOperators = props.unlimitedOperators ?? false;
+    // When operators are unlimited the operatorsLimit is irrelevant, so it is
+    // ignored and normalized to 0; otherwise it must be a positive integer.
+    const operatorsLimit = unlimitedOperators ? 0 : props.operatorsLimit;
+    if (!unlimitedOperators && (!Number.isInteger(operatorsLimit) || operatorsLimit <= 0)) {
       throw new DomainValidationError("operatorsLimit must be a positive integer.");
     }
 
@@ -42,7 +47,10 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
       throw new DomainValidationError("patientsLimit must be a positive integer.");
     }
 
-    return new SubscriptionPlan({ ...props, title, description }, id);
+    return new SubscriptionPlan(
+      { ...props, title, description, operatorsLimit, unlimitedOperators },
+      id,
+    );
   }
 
   get title(): string {
@@ -67,5 +75,9 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
 
   get patientsLimit(): number {
     return this.props.patientsLimit;
+  }
+
+  get unlimitedOperators(): boolean {
+    return this.props.unlimitedOperators ?? false;
   }
 }

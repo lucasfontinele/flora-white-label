@@ -82,14 +82,15 @@ model PatientAssessment {
 }
 
 model SubscriptionPlan {
-  id             String   @id @default(uuid())
-  title          String
-  description    String?
-  priceInCents   Int
-  operatorsLimit Int
-  patientsLimit  Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  title              String
+  description        String?
+  priceInCents       Int
+  operatorsLimit     Int
+  patientsLimit      Int
+  unlimitedOperators Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   organizations Organization[]
 

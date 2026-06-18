@@ -67,4 +67,27 @@ describe("SubscriptionPlan", () => {
       DomainValidationError,
     );
   });
+
+  it("defaults unlimitedOperators to false when omitted", () => {
+    expect(SubscriptionPlan.create(baseProps).unlimitedOperators).toBe(false);
+  });
+
+  it("keeps unlimitedOperators when explicitly set to true", () => {
+    expect(
+      SubscriptionPlan.create({ ...baseProps, unlimitedOperators: true }).unlimitedOperators,
+    ).toBe(true);
+  });
+
+  it("allows operatorsLimit 0 when unlimitedOperators is true", () => {
+    const plan = SubscriptionPlan.create({ ...baseProps, operatorsLimit: 0, unlimitedOperators: true });
+
+    expect(plan.unlimitedOperators).toBe(true);
+    expect(plan.operatorsLimit).toBe(0);
+  });
+
+  it("ignores operatorsLimit and normalizes it to 0 when unlimited", () => {
+    const plan = SubscriptionPlan.create({ ...baseProps, operatorsLimit: 5, unlimitedOperators: true });
+
+    expect(plan.operatorsLimit).toBe(0);
+  });
 });

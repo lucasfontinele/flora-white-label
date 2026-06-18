@@ -1,5 +1,3 @@
-import type { OperatorLimitType } from "@flora/shared/organizations";
-
 // Shape returned by GET /backoffice/subscription-plans.
 export type BackofficeSubscriptionPlan = {
   id: string;
@@ -8,6 +6,7 @@ export type BackofficeSubscriptionPlan = {
   priceInCents: number;
   operatorsLimit: number;
   patientsLimit: number;
+  unlimitedOperators: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -16,27 +15,26 @@ export type ListBackofficeSubscriptionPlansResponse = {
   data: BackofficeSubscriptionPlan[];
 };
 
-// Local CRUD record for the front-end prototype. When the backend CRUD exists,
-// this can be replaced by the shared SubscriptionPlanDto (extended with timestamps).
+// Local CRUD record used by the cards. Mirrors the backend plan shape; records
+// created/edited in the prototype reuse the same fields.
 export type SubscriptionPlanRecord = {
   id: string;
-  code: string;
-  name: string;
-  description?: string | null;
+  title: string;
+  description: string | null;
   priceInCents: number;
-  operatorLimitType: OperatorLimitType;
-  maxActiveUsers: number;
-  maxOperators: number | null;
+  patientsLimit: number;
+  operatorsLimit: number;
+  unlimitedOperators: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
 // Form-field shape (numeric fields kept as strings while editing in inputs).
 export type PlanFormDraft = {
-  name: string;
-  code: string;
+  title: string;
+  description: string;
   priceInCents: number;
-  operatorLimitType: OperatorLimitType;
-  maxActiveUsers: string;
-  maxOperators: string;
+  patientsLimit: string;
+  unlimitedOperators: boolean;
+  operatorsLimit: string;
 };

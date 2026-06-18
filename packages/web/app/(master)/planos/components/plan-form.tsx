@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { operatorLimitTypes, subscriptionPlanSchema, type SubscriptionPlanPayload } from "../schemas/subscription-plan-schema";
+import { subscriptionPlanSchema, type SubscriptionPlanPayload } from "../schemas/subscription-plan-schema";
 import type { PlanFormDraft, SubscriptionPlanRecord } from "../types";
 
 export function formatBRL(cents: number) {
@@ -19,23 +19,23 @@ function parseCentsFromInput(raw: string) {
 
 export function emptyPlanDraft(): PlanFormDraft {
   return {
-    name: "",
-    code: "",
+    title: "",
+    description: "",
     priceInCents: 0,
-    operatorLimitType: "limited",
-    maxActiveUsers: "",
-    maxOperators: "",
+    patientsLimit: "",
+    unlimitedOperators: false,
+    operatorsLimit: "",
   };
 }
 
 export function planRecordToDraft(record: SubscriptionPlanRecord): PlanFormDraft {
   return {
-    name: record.name,
-    code: record.code,
+    title: record.title,
+    description: record.description ?? "",
     priceInCents: record.priceInCents,
-    operatorLimitType: record.operatorLimitType,
-    maxActiveUsers: String(record.maxActiveUsers),
-    maxOperators: record.maxOperators == null ? "" : String(record.maxOperators),
+    patientsLimit: String(record.patientsLimit),
+    unlimitedOperators: record.unlimitedOperators,
+    operatorsLimit: record.unlimitedOperators ? "" : String(record.operatorsLimit),
   };
 }
 
@@ -43,20 +43,30 @@ type PlanFormProps = {
   title: string;
   submitLabel: string;
   initialDraft: PlanFormDraft;
+  pending?: boolean;
+  errorMessage?: string;
   onCancel: () => void;
   onSubmit: (payload: SubscriptionPlanPayload) => void;
 };
 
-const operatorLimitLabels: Record<(typeof operatorLimitTypes)[number], string> = {
-  limited: "Limitado",
-  unlimited: "Ilimitado",
-};
+const operatorLimitOptions = [
+  { value: false, label: "Limitado" },
+  { value: true, label: "Ilimitado" },
+] as const;
 
-export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit }: PlanFormProps) {
+export function PlanForm({
+  title,
+  submitLabel,
+  initialDraft,
+  pending = false,
+  errorMessage,
+  onCancel,
+  onSubmit,
+}: PlanFormProps) {
   const [draft, setDraft] = useState<PlanFormDraft>(initialDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fieldId = useId();
-  const isUnlimited = draft.operatorLimitType === "unlimited";
+  const isUnlimited = draft.unlimitedOperators;
 
   function update<Key extends keyof PlanFormDraft>(key: Key, value: PlanFormDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -66,12 +76,12 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
     event.preventDefault();
 
     const result = subscriptionPlanSchema.safeParse({
-      name: draft.name,
-      code: draft.code,
+      title: draft.title,
+      description: draft.description,
       priceInCents: draft.priceInCents,
-      operatorLimitType: draft.operatorLimitType,
-      maxActiveUsers: draft.maxActiveUsers,
-      maxOperators: isUnlimited ? undefined : draft.maxOperators,
+      patientsLimit: draft.patientsLimit,
+      unlimitedOperators: draft.unlimitedOperators,
+      operatorsLimit: isUnlimited ? undefined : draft.operatorsLimit,
     });
 
     if (!result.success) {
@@ -99,26 +109,26 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <Field error={errors.name} htmlFor={`${fieldId}-name`} label="Nome do plano">
+          <Field error={errors.title} htmlFor={`${fieldId}-title`} label="Nome do plano">
             <Input
-              id={`${fieldId}-name`}
+              id={`${fieldId}-title`}
               placeholder="Ex.: Starter"
-              value={draft.name}
-              onChange={(event) => update("name", event.target.value)}
+              value={draft.title}
+              onChange={(event) => update("title", event.target.value)}
             />
           </Field>
 
           <Field
-            error={errors.code}
-            hint="Identificador estável e único (slug). Ex.: starter, growth."
-            htmlFor={`${fieldId}-code`}
-            label="Código"
+            error={errors.description}
+            hint="Texto exibido na Landing Page (opcional)."
+            htmlFor={`${fieldId}-description`}
+            label="Descrição"
           >
             <Input
-              id={`${fieldId}-code`}
-              placeholder="Ex.: starter"
-              value={draft.code}
-              onChange={(event) => update("code", event.target.value)}
+              id={`${fieldId}-description`}
+              placeholder="Ex.: Plano ideal para associações iniciantes."
+              value={draft.description}
+              onChange={(event) => update("description", event.target.value)}
             />
           </Field>
 
@@ -132,7 +142,7 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
           </Field>
 
           <Field
-            error={errors.maxActiveUsers}
+            error={errors.patientsLimit}
             hint="Total de usuários ativos permitidos na organização."
             htmlFor={`${fieldId}-users`}
             label="Máximo de usuários ativos"
@@ -141,20 +151,20 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
               id={`${fieldId}-users`}
               inputMode="numeric"
               placeholder="Ex.: 50"
-              value={draft.maxActiveUsers}
-              onChange={(event) => update("maxActiveUsers", event.target.value)}
+              value={draft.patientsLimit}
+              onChange={(event) => update("patientsLimit", event.target.value)}
             />
           </Field>
 
-          <Field error={errors.operatorLimitType} label="Limite de operadores">
+          <Field label="Limite de operadores">
             <div className="inline-flex rounded-md border border-input bg-card p-1">
-              {operatorLimitTypes.map((type) => {
-                const active = draft.operatorLimitType === type;
+              {operatorLimitOptions.map((option) => {
+                const active = draft.unlimitedOperators === option.value;
                 return (
                   <button
-                    key={type}
+                    key={option.label}
                     type="button"
-                    onClick={() => update("operatorLimitType", type)}
+                    onClick={() => update("unlimitedOperators", option.value)}
                     className={cn(
                       "rounded-sm px-4 py-2 text-sm font-semibold transition-colors",
                       active
@@ -162,7 +172,7 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
                     )}
                   >
-                    {operatorLimitLabels[type]}
+                    {option.label}
                   </button>
                 );
               })}
@@ -170,7 +180,7 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
           </Field>
 
           <Field
-            error={errors.maxOperators}
+            error={errors.operatorsLimit}
             hint={isUnlimited ? "Não se aplica a planos ilimitados." : "Número máximo de operadores."}
             htmlFor={`${fieldId}-operators`}
             label="Máximo de operadores"
@@ -180,17 +190,25 @@ export function PlanForm({ title, submitLabel, initialDraft, onCancel, onSubmit 
               disabled={isUnlimited}
               inputMode="numeric"
               placeholder={isUnlimited ? "Ilimitado" : "Ex.: 10"}
-              value={isUnlimited ? "" : draft.maxOperators}
-              onChange={(event) => update("maxOperators", event.target.value)}
+              value={isUnlimited ? "" : draft.operatorsLimit}
+              onChange={(event) => update("operatorsLimit", event.target.value)}
             />
           </Field>
         </div>
 
+        {errorMessage ? (
+          <p className="text-sm text-[var(--error-600)]" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit">{submitLabel}</Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Salvando..." : submitLabel}
+          </Button>
         </div>
       </form>
     </Card>

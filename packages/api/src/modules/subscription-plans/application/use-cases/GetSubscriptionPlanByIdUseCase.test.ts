@@ -46,6 +46,7 @@ const plan: SubscriptionPlanReadModel = {
   priceInCents: 15000,
   operatorsLimit: 5,
   patientsLimit: 100,
+  unlimitedOperators: false,
   createdAt: new Date("2026-06-18T12:00:00.000Z"),
   updatedAt: new Date("2026-06-18T12:00:00.000Z"),
 };

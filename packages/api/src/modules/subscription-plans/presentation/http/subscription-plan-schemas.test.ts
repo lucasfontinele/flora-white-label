@@ -70,6 +70,28 @@ describe("subscription plan schemas", () => {
     ).toBe(false);
   });
 
+  it("accepts an optional unlimitedOperators boolean and rejects non-boolean values", () => {
+    expect(
+      createSubscriptionPlanBodySchema.safeParse({ ...validBody, unlimitedOperators: true }).success,
+    ).toBe(true);
+    expect(
+      createSubscriptionPlanBodySchema.safeParse({ ...validBody, unlimitedOperators: "yes" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts operatorsLimit 0 only when unlimitedOperators is true", () => {
+    expect(
+      createSubscriptionPlanBodySchema.safeParse({
+        ...validBody,
+        operatorsLimit: 0,
+        unlimitedOperators: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      createSubscriptionPlanBodySchema.safeParse({ ...validBody, operatorsLimit: 0 }).success,
+    ).toBe(false);
+  });
+
   it("accepts nonblank params IDs and rejects blank IDs", () => {
     expect(subscriptionPlanParamsSchema.safeParse({ id: "plan-1" }).success).toBe(true);
     expect(subscriptionPlanParamsSchema.safeParse({ id: " " }).success).toBe(false);

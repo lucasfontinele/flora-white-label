@@ -1,10 +1,9 @@
 import { z } from "zod";
 
-// Mirrors the SubscriptionPlan domain (specs/001-organization-registration/data-model.md):
-// code/name unique, priceInCents >= 0, maxActiveUsers positive, and maxOperators
-// required & positive when `limited`, absent when `unlimited`.
-
-export const operatorLimitTypes = ["limited", "unlimited"] as const;
+// Produces the body sent to the backoffice subscription-plan API:
+// { title, description, priceInCents, patientsLimit, operatorsLimit, unlimitedOperators }.
+// When operators are unlimited, operatorsLimit is sent as 0 (the backend will
+// ignore it while unlimitedOperators is true).
 
 const requiredText = (message: string) => z.string().trim().min(1, message);
 
@@ -24,26 +23,21 @@ const toInteger = (value: unknown) => {
 
 export const subscriptionPlanSchema = z
   .object({
-    name: requiredText("Informe o nome do plano."),
-    code: requiredText("Informe o código do plano.")
-      .transform((value) => value.trim().toLowerCase())
-      .refine(
-        (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value),
-        "Use apenas letras minúsculas, números e hífen (ex.: starter).",
-      ),
+    title: requiredText("Informe o nome do plano."),
+    description: z.string().trim().optional(),
     priceInCents: z
       .number({ error: "Informe um preço válido." })
       .int("O preço deve ser um valor inteiro em centavos.")
       .min(0, "O preço não pode ser negativo."),
-    operatorLimitType: z.enum(operatorLimitTypes),
-    maxActiveUsers: z.preprocess(
+    patientsLimit: z.preprocess(
       toInteger,
       z
         .number({ error: "Informe o limite de usuários ativos." })
         .int("Use um número inteiro.")
         .positive("Informe um limite maior que zero."),
     ),
-    maxOperators: z.preprocess(
+    unlimitedOperators: z.boolean(),
+    operatorsLimit: z.preprocess(
       toInteger,
       z
         .number({ error: "Informe um número válido." })
@@ -53,17 +47,21 @@ export const subscriptionPlanSchema = z
     ),
   })
   .superRefine((value, context) => {
-    if (value.operatorLimitType === "limited" && value.maxOperators == null) {
+    if (!value.unlimitedOperators && value.operatorsLimit == null) {
       context.addIssue({
         code: "custom",
         message: "Informe o máximo de operadores para planos limitados.",
-        path: ["maxOperators"],
+        path: ["operatorsLimit"],
       });
     }
   })
   .transform((value) => ({
-    ...value,
-    maxOperators: value.operatorLimitType === "unlimited" ? null : value.maxOperators ?? null,
+    title: value.title,
+    description: value.description && value.description.length > 0 ? value.description : null,
+    priceInCents: value.priceInCents,
+    patientsLimit: value.patientsLimit,
+    unlimitedOperators: value.unlimitedOperators,
+    operatorsLimit: value.unlimitedOperators ? 0 : value.operatorsLimit ?? 0,
   }));
 
 export type SubscriptionPlanPayload = z.output<typeof subscriptionPlanSchema>;

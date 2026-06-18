@@ -33,6 +33,7 @@ class InMemorySubscriptionPlanRepository implements SubscriptionPlanRepository {
         price: MoneyInCents.create(plan.priceInCents),
         operatorsLimit: plan.operatorsLimit,
         patientsLimit: plan.patientsLimit,
+        unlimitedOperators: plan.unlimitedOperators,
       },
       plan.id,
     );
@@ -65,6 +66,7 @@ class InMemorySubscriptionPlanRepository implements SubscriptionPlanRepository {
       priceInCents: plan.priceInCents,
       operatorsLimit: plan.operatorsLimit,
       patientsLimit: plan.patientsLimit,
+      unlimitedOperators: plan.unlimitedOperators,
       createdAt: current.createdAt,
       updatedAt: new Date("2026-06-18T13:00:00.000Z"),
     };
@@ -91,6 +93,7 @@ const existingPlan: SubscriptionPlanReadModel = {
   priceInCents: 15000,
   operatorsLimit: 5,
   patientsLimit: 100,
+  unlimitedOperators: false,
   createdAt: now,
   updatedAt: now,
 };

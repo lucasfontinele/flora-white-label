@@ -31,6 +31,7 @@ class InMemorySubscriptionPlanRepository implements SubscriptionPlanRepository {
       priceInCents: plan.priceInCents,
       operatorsLimit: plan.operatorsLimit,
       patientsLimit: plan.patientsLimit,
+      unlimitedOperators: plan.unlimitedOperators,
       createdAt: now,
       updatedAt: now,
     };
@@ -109,6 +110,27 @@ describe("CreateSubscriptionPlanUseCase", () => {
 
     expect(omittedDescription.description).toBeNull();
     expect(nullDescription.description).toBeNull();
+  });
+
+  it("defaults unlimitedOperators to false and stores it when true", async () => {
+    const { useCase } = makeSut();
+
+    const defaulted = await useCase.execute({
+      title: "Plano Essencial",
+      priceInCents: 15000,
+      operatorsLimit: 5,
+      patientsLimit: 100,
+    });
+    const unlimited = await useCase.execute({
+      title: "Plano Ilimitado",
+      priceInCents: 49900,
+      operatorsLimit: 1,
+      patientsLimit: 1000,
+      unlimitedOperators: true,
+    });
+
+    expect(defaulted.unlimitedOperators).toBe(false);
+    expect(unlimited.unlimitedOperators).toBe(true);
   });
 
   it("rejects invalid title, money, and limits before persistence", async () => {

@@ -12,10 +12,21 @@ const subscriptionPlanWriteBodySchema = z
     title: z.string().trim().min(1, "title is required."),
     description: optionalDescriptionSchema,
     priceInCents: z.number().int().nonnegative(),
-    operatorsLimit: z.number().int().positive(),
+    // 0 is allowed only for unlimited-operator plans (validated below).
+    operatorsLimit: z.number().int().nonnegative(),
     patientsLimit: z.number().int().positive(),
+    unlimitedOperators: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (!value.unlimitedOperators && value.operatorsLimit < 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["operatorsLimit"],
+        message: "operatorsLimit must be a positive integer for limited plans.",
+      });
+    }
+  });
 
 export const createSubscriptionPlanBodySchema = subscriptionPlanWriteBodySchema;
 export const updateSubscriptionPlanBodySchema = subscriptionPlanWriteBodySchema;
@@ -45,11 +56,14 @@ export const subscriptionPlanWriteBodyJsonSchema = {
     },
     operatorsLimit: {
       type: "integer",
-      minimum: 1,
+      minimum: 0,
     },
     patientsLimit: {
       type: "integer",
       minimum: 1,
+    },
+    unlimitedOperators: {
+      type: "boolean",
     },
   },
 } as const;
@@ -90,6 +104,7 @@ export const subscriptionPlanResponseSchema = {
     "priceInCents",
     "operatorsLimit",
     "patientsLimit",
+    "unlimitedOperators",
     "createdAt",
     "updatedAt",
   ],
@@ -111,11 +126,14 @@ export const subscriptionPlanResponseSchema = {
     },
     operatorsLimit: {
       type: "integer",
-      minimum: 1,
+      minimum: 0,
     },
     patientsLimit: {
       type: "integer",
       minimum: 1,
+    },
+    unlimitedOperators: {
+      type: "boolean",
     },
     createdAt: {
       type: "string",

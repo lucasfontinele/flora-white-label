@@ -7,6 +7,7 @@ export interface SubscriptionPlanReadModel {
   priceInCents: number;
   operatorsLimit: number;
   patientsLimit: number;
+  unlimitedOperators: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

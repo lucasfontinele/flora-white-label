@@ -12,6 +12,7 @@ export interface CreateSubscriptionPlanInput {
   priceInCents: number;
   operatorsLimit: number;
   patientsLimit: number;
+  unlimitedOperators?: boolean;
 }
 
 export interface CreateSubscriptionPlanDependencies {
@@ -29,6 +30,7 @@ export class CreateSubscriptionPlanUseCase {
       price: MoneyInCents.create(input.priceInCents),
       operatorsLimit: input.operatorsLimit,
       patientsLimit: input.patientsLimit,
+      unlimitedOperators: input.unlimitedOperators,
     });
 
     return this.deps.unitOfWork.execute(() => this.deps.subscriptionPlanRepository.create(plan));

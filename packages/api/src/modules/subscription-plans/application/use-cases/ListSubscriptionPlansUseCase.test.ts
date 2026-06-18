@@ -48,6 +48,7 @@ function makePlan(overrides: Partial<SubscriptionPlanReadModel> = {}): Subscript
     priceInCents: 15000,
     operatorsLimit: 5,
     patientsLimit: 100,
+    unlimitedOperators: false,
     createdAt: now,
     updatedAt: now,
     ...overrides,

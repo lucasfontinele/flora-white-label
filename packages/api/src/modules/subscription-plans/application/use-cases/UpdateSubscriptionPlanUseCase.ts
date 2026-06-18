@@ -14,6 +14,7 @@ export interface UpdateSubscriptionPlanInput {
   priceInCents: number;
   operatorsLimit: number;
   patientsLimit: number;
+  unlimitedOperators?: boolean;
 }
 
 export interface UpdateSubscriptionPlanDependencies {
@@ -39,6 +40,7 @@ export class UpdateSubscriptionPlanUseCase {
           price: MoneyInCents.create(input.priceInCents),
           operatorsLimit: input.operatorsLimit,
           patientsLimit: input.patientsLimit,
+          unlimitedOperators: input.unlimitedOperators,
         },
         existingPlan.id,
       );

@@ -10,6 +10,7 @@ const response = {
       priceInCents: 59700,
       operatorsLimit: 5,
       patientsLimit: 30,
+      unlimitedOperators: false,
       createdAt: "2026-06-18T14:53:07.929Z",
       updatedAt: "2026-06-18T14:53:07.929Z",
     },

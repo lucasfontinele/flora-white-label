@@ -7,6 +7,7 @@ export interface SubscriptionPlanResponse {
   priceInCents: number;
   operatorsLimit: number;
   patientsLimit: number;
+  unlimitedOperators: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,6 +21,7 @@ export class SubscriptionPlanPresenter {
       priceInCents: plan.priceInCents,
       operatorsLimit: plan.operatorsLimit,
       patientsLimit: plan.patientsLimit,
+      unlimitedOperators: plan.unlimitedOperators,
       createdAt: plan.createdAt.toISOString(),
       updatedAt: plan.updatedAt.toISOString(),
     };
