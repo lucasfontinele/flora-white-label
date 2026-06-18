@@ -2,13 +2,15 @@ import { Entity } from "../../../../shared/domain/entities/Entity.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
 import type { Email } from "../value-objects/Email.js";
 import type { PasswordHash } from "../value-objects/PasswordHash.js";
-import type { UserProfile } from "../enums/UserProfile.js";
+import { UserProfile } from "../enums/UserProfile.js";
 
 export interface UserProps {
   organizationId: string;
   email: Email;
   passwordHash: PasswordHash;
   profile: UserProfile;
+  guardianId?: string;
+  patientId?: string;
 }
 
 /**
@@ -22,11 +24,10 @@ export class User extends Entity<UserProps> {
   }
 
   static create(props: UserProps, id?: string): User {
-    if (props.organizationId.trim().length === 0) {
-      throw new DomainValidationError("User requires an organizationId.");
-    }
+    const normalizedProps = User.normalizeProps(props);
+    User.validate(normalizedProps);
 
-    return new User(props, id);
+    return new User(normalizedProps, id);
   }
 
   get organizationId(): string {
@@ -43,5 +44,89 @@ export class User extends Entity<UserProps> {
 
   get profile(): UserProfile {
     return this.props.profile;
+  }
+
+  get guardianId(): string | undefined {
+    return this.props.guardianId;
+  }
+
+  get patientId(): string | undefined {
+    return this.props.patientId;
+  }
+
+  linkGuardian(guardianId: string): void {
+    const normalizedGuardianId = User.normalizeId(guardianId, "guardianId");
+    const nextProps = { ...this.props, guardianId: normalizedGuardianId };
+    User.validate(nextProps);
+
+    this.props.guardianId = normalizedGuardianId;
+  }
+
+  linkPatient(patientId: string): void {
+    const normalizedPatientId = User.normalizeId(patientId, "patientId");
+    const nextProps = { ...this.props, patientId: normalizedPatientId };
+    User.validate(nextProps);
+
+    this.props.patientId = normalizedPatientId;
+  }
+
+  becomePatient(patientId: string): void {
+    if (!this.props.guardianId) {
+      throw new DomainValidationError("User must be linked to a guardian before becoming a patient.");
+    }
+
+    const normalizedPatientId = User.normalizeId(patientId, "patientId");
+    const nextProps = {
+      ...this.props,
+      profile: UserProfile.Patient,
+      patientId: normalizedPatientId,
+    };
+    User.validate(nextProps);
+
+    this.props.profile = UserProfile.Patient;
+    this.props.patientId = normalizedPatientId;
+  }
+
+  private static normalizeProps(props: UserProps): UserProps {
+    return {
+      ...props,
+      organizationId: props.organizationId.trim(),
+      guardianId:
+        props.guardianId === undefined ? undefined : User.normalizeId(props.guardianId, "guardianId"),
+      patientId:
+        props.patientId === undefined ? undefined : User.normalizeId(props.patientId, "patientId"),
+    };
+  }
+
+  private static normalizeId(value: string, fieldName: "guardianId" | "patientId"): string {
+    const normalized = value.trim();
+
+    if (normalized.length === 0) {
+      throw new DomainValidationError(`User ${fieldName} cannot be empty.`);
+    }
+
+    return normalized;
+  }
+
+  private static validate(props: UserProps): void {
+    if (props.organizationId.length === 0) {
+      throw new DomainValidationError("User requires an organizationId.");
+    }
+
+    if (props.profile === UserProfile.Guardian && !props.guardianId) {
+      throw new DomainValidationError("Guardian users must be linked to a guardian.");
+    }
+
+    if (props.profile === UserProfile.Patient && !props.guardianId) {
+      throw new DomainValidationError("Patient users must be linked to a guardian.");
+    }
+
+    if (props.profile === UserProfile.Patient && !props.patientId) {
+      throw new DomainValidationError("Patient users must be linked to a patient.");
+    }
+
+    if (props.patientId && props.profile !== UserProfile.Patient) {
+      throw new DomainValidationError("Only Patient users can be linked to a patient.");
+    }
   }
 }

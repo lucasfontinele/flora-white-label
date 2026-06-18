@@ -122,14 +122,6 @@ export class CreatePatientRegistrationUseCase {
         gender: guardianData.gender,
       });
 
-    const passwordHashed = await this.deps.hashService.hash(data.user.password);
-    const user = User.create({
-      organizationId: data.organizationId,
-      email,
-      passwordHash: PasswordHash.fromHash(passwordHashed),
-      profile: data.user.profile === "Patient" ? UserProfile.Patient : UserProfile.Guardian,
-    });
-
     const patient = Patient.create({
       organizationId: data.organizationId,
       guardianId: guardian.id,
@@ -140,16 +132,27 @@ export class CreatePatientRegistrationUseCase {
       underPrivileged: data.patient.underPrivileged,
     });
 
+    const userProfile = data.patient.isSelfResponsible ? UserProfile.Patient : UserProfile.Guardian;
+    const passwordHashed = await this.deps.hashService.hash(data.user.password);
+    const user = User.create({
+      organizationId: data.organizationId,
+      email,
+      passwordHash: PasswordHash.fromHash(passwordHashed),
+      profile: userProfile,
+      guardianId: guardian.id,
+      patientId: userProfile === UserProfile.Patient ? patient.id : undefined,
+    });
+
     const assessment = data.patient.underPrivileged
       ? PatientAssessment.createPending({ patientId: patient.id, guardianId: guardian.id })
       : undefined;
 
     await this.deps.unitOfWork.execute(async () => {
-      await this.deps.userRepository.create(user);
       if (!existingGuardian) {
         await this.deps.guardianRepository.create(guardian);
       }
       await this.deps.patientRepository.create(patient);
+      await this.deps.userRepository.create(user);
       if (assessment) {
         await this.deps.patientAssessmentRepository.create(assessment);
       }

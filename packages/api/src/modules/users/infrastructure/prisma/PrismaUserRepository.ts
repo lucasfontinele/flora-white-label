@@ -7,6 +7,14 @@ import { UserMapper } from "./UserMapper.js";
 export class PrismaUserRepository implements UserRepository {
   constructor(private readonly prisma: TransactionalPrisma) {}
 
+  async findById(id: string): Promise<User | null> {
+    const record = await this.prisma.getClient().user.findUnique({
+      where: { id },
+    });
+
+    return record ? UserMapper.toDomain(record) : null;
+  }
+
   async findByEmail(email: Email): Promise<User | null> {
     const record = await this.prisma.getClient().user.findFirst({
       where: { email: email.value },
@@ -18,6 +26,13 @@ export class PrismaUserRepository implements UserRepository {
   async create(user: User): Promise<void> {
     await this.prisma.getClient().user.create({
       data: UserMapper.toPersistence(user),
+    });
+  }
+
+  async save(user: User): Promise<void> {
+    await this.prisma.getClient().user.update({
+      where: { id: user.id },
+      data: UserMapper.toPersistenceUpdate(user),
     });
   }
 }

@@ -18,8 +18,13 @@ model User {
   email          String
   passwordHashed String
   profile        UserProfile
+  guardianId     String?
+  patientId      String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+
+  guardian Guardian? @relation("UserGuardian", fields: [guardianId], references: [id])
+  patient  Patient?  @relation("UserPatient", fields: [patientId], references: [id])
 
   @@unique([organizationId, email])
   @@map("users")
@@ -35,6 +40,7 @@ model Guardian {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  users    User[]    @relation("UserGuardian")
   patients Patient[]
 
   @@unique([organizationId, document])
@@ -54,6 +60,7 @@ model Patient {
   updatedAt       DateTime @updatedAt
 
   guardian    Guardian            @relation(fields: [guardianId], references: [id])
+  users       User[]              @relation("UserPatient")
   assessments PatientAssessment[]
 
   @@unique([organizationId, document])

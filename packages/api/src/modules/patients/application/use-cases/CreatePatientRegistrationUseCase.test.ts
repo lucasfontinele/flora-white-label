@@ -10,6 +10,7 @@ import type { Document } from "../../../../shared/domain/value-objects/Document.
 import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import type { User } from "../../../users/domain/entities/User.js";
 import type { Email } from "../../../users/domain/value-objects/Email.js";
+import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
 import type { GuardianRepository } from "../../../guardians/application/repositories/GuardianRepository.js";
 import type { Guardian } from "../../../guardians/domain/entities/Guardian.js";
 import type { PatientRepository } from "../repositories/PatientRepository.js";
@@ -24,12 +25,23 @@ const OTHER_CPF = "529.982.247-25";
 class InMemoryUserRepository implements UserRepository {
   readonly users: User[] = [];
 
+  async findById(id: string): Promise<User | null> {
+    return this.users.find((user) => user.id === id) ?? null;
+  }
+
   async findByEmail(email: Email): Promise<User | null> {
     return this.users.find((user) => user.email.value === email.value) ?? null;
   }
 
   async create(user: User): Promise<void> {
     this.users.push(user);
+  }
+
+  async save(user: User): Promise<void> {
+    const index = this.users.findIndex((item) => item.id === user.id);
+    if (index >= 0) {
+      this.users[index] = user;
+    }
   }
 }
 
@@ -156,6 +168,11 @@ describe("CreatePatientRegistrationUseCase", () => {
 
     const patient = first(sut.patientRepository.patients);
     expect(patient.guardianId).toBe(guardian.id);
+
+    const user = first(sut.userRepository.users);
+    expect(user.profile).toBe(UserProfile.Patient);
+    expect(user.guardianId).toBe(guardian.id);
+    expect(user.patientId).toBe(patient.id);
   });
 
   it("uses the provided guardian data when isSelfResponsible is false", async () => {
@@ -184,6 +201,13 @@ describe("CreatePatientRegistrationUseCase", () => {
     expect(guardian.name).toBe("Bob Tutor");
     expect(guardian.document.value).toBe("52998224725");
     expect(output.guardianId).toBe(guardian.id);
+
+    const patient = first(sut.patientRepository.patients);
+    const user = first(sut.userRepository.users);
+    expect(user.profile).toBe(UserProfile.Guardian);
+    expect(user.guardianId).toBe(guardian.id);
+    expect(user.patientId).toBeUndefined();
+    expect(patient.guardianId).toBe(guardian.id);
   });
 
   it("creates a PatientAssessment when underPrivileged is true", async () => {

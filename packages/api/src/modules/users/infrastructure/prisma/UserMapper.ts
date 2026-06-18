@@ -24,6 +24,8 @@ export class UserMapper {
         email: Email.create(record.email),
         passwordHash: PasswordHash.fromHash(record.passwordHashed),
         profile: PROFILE_FROM_PRISMA[record.profile],
+        guardianId: record.guardianId ?? undefined,
+        patientId: record.patientId ?? undefined,
       },
       record.id,
     );
@@ -36,6 +38,19 @@ export class UserMapper {
       email: user.email.value,
       passwordHashed: user.passwordHash.value,
       profile: PROFILE_TO_PRISMA[user.profile],
+      guardianId: user.guardianId ?? null,
+      patientId: user.patientId ?? null,
+    };
+  }
+
+  static toPersistenceUpdate(user: User): Prisma.UserUncheckedUpdateInput {
+    return {
+      organizationId: user.organizationId,
+      email: user.email.value,
+      passwordHashed: user.passwordHash.value,
+      profile: PROFILE_TO_PRISMA[user.profile],
+      guardianId: user.guardianId ?? null,
+      patientId: user.patientId ?? null,
     };
   }
 }
