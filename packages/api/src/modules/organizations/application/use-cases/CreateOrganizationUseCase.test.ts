@@ -8,7 +8,10 @@ import { NotFoundError } from "../../../../shared/application/errors/NotFoundErr
 import { MoneyInCents } from "../../../../shared/domain/value-objects/MoneyInCents.js";
 import type { UnitOfWork } from "../../../../shared/application/transaction/UnitOfWork.js";
 import { SubscriptionPlan } from "../../../subscription-plans/domain/entities/SubscriptionPlan.js";
-import type { SubscriptionPlanRepository } from "../../../subscription-plans/application/repositories/SubscriptionPlanRepository.js";
+import type {
+  SubscriptionPlanReadModel,
+  SubscriptionPlanRepository,
+} from "../../../subscription-plans/application/repositories/SubscriptionPlanRepository.js";
 import type { AddressRepository } from "../../../addresses/application/repositories/AddressRepository.js";
 import type { Address } from "../../../addresses/domain/entities/Address.js";
 import type { OrganizationRepository } from "../repositories/OrganizationRepository.js";
@@ -20,6 +23,30 @@ class InMemorySubscriptionPlanRepository implements SubscriptionPlanRepository {
 
   async findById(id: string): Promise<SubscriptionPlan | null> {
     return this.plans.find((plan) => plan.id === id) ?? null;
+  }
+
+  async findDetailsById(): Promise<SubscriptionPlanReadModel | null> {
+    throw new Error("Method not implemented.");
+  }
+
+  async findAllDetails(): Promise<SubscriptionPlanReadModel[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  async create(): Promise<SubscriptionPlanReadModel> {
+    throw new Error("Method not implemented.");
+  }
+
+  async save(): Promise<SubscriptionPlanReadModel> {
+    throw new Error("Method not implemented.");
+  }
+
+  async delete(): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+
+  async hasOrganizations(): Promise<boolean> {
+    throw new Error("Method not implemented.");
   }
 }
 

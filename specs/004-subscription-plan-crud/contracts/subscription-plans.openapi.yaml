@@ -1,0 +1,232 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Backoffice Subscription Plans API
+  version: 0.1.0
+  description: API contract for the master backoffice subscription plan CRUD.
+servers:
+  - url: http://localhost:3333
+paths:
+  /backoffice/subscription-plans:
+    post:
+      summary: Create a subscription plan
+      operationId: createSubscriptionPlan
+      tags:
+        - SubscriptionPlans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPlanWriteRequest"
+            examples:
+              essential:
+                value:
+                  title: Plano Essencial
+                  description: Ideal para associacoes iniciantes.
+                  priceInCents: 15000
+                  operatorsLimit: 5
+                  patientsLimit: 100
+      responses:
+        "201":
+          description: Subscription plan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionPlanResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+    get:
+      summary: List subscription plans
+      operationId: listSubscriptionPlans
+      tags:
+        - SubscriptionPlans
+      responses:
+        "200":
+          description: Subscription plans list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SubscriptionPlanResponse"
+  /backoffice/subscription-plans/{id}:
+    parameters:
+      - $ref: "#/components/parameters/SubscriptionPlanId"
+    get:
+      summary: Get a subscription plan by ID
+      operationId: getSubscriptionPlan
+      tags:
+        - SubscriptionPlans
+      responses:
+        "200":
+          description: Subscription plan found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionPlanResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Fully update a subscription plan
+      operationId: updateSubscriptionPlan
+      tags:
+        - SubscriptionPlans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPlanWriteRequest"
+            examples:
+              professional:
+                value:
+                  title: Plano Profissional
+                  description: null
+                  priceInCents: 29900
+                  operatorsLimit: 10
+                  patientsLimit: 300
+      responses:
+        "200":
+          description: Subscription plan updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionPlanResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a subscription plan
+      operationId: deleteSubscriptionPlan
+      tags:
+        - SubscriptionPlans
+      responses:
+        "204":
+          description: Subscription plan deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  parameters:
+    SubscriptionPlanId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Subscription plan identifier.
+  schemas:
+    SubscriptionPlanWriteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - priceInCents
+        - operatorsLimit
+        - patientsLimit
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          anyOf:
+            - type: string
+              minLength: 1
+            - type: "null"
+        priceInCents:
+          type: integer
+          minimum: 0
+          description: Monetary amount in integer cents. Decimal values are not accepted.
+        operatorsLimit:
+          type: integer
+          minimum: 1
+        patientsLimit:
+          type: integer
+          minimum: 1
+    SubscriptionPlanResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - description
+        - priceInCents
+        - operatorsLimit
+        - patientsLimit
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+        priceInCents:
+          type: integer
+          minimum: 0
+        operatorsLimit:
+          type: integer
+          minimum: 1
+        patientsLimit:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: ValidationError
+            message: Invalid request body.
+    NotFound:
+      description: Subscription plan not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: NotFoundError
+            message: Subscription plan "plan-id" was not found.
+    Conflict:
+      description: Subscription plan cannot be removed because it is in use
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: ConflictError
+            message: Subscription plan "plan-id" is used by organizations.

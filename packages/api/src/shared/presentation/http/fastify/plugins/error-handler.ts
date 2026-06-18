@@ -1,5 +1,7 @@
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
+import { ConflictError } from "../../../../application/errors/ConflictError.js";
+import { NotFoundError } from "../../../../application/errors/NotFoundError.js";
 import { DomainError } from "../../../../domain/errors/DomainError.js";
 import { DomainValidationError } from "../../../../domain/errors/DomainValidationError.js";
 
@@ -12,6 +14,23 @@ import { DomainValidationError } from "../../../../domain/errors/DomainValidatio
 async function errorHandler(app: FastifyInstance): Promise<void> {
   app.setErrorHandler(
     (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
+      if (error.validation) {
+        const validationContext = (error as FastifyError & { validationContext?: string })
+          .validationContext;
+
+        const message =
+          validationContext === "body"
+            ? "Invalid request body."
+            : validationContext === "params"
+              ? "Invalid request params."
+              : "Invalid request.";
+
+        return reply.status(400).send({
+          error: "ValidationError",
+          message,
+        });
+      }
+
       if (error instanceof DomainValidationError) {
         return reply.status(422).send({
           error: error.name,
@@ -21,6 +40,20 @@ async function errorHandler(app: FastifyInstance): Promise<void> {
 
       if (error instanceof DomainError) {
         return reply.status(400).send({
+          error: error.name,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof NotFoundError) {
+        return reply.status(404).send({
+          error: error.name,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof ConflictError) {
+        return reply.status(409).send({
           error: error.name,
           message: error.message,
         });

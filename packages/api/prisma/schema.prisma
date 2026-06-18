@@ -84,7 +84,7 @@ model PatientAssessment {
 model SubscriptionPlan {
   id             String   @id @default(uuid())
   title          String
-  description    String
+  description    String?
   priceInCents   Int
   operatorsLimit Int
   patientsLimit  Int

@@ -167,6 +167,12 @@ URL padrão:
 http://localhost:3333
 ```
 
+Swagger UI da API:
+
+```txt
+http://localhost:3333/docs
+```
+
 ## Scripts
 
 | Comando | Descrição |

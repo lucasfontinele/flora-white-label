@@ -25,9 +25,13 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
       throw new DomainValidationError("Subscription plan title is required.");
     }
 
-    const description = props.description?.trim();
-    if (description && description.length === 0) {
-      throw new DomainValidationError("Subscription plan description is required.");
+    let description: string | undefined;
+    if (props.description !== undefined) {
+      description = props.description.trim();
+
+      if (description.length === 0) {
+        throw new DomainValidationError("Subscription plan description is required.");
+      }
     }
 
     if (!Number.isInteger(props.operatorsLimit) || props.operatorsLimit <= 0) {
@@ -45,8 +49,8 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
     return this.props.title;
   }
 
-  get description(): string {
-    return this.props.description ?? '';
+  get description(): string | undefined {
+    return this.props.description;
   }
 
   get price(): MoneyInCents {

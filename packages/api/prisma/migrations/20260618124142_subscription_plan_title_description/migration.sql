@@ -1,11 +1,13 @@
 /*
   Warnings:
 
-  - Added the required column `description` to the `subscription_plans` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `title` to the `subscription_plans` table without a default value. This is not possible if the table is not empty.
+  - Existing rows receive a temporary title while the required column is added. The default is removed after the backfill.
 
 */
 -- AlterTable
 ALTER TABLE "subscription_plans"
-  ADD COLUMN "title" TEXT NOT NULL;
-  ADD COLUMN "description" TEXT DEFAULT NULL,
+  ADD COLUMN "title" TEXT NOT NULL DEFAULT 'Plano sem titulo',
+  ADD COLUMN "description" TEXT;
+
+ALTER TABLE "subscription_plans"
+  ALTER COLUMN "title" DROP DEFAULT;

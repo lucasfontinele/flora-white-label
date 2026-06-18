@@ -12,12 +12,27 @@ const baseProps = {
 };
 
 describe("SubscriptionPlan", () => {
-  it("creates a valid plan exposing title and description", () => {
-    const plan = SubscriptionPlan.create(baseProps);
+  it("creates a valid plan exposing trimmed title and description", () => {
+    const plan = SubscriptionPlan.create({
+      ...baseProps,
+      title: "  Plano Essencial  ",
+      description: "  Ideal para associações iniciantes.  ",
+    });
 
     expect(plan.title).toBe("Plano Essencial");
     expect(plan.description).toBe("Ideal para associações iniciantes.");
     expect(plan.priceInCents).toBe(15000);
+  });
+
+  it("allows omitted description", () => {
+    const plan = SubscriptionPlan.create({
+      title: baseProps.title,
+      price: baseProps.price,
+      operatorsLimit: baseProps.operatorsLimit,
+      patientsLimit: baseProps.patientsLimit,
+    });
+
+    expect(plan.description).toBeUndefined();
   });
 
   it("rejects an empty title", () => {
@@ -26,14 +41,29 @@ describe("SubscriptionPlan", () => {
     );
   });
 
-  it("rejects an empty description", () => {
-    expect(() => SubscriptionPlan.create({ ...baseProps, description: "" })).toThrow(
+  it("rejects a blank sent description", () => {
+    expect(() => SubscriptionPlan.create({ ...baseProps, description: "  " })).toThrow(
       DomainValidationError,
     );
   });
 
-  it("still rejects non-positive limits", () => {
+  it("rejects non-positive operator limits", () => {
     expect(() => SubscriptionPlan.create({ ...baseProps, operatorsLimit: 0 })).toThrow(
+      DomainValidationError,
+    );
+  });
+
+  it("rejects non-positive patient limits", () => {
+    expect(() => SubscriptionPlan.create({ ...baseProps, patientsLimit: -1 })).toThrow(
+      DomainValidationError,
+    );
+  });
+
+  it("rejects non-integer limits", () => {
+    expect(() => SubscriptionPlan.create({ ...baseProps, operatorsLimit: 1.5 })).toThrow(
+      DomainValidationError,
+    );
+    expect(() => SubscriptionPlan.create({ ...baseProps, patientsLimit: 1.5 })).toThrow(
       DomainValidationError,
     );
   });
