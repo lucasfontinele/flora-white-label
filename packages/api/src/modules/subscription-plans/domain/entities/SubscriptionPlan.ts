@@ -3,6 +3,8 @@ import { DomainValidationError } from "../../../../shared/domain/errors/DomainVa
 import type { MoneyInCents } from "../../../../shared/domain/value-objects/MoneyInCents.js";
 
 export interface SubscriptionPlanProps {
+  title: string;
+  description?: string;
   price: MoneyInCents;
   operatorsLimit: number;
   patientsLimit: number;
@@ -18,6 +20,16 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
   }
 
   static create(props: SubscriptionPlanProps, id?: string): SubscriptionPlan {
+    const title = props.title.trim();
+    if (title.length === 0) {
+      throw new DomainValidationError("Subscription plan title is required.");
+    }
+
+    const description = props.description?.trim();
+    if (description && description.length === 0) {
+      throw new DomainValidationError("Subscription plan description is required.");
+    }
+
     if (!Number.isInteger(props.operatorsLimit) || props.operatorsLimit <= 0) {
       throw new DomainValidationError("operatorsLimit must be a positive integer.");
     }
@@ -26,7 +38,15 @@ export class SubscriptionPlan extends Entity<SubscriptionPlanProps> {
       throw new DomainValidationError("patientsLimit must be a positive integer.");
     }
 
-    return new SubscriptionPlan(props, id);
+    return new SubscriptionPlan({ ...props, title, description }, id);
+  }
+
+  get title(): string {
+    return this.props.title;
+  }
+
+  get description(): string {
+    return this.props.description ?? '';
   }
 
   get price(): MoneyInCents {

@@ -55,7 +55,13 @@ function makeSut(options: { withPlan?: boolean } = {}) {
   if (options.withPlan ?? true) {
     subscriptionPlanRepository.plans.push(
       SubscriptionPlan.create(
-        { price: MoneyInCents.create(15000), operatorsLimit: 5, patientsLimit: 100 },
+        {
+          title: "Plano Essencial",
+          description: "Ideal para associações iniciantes.",
+          price: MoneyInCents.create(15000),
+          operatorsLimit: 5,
+          patientsLimit: 100,
+        },
         "plan-1",
       ),
     );
