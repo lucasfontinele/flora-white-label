@@ -1,14 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useForm, type FieldPath, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { formatCep, formatCnae, formatCnpj, formatUf, isValidCnae, normalizeCnae } from "@/lib/masks";
+import { ApiRequestError } from "@/lib/http";
+import { formatCep, formatCnae, formatCnpj, formatUf, isValidCnae, normalizeCnae, onlyDigits } from "@/lib/masks";
 import { cn } from "@/lib/utils";
+import { lookupAddressByZipcode } from "../requests/lookup-address";
 import {
   organizationRegistrationDefaultValues,
   organizationRegistrationSchema,
@@ -81,6 +83,8 @@ export function OrganizationRegistrationForm({
   const [step, setStep] = useState(0);
   const [secondaryCnaeDraft, setSecondaryCnaeDraft] = useState("");
   const [secondaryCnaeError, setSecondaryCnaeError] = useState<string | null>(null);
+  const [zipcodeStatus, setZipcodeStatus] = useState<"idle" | "loading" | "notFound" | "error">("idle");
+  const lastRequestedZipcode = useRef<string | null>(null);
   const currentStep = steps[step] as RegistrationStep;
   const isFirstStep = step === 0;
   const isReviewStep = currentStep.key === "review";
@@ -164,6 +168,32 @@ export function OrganizationRegistrationForm({
       secondaryCnaes.filter((item) => item !== value),
       { shouldDirty: true, shouldValidate: true },
     );
+  }
+
+  // Auto-fills the address once a complete CEP is typed, querying the API (which
+  // chains ViaCEP → BrasilAPI). Failures degrade gracefully: the user can still
+  // fill the address by hand. Provider-empty fields (e.g. a city-wide CEP with
+  // no street) are left untouched so we never erase what the user typed.
+  async function lookupZipcode(digits: string) {
+    if (lastRequestedZipcode.current === digits) return;
+    lastRequestedZipcode.current = digits;
+    setZipcodeStatus("loading");
+
+    try {
+      const address = await lookupAddressByZipcode(digits);
+
+      if (address.street) setValue("address.street", address.street, { shouldValidate: true });
+      if (address.neighborhood) setValue("address.neighborhood", address.neighborhood, { shouldValidate: true });
+      if (address.city) setValue("address.city", address.city, { shouldValidate: true });
+      if (address.state) setValue("address.state", address.state, { shouldValidate: true });
+      if (address.complement) setValue("address.complement", address.complement, { shouldValidate: false });
+
+      setZipcodeStatus("idle");
+    } catch (error) {
+      // Allow a retry on the same CEP after a transient failure.
+      lastRequestedZipcode.current = null;
+      setZipcodeStatus(error instanceof ApiRequestError && error.status === 404 ? "notFound" : "error");
+    }
   }
 
   return (
@@ -295,14 +325,46 @@ export function OrganizationRegistrationForm({
               placeholder="Sede, Filial..."
               register={register}
             />
-            <FormField
-              error={errors.address?.zipcode}
-              label="CEP"
-              mask={formatCep}
-              name="address.zipcode"
-              register={register}
-              setValue={setValue}
-            />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--text-secondary)]" htmlFor="address-zipcode">
+                CEP
+              </label>
+              <Input
+                aria-invalid={Boolean(errors.address?.zipcode)}
+                id="address-zipcode"
+                inputMode="numeric"
+                placeholder="00000-000"
+                {...register("address.zipcode", {
+                  onChange: (event) => {
+                    const masked = formatCep(event.target.value);
+                    setValue("address.zipcode", masked, { shouldValidate: false });
+
+                    const digits = onlyDigits(masked);
+                    if (digits.length === 8) {
+                      void lookupZipcode(digits);
+                    } else {
+                      setZipcodeStatus("idle");
+                      lastRequestedZipcode.current = null;
+                    }
+                  },
+                })}
+              />
+              {errors.address?.zipcode ? (
+                <span className="mt-1 block text-xs text-[var(--error-600)]">
+                  {getFieldErrorMessage(errors.address?.zipcode)}
+                </span>
+              ) : zipcodeStatus === "loading" ? (
+                <span className="mt-1 block text-xs text-[var(--text-secondary)]">Buscando endereço...</span>
+              ) : zipcodeStatus === "notFound" ? (
+                <span className="mt-1 block text-xs text-[var(--warning-600)]">
+                  CEP não encontrado. Preencha o endereço manualmente.
+                </span>
+              ) : zipcodeStatus === "error" ? (
+                <span className="mt-1 block text-xs text-[var(--warning-600)]">
+                  Não foi possível buscar o CEP. Preencha manualmente.
+                </span>
+              ) : null}
+            </div>
             <FormField
               className="md:col-span-2"
               error={errors.address?.street}

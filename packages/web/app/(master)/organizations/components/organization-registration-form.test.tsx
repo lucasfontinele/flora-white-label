@@ -1,8 +1,22 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OrganizationRegistrationForm } from "./organization-registration-form";
+import { lookupAddressByZipcode } from "../requests/lookup-address";
 import type { SubscriptionPlan } from "../types";
+
+vi.mock("../requests/lookup-address", () => ({
+  lookupAddressByZipcode: vi.fn(),
+}));
+
+const lookupMock = vi.mocked(lookupAddressByZipcode);
+
+// Default: never settles, so the CEP lookup stays pending and never overwrites
+// fields the test fills by hand. Individual tests override as needed.
+beforeEach(() => {
+  lookupMock.mockReset();
+  lookupMock.mockImplementation(() => new Promise(() => {}));
+});
 
 const plan: SubscriptionPlan = {
   id: "plan_starter",
@@ -139,6 +153,30 @@ describe("OrganizationRegistrationForm", () => {
         }),
       }),
     );
+  });
+
+  it("autofills the address fields from the CEP lookup", async () => {
+    lookupMock.mockResolvedValue({
+      zipcode: "77001000",
+      street: "Quadra 101 Sul",
+      complement: null,
+      neighborhood: "Plano Diretor Sul",
+      city: "Palmas",
+      state: "TO",
+    });
+
+    render(<OrganizationRegistrationForm onSubmit={vi.fn()} />);
+
+    const user = await fillCompanyStep();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    await user.type(await screen.findByLabelText("CEP"), "77001000");
+
+    expect(lookupMock).toHaveBeenCalledWith("77001000");
+    expect(await screen.findByLabelText("Logradouro")).toHaveValue("Quadra 101 Sul");
+    expect(screen.getByLabelText("Bairro")).toHaveValue("Plano Diretor Sul");
+    expect(screen.getByLabelText("Cidade")).toHaveValue("Palmas");
+    expect(screen.getByLabelText("Estado")).toHaveValue("TO");
   });
 
   it("shows plan loading and plan error states", async () => {

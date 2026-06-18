@@ -74,3 +74,13 @@ export type SubscriptionPlan = {
 export type ListSubscriptionPlansResponse = {
   data: SubscriptionPlan[];
 };
+
+// GET /addresses/zipcode/:zipcode
+export type ZipcodeAddress = {
+  zipcode: string;
+  street: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+};
