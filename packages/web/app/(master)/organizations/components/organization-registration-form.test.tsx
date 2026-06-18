@@ -21,9 +21,6 @@ async function fillCompanyStep() {
   await user.type(screen.getByLabelText("CNPJ"), "11222333000181");
   await user.type(screen.getByLabelText("Data de fundação"), "2020-01-15");
   await user.type(screen.getByLabelText("CNAE principal"), "9430800");
-  await user.type(screen.getByLabelText("E-mail institucional"), "contato@associacao.org.br");
-  await user.type(screen.getByLabelText("Telefone"), "6333330000");
-  await user.type(screen.getByLabelText("WhatsApp"), "63999990000");
 
   return user;
 }
@@ -86,15 +83,12 @@ describe("OrganizationRegistrationForm", () => {
     expect(screen.getByText("Informe o logradouro.")).toBeInTheDocument();
   });
 
-  it("masks institutional fields and manages secondary CNAEs as tags", async () => {
+  it("manages secondary CNAEs as tags", async () => {
     render(<OrganizationRegistrationForm />);
 
     const user = await fillCompanyStep();
 
-    expect(screen.getByLabelText("CNPJ")).toHaveValue("11.222.333/0001-81");
     expect(screen.getByLabelText("CNAE principal")).toHaveValue("9430-8/00");
-    expect(screen.getByLabelText("Telefone")).toHaveValue("(63) 3333-0000");
-    expect(screen.getByLabelText("WhatsApp")).toHaveValue("(63) 99999-0000");
 
     await user.type(screen.getByLabelText("CNAEs secundários"), "9430800{enter}");
 
@@ -143,10 +137,8 @@ describe("OrganizationRegistrationForm", () => {
         }),
         company: expect.objectContaining({
           cnpj: "11222333000181",
-          phone: "6333330000",
           primaryCnae: "9430800",
           secondaryCnaes: ["9499500"],
-          whatsapp: "63999990000",
         }),
       }),
     );

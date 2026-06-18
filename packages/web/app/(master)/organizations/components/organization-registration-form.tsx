@@ -306,61 +306,6 @@ export function OrganizationRegistrationForm({
                 </span>
               ) : null}
             </div>
-            <FormField
-              error={errors.company?.institutionalEmail}
-              label="E-mail institucional"
-              name="company.institutionalEmail"
-              register={register}
-              type="email"
-            />
-            <FormField
-              error={errors.company?.phone}
-              label="Telefone"
-              mask={formatBrazilianPhone}
-              name="company.phone"
-              register={register}
-              setValue={setValue}
-            />
-            <FormField
-              error={errors.company?.whatsapp}
-              label="WhatsApp"
-              mask={formatBrazilianPhone}
-              name="company.whatsapp"
-              register={register}
-              setValue={setValue}
-            />
-            <FormField
-              error={errors.company?.site}
-              label="Site"
-              name="company.site"
-              placeholder="https://associacao.org.br"
-              register={register}
-              type="url"
-            />
-            <FormField
-              error={errors.company?.instagram}
-              label="Instagram"
-              name="company.instagram"
-              placeholder="https://instagram.com/associacao"
-              register={register}
-              type="url"
-            />
-            <FormField
-              error={errors.company?.facebook}
-              label="Facebook"
-              name="company.facebook"
-              placeholder="https://facebook.com/associacao"
-              register={register}
-              type="url"
-            />
-            <FormField
-              error={errors.company?.linkedin}
-              label="LinkedIn"
-              name="company.linkedin"
-              placeholder="https://linkedin.com/company/associacao"
-              register={register}
-              type="url"
-            />
           </CardContent>
         </Card>
       ) : null}

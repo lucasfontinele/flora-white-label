@@ -14,17 +14,10 @@ const validInput = {
   company: {
     cnpj: "11.222.333/0001-81",
     foundationDate: "2020-01-15",
-    facebook: "https://facebook.com/associacao",
-    instagram: "https://instagram.com/associacao",
-    institutionalEmail: "contato@associacao.org.br",
-    linkedin: "https://linkedin.com/company/associacao",
     legalName: "Associacao Medicinal Exemplo LTDA",
-    phone: "(63) 3333-0000",
     primaryCnae: "9430-8/00",
     secondaryCnaes: ["9499-5/00"],
-    site: "https://associacao.org.br",
     tradeName: "Associacao Exemplo",
-    whatsapp: "(63) 99999-0000",
   },
   subscriptionPlanId: "plan_starter",
 };
@@ -52,8 +45,6 @@ describe("organizationRegistrationSchema", () => {
     expect(result.address.cep).toBe("77001000");
     expect(result.address.state).toBe("TO");
     expect(result.company.cnpj).toBe("11222333000181");
-    expect(result.company.phone).toBe("6333330000");
-    expect(result.company.whatsapp).toBe("63999990000");
     expect(result.company.primaryCnae).toBe("9430800");
     expect(result.company.secondaryCnaes).toEqual(["9499500"]);
   });

@@ -4,18 +4,7 @@ import { z } from "zod";
 
 const requiredText = (message: string) => z.string().trim().min(1, message);
 
-const optionalUrl = (label: string) =>
-  z.preprocess(
-    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-    z.string().trim().url(`${label} deve ser uma URL válida.`).optional(),
-  );
 
-const optionalPhone = z
-  .string()
-  .optional()
-  .transform((value) => onlyDigits(value ?? ""))
-  .refine((value) => value.length === 0 || value.length === 10 || value.length === 11, "Informe um telefone válido.")
-  .transform((value) => value || undefined);
 
 const cnaeSchema = z
   .string()
@@ -44,18 +33,13 @@ const companySchema = z.object({
     .string()
     .refine((value) => onlyDigits(value).length === 14, "Informe um CNPJ válido.")
     .transform(onlyDigits),
-  facebook: optionalUrl("Facebook"),
   foundationDate: requiredText("Informe a data de fundação.").refine((value) => {
     const date = new Date(`${value}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) return false;
 
     return date <= new Date();
   }, "Data de fundação não pode ser futura."),
-  instagram: optionalUrl("Instagram"),
-  institutionalEmail: z.string().email("Informe um e-mail institucional válido."),
-  linkedin: optionalUrl("LinkedIn"),
   legalName: requiredText("Informe a razão social."),
-  phone: optionalPhone,
   primaryCnae: cnaeSchema,
   secondaryCnaes: z
     .array(cnaeSchema)
@@ -69,15 +53,7 @@ const companySchema = z.object({
         });
       }
     }),
-  site: optionalUrl("Site"),
   tradeName: requiredText("Informe o nome fantasia."),
-  whatsapp: z
-    .string()
-    .refine((value) => {
-      const length = onlyDigits(value).length;
-      return length === 10 || length === 11;
-    }, "Informe um WhatsApp válido.")
-    .transform(onlyDigits),
 });
 
 export const organizationRegistrationSchema = z.object({
@@ -98,18 +74,11 @@ export const organizationRegistrationDefaultValues: CreateOrganizationRequest = 
   },
   company: {
     cnpj: "",
-    facebook: "",
     foundationDate: "",
-    instagram: "",
-    institutionalEmail: "",
-    linkedin: "",
     legalName: "",
-    phone: "",
     primaryCnae: "",
     secondaryCnaes: [],
-    site: "",
     tradeName: "",
-    whatsapp: "",
   },
   subscriptionPlanId: "",
 };
@@ -131,13 +100,6 @@ export const organizationRegistrationStepFields = {
     "company.foundationDate",
     "company.primaryCnae",
     "company.secondaryCnaes",
-    "company.institutionalEmail",
-    "company.phone",
-    "company.whatsapp",
-    "company.site",
-    "company.instagram",
-    "company.facebook",
-    "company.linkedin",
   ],
   plan: ["subscriptionPlanId"],
 } as const;
