@@ -2,15 +2,18 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { OrganizationRegistrationForm } from "./organization-registration-form";
+import type { SubscriptionPlan } from "../types";
 
-const plan = {
-  code: "starter" as const,
+const plan: SubscriptionPlan = {
   id: "plan_starter",
-  maxActiveUsers: 50,
-  maxOperators: 10,
-  name: "Starter" as const,
-  operatorLimitType: "limited" as const,
+  title: "Starter",
+  description: null,
   priceInCents: 59700,
+  operatorsLimit: 10,
+  patientsLimit: 50,
+  unlimitedOperators: false,
+  createdAt: "2026-06-16T00:00:00.000Z",
+  updatedAt: "2026-06-16T00:00:00.000Z",
 };
 
 async function fillCompanyStep() {
@@ -19,7 +22,6 @@ async function fillCompanyStep() {
   await user.type(screen.getByLabelText("Razão social"), "Associacao Medicinal Exemplo LTDA");
   await user.type(screen.getByLabelText("Nome fantasia"), "Associacao Exemplo");
   await user.type(screen.getByLabelText("CNPJ"), "11222333000181");
-  await user.type(screen.getByLabelText("Data de fundação"), "2020-01-15");
   await user.type(screen.getByLabelText("CNAE principal"), "9430800");
 
   return user;
@@ -47,7 +49,7 @@ describe("OrganizationRegistrationForm", () => {
   it("blocks progression when company fields are missing", async () => {
     const user = userEvent.setup();
 
-    render(<OrganizationRegistrationForm />);
+    render(<OrganizationRegistrationForm onSubmit={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -56,7 +58,7 @@ describe("OrganizationRegistrationForm", () => {
   });
 
   it("moves between company and address steps while preserving values", async () => {
-    render(<OrganizationRegistrationForm />);
+    render(<OrganizationRegistrationForm onSubmit={vi.fn()} />);
 
     const user = await fillCompanyStep();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -73,7 +75,7 @@ describe("OrganizationRegistrationForm", () => {
   });
 
   it("blocks address progression when required address fields are missing", async () => {
-    render(<OrganizationRegistrationForm />);
+    render(<OrganizationRegistrationForm onSubmit={vi.fn()} />);
 
     const user = await fillCompanyStep();
     await user.click(screen.getByRole("button", { name: "Continuar" }));
@@ -84,7 +86,7 @@ describe("OrganizationRegistrationForm", () => {
   });
 
   it("manages secondary CNAEs as tags", async () => {
-    render(<OrganizationRegistrationForm />);
+    render(<OrganizationRegistrationForm onSubmit={vi.fn()} />);
 
     const user = await fillCompanyStep();
 
@@ -101,16 +103,10 @@ describe("OrganizationRegistrationForm", () => {
     expect(screen.queryByRole("button", { name: "Remover CNAE 9430-8/00" })).not.toBeInTheDocument();
   });
 
-  it("loads plans, reviews data, submits successfully, and supports retry state", async () => {
-    const createOrganization = vi.fn().mockResolvedValue({
-      data: {
-        company: {
-          tradeName: "Associacao Exemplo",
-        },
-      },
-    });
+  it("loads plans, reviews data, and submits the mapped write body", async () => {
+    const onSubmit = vi.fn();
 
-    render(<OrganizationRegistrationForm availablePlans={[plan]} onCreate={createOrganization as never} />);
+    render(<OrganizationRegistrationForm availablePlans={[plan]} onSubmit={onSubmit} />);
 
     const user = await fillCompanyStep();
     await user.type(screen.getByLabelText("CNAEs secundários"), "9499500{enter}");
@@ -125,34 +121,34 @@ describe("OrganizationRegistrationForm", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("Resumo")).toBeInTheDocument();
-    expect(screen.getByText("Associacao Exemplo")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cadastrar organização" }));
 
-    expect(createOrganization).toHaveBeenCalledTimes(1);
-    expect(createOrganization).toHaveBeenCalledWith(
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        address: expect.objectContaining({
-          cep: "77001000",
-          state: "TO",
-        }),
-        company: expect.objectContaining({
+        organization: expect.objectContaining({
           cnpj: "11222333000181",
           primaryCnae: "9430800",
           secondaryCnaes: ["9499500"],
+          currentPlanId: "plan_starter",
+        }),
+        address: expect.objectContaining({
+          zipcode: "77001000",
+          street: "Quadra 101 Sul, 10",
+          state: "TO",
         }),
       }),
     );
-    expect(await screen.findByText("Organização Associacao Exemplo cadastrada.")).toBeInTheDocument();
   });
 
   it("shows plan loading and plan error states", async () => {
-    const loadingRender = render(<OrganizationRegistrationForm isLoadingPlans />);
+    const loadingRender = render(<OrganizationRegistrationForm isLoadingPlans onSubmit={vi.fn()} />);
 
     await goToPlanStep();
     expect(await screen.findByText("Carregando planos...")).toBeInTheDocument();
     loadingRender.unmount();
 
-    render(<OrganizationRegistrationForm plansError={new Error("Falha")} />);
+    render(<OrganizationRegistrationForm onSubmit={vi.fn()} plansError={new Error("Falha")} />);
     await goToPlanStep();
     expect(await screen.findByText("Não foi possível carregar os planos.")).toBeInTheDocument();
   });

@@ -4,13 +4,15 @@ import { listSubscriptionPlans } from "./list-subscription-plans";
 const response = {
   data: [
     {
-      code: "starter",
       id: "plan_starter",
-      maxActiveUsers: 50,
-      maxOperators: 10,
-      name: "Starter",
-      operatorLimitType: "limited",
+      title: "Starter",
+      description: "Plano inicial",
       priceInCents: 59700,
+      operatorsLimit: 10,
+      patientsLimit: 50,
+      unlimitedOperators: false,
+      createdAt: "2026-06-16T00:00:00.000Z",
+      updatedAt: "2026-06-16T00:00:00.000Z",
     },
   ],
 };
@@ -20,14 +22,14 @@ describe("listSubscriptionPlans", () => {
     vi.unstubAllGlobals();
   });
 
-  it("requests available subscription plans with temporary Master headers", async () => {
+  it("requests available subscription plans from the backoffice endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(listSubscriptionPlans()).resolves.toEqual(response);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3333/subscription-plans",
+      "http://localhost:3333/backoffice/subscription-plans",
       expect.objectContaining({
         headers: expect.any(Headers),
         method: "GET",

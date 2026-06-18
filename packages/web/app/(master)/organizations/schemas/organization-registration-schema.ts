@@ -1,10 +1,14 @@
-import type { CreateOrganizationRequest } from "@flora/shared/organizations";
-import { isValidCnae, onlyDigits } from "@/lib/masks";
 import { z } from "zod";
+import { isValidCnae, onlyDigits } from "@/lib/masks";
+import type { OrganizationWriteBody } from "../types";
 
 const requiredText = (message: string) => z.string().trim().min(1, message);
 
-
+const optionalText = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => (value && value.length > 0 ? value : ""));
 
 const cnaeSchema = z
   .string()
@@ -12,15 +16,16 @@ const cnaeSchema = z
   .transform(onlyDigits);
 
 const addressSchema = z.object({
-  cep: z
+  title: optionalText,
+  zipcode: z
     .string()
     .refine((value) => onlyDigits(value).length === 8, "Informe um CEP válido.")
     .transform(onlyDigits),
-  city: requiredText("Informe a cidade."),
-  complement: z.string().optional(),
-  logradouro: requiredText("Informe o logradouro."),
+  street: requiredText("Informe o logradouro."),
+  number: optionalText,
+  complement: optionalText,
   neighborhood: requiredText("Informe o bairro."),
-  number: requiredText("Informe o número."),
+  city: requiredText("Informe a cidade."),
   state: z
     .string()
     .trim()
@@ -28,18 +33,13 @@ const addressSchema = z.object({
     .refine((value) => /^[A-Z]{2}$/.test(value), "Informe a UF."),
 });
 
-const companySchema = z.object({
+const organizationSchema = z.object({
+  legalName: requiredText("Informe a razão social."),
+  tradeName: requiredText("Informe o nome fantasia."),
   cnpj: z
     .string()
     .refine((value) => onlyDigits(value).length === 14, "Informe um CNPJ válido.")
     .transform(onlyDigits),
-  foundationDate: requiredText("Informe a data de fundação.").refine((value) => {
-    const date = new Date(`${value}T00:00:00.000Z`);
-    if (Number.isNaN(date.getTime())) return false;
-
-    return date <= new Date();
-  }, "Data de fundação não pode ser futura."),
-  legalName: requiredText("Informe a razão social."),
   primaryCnae: cnaeSchema,
   secondaryCnaes: z
     .array(cnaeSchema)
@@ -53,57 +53,85 @@ const companySchema = z.object({
         });
       }
     }),
-  tradeName: requiredText("Informe o nome fantasia."),
 });
 
 export const organizationRegistrationSchema = z.object({
+  organization: organizationSchema,
   address: addressSchema,
-  company: companySchema,
-  subscriptionPlanId: requiredText("Selecione um plano."),
+  currentPlanId: requiredText("Selecione um plano."),
 });
 
-export const organizationRegistrationDefaultValues: CreateOrganizationRequest = {
-  address: {
-    cep: "",
-    city: "",
-    complement: "",
-    logradouro: "",
-    neighborhood: "",
-    number: "",
-    state: "",
-  },
-  company: {
-    cnpj: "",
-    foundationDate: "",
+export type OrganizationRegistrationFormValues = z.input<typeof organizationRegistrationSchema>;
+export type OrganizationRegistrationSchema = z.output<typeof organizationRegistrationSchema>;
+
+export const organizationRegistrationDefaultValues: OrganizationRegistrationFormValues = {
+  organization: {
     legalName: "",
+    tradeName: "",
+    cnpj: "",
     primaryCnae: "",
     secondaryCnaes: [],
-    tradeName: "",
   },
-  subscriptionPlanId: "",
+  address: {
+    title: "",
+    zipcode: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+  },
+  currentPlanId: "",
 };
 
 export const organizationRegistrationStepFields = {
+  organization: [
+    "organization.legalName",
+    "organization.tradeName",
+    "organization.cnpj",
+    "organization.primaryCnae",
+    "organization.secondaryCnaes",
+  ],
   address: [
-    "address.cep",
-    "address.logradouro",
+    "address.title",
+    "address.zipcode",
+    "address.street",
     "address.number",
     "address.complement",
     "address.neighborhood",
     "address.city",
     "address.state",
   ],
-  company: [
-    "company.legalName",
-    "company.tradeName",
-    "company.cnpj",
-    "company.foundationDate",
-    "company.primaryCnae",
-    "company.secondaryCnaes",
-  ],
-  plan: ["subscriptionPlanId"],
+  plan: ["currentPlanId"],
 } as const;
 
-export type OrganizationRegistrationFormValues = z.input<typeof organizationRegistrationSchema>;
-export type OrganizationRegistrationSchema = z.output<typeof organizationRegistrationSchema>;
-type _EnsuresSharedContract = OrganizationRegistrationSchema extends CreateOrganizationRequest ? true : never;
+/**
+ * Maps the validated form output to the API write body. The street number is a
+ * UI-only field (the API has no dedicated column), so it is appended to the
+ * street when provided.
+ */
+export function toOrganizationWriteBody(values: OrganizationRegistrationSchema): OrganizationWriteBody {
+  const number = values.address.number.trim();
+  const street = number ? `${values.address.street}, ${number}` : values.address.street;
+
+  return {
+    organization: {
+      tradeName: values.organization.tradeName,
+      legalName: values.organization.legalName,
+      cnpj: values.organization.cnpj,
+      primaryCnae: values.organization.primaryCnae,
+      secondaryCnaes: values.organization.secondaryCnaes,
+      currentPlanId: values.currentPlanId,
+    },
+    address: {
+      title: values.address.title.trim() ? values.address.title.trim() : null,
+      zipcode: values.address.zipcode,
+      street,
+      neighborhood: values.address.neighborhood,
+      complement: values.address.complement.trim() ? values.address.complement.trim() : null,
+      city: values.address.city,
+      state: values.address.state,
+    },
+  };
+}

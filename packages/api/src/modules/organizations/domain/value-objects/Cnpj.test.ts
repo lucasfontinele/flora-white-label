@@ -19,6 +19,11 @@ describe("Cnpj", () => {
     expect(() => Cnpj.create("00000000000000")).toThrow(DomainValidationError);
   });
 
+  it("rejects a CNPJ without exactly 14 digits", () => {
+    expect(() => Cnpj.create("11.222.333/0001")).toThrow(DomainValidationError);
+    expect(() => Cnpj.create("11.222.333/0001-812")).toThrow(DomainValidationError);
+  });
+
   it("rejects an empty CNPJ", () => {
     expect(() => Cnpj.create("")).toThrow(DomainValidationError);
   });

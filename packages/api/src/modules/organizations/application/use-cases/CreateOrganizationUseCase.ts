@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { UnitOfWork } from "../../../../shared/application/transaction/UnitOfWork.js";
 import { ConflictError } from "../../../../shared/application/errors/ConflictError.js";
 import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
@@ -8,52 +7,29 @@ import type { SubscriptionPlanRepository } from "../../../subscription-plans/app
 import { Organization } from "../../domain/entities/Organization.js";
 import { Cnpj } from "../../domain/value-objects/Cnpj.js";
 import { Cnae } from "../../domain/value-objects/Cnae.js";
-import type { OrganizationRepository } from "../repositories/OrganizationRepository.js";
-
-const inputSchema = z.object({
-  planId: z.string().min(1),
-  organization: z.object({
-    tradeName: z.string().min(1),
-    legalName: z.string().min(1),
-    cnpj: z.string().min(1),
-    primaryCnae: z.string().min(1),
-    secondaryCnaes: z.array(z.string().min(1)).optional(),
-  }),
-  address: z.object({
-    title: z.string().optional(),
-    zipcode: z.string().min(1),
-    street: z.string().min(1),
-    neighborhood: z.string().min(1),
-    complement: z.string().optional(),
-    city: z.string().min(1),
-    state: z.string().min(1),
-  }),
-});
+import type {
+  OrganizationReadModel,
+  OrganizationRepository,
+} from "../repositories/OrganizationRepository.js";
 
 export interface CreateOrganizationInput {
-  planId: string;
   organization: {
     tradeName: string;
     legalName: string;
     cnpj: string;
     primaryCnae: string;
     secondaryCnaes?: string[];
+    currentPlanId: string;
   };
   address: {
-    title?: string;
+    title?: string | null;
     zipcode: string;
     street: string;
     neighborhood: string;
-    complement?: string;
+    complement?: string | null;
     city: string;
     state: string;
   };
-}
-
-export interface CreateOrganizationOutput {
-  organizationId: string;
-  addressId: string;
-  planId: string;
 }
 
 export interface CreateOrganizationDependencies {
@@ -72,48 +48,53 @@ export interface CreateOrganizationDependencies {
 export class CreateOrganizationUseCase {
   constructor(private readonly deps: CreateOrganizationDependencies) {}
 
-  async execute(input: CreateOrganizationInput): Promise<CreateOrganizationOutput> {
-    const data = inputSchema.parse(input);
+  async execute(input: CreateOrganizationInput): Promise<OrganizationReadModel> {
+    return this.deps.unitOfWork.execute(async () => {
+      const plan = await this.deps.subscriptionPlanRepository.findById(
+        input.organization.currentPlanId,
+      );
+      if (!plan) {
+        throw new NotFoundError(
+          `Subscription plan "${input.organization.currentPlanId}" was not found.`,
+        );
+      }
 
-    const plan = await this.deps.subscriptionPlanRepository.findById(data.planId);
-    if (!plan) {
-      throw new NotFoundError(`Subscription plan "${data.planId}" was not found.`);
-    }
+      const cnpj = Cnpj.create(input.organization.cnpj);
+      if (await this.deps.organizationRepository.findByCnpj(cnpj)) {
+        throw new ConflictError(`An organization with CNPJ "${cnpj.value}" already exists.`);
+      }
 
-    const cnpj = Cnpj.create(data.organization.cnpj);
-    if (await this.deps.organizationRepository.findByCnpj(cnpj)) {
-      throw new ConflictError(`An organization with CNPJ "${cnpj.value}" already exists.`);
-    }
+      const address = Address.create({
+        title: input.address.title ?? null,
+        zipcode: input.address.zipcode,
+        street: input.address.street,
+        neighborhood: input.address.neighborhood,
+        complement: input.address.complement ?? null,
+        city: input.address.city,
+        state: input.address.state,
+      });
 
-    const address = Address.create({
-      title: data.address.title ?? null,
-      zipcode: data.address.zipcode,
-      street: data.address.street,
-      neighborhood: data.address.neighborhood,
-      complement: data.address.complement ?? null,
-      city: data.address.city,
-      state: data.address.state,
-    });
+      const organization = Organization.create({
+        tradeName: input.organization.tradeName,
+        legalName: input.organization.legalName,
+        cnpj,
+        primaryCnae: Cnae.create(input.organization.primaryCnae),
+        secondaryCnaes: (input.organization.secondaryCnaes ?? []).map((cnae) =>
+          Cnae.create(cnae),
+        ),
+        currentPlanId: plan.id,
+        addressId: address.id,
+      });
 
-    const organization = Organization.create({
-      tradeName: data.organization.tradeName,
-      legalName: data.organization.legalName,
-      cnpj,
-      primaryCnae: Cnae.create(data.organization.primaryCnae),
-      secondaryCnaes: (data.organization.secondaryCnaes ?? []).map((cnae) => Cnae.create(cnae)),
-      currentPlanId: plan.id,
-      addressId: address.id,
-    });
-
-    await this.deps.unitOfWork.execute(async () => {
       await this.deps.addressRepository.create(address);
       await this.deps.organizationRepository.create(organization);
-    });
 
-    return {
-      organizationId: organization.id,
-      addressId: address.id,
-      planId: plan.id,
-    };
+      const details = await this.deps.organizationRepository.findDetailsById(organization.id);
+      if (!details) {
+        throw new NotFoundError(`Organization "${organization.id}" was not found.`);
+      }
+
+      return details;
+    });
   }
 }

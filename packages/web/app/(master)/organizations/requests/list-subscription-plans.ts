@@ -1,8 +1,8 @@
-import type { ListSubscriptionPlansResponse } from "@flora/shared/organizations";
 import { apiFetch } from "@/lib/http";
+import type { ListSubscriptionPlansResponse } from "../types";
 
 export async function listSubscriptionPlans() {
-  return apiFetch<ListSubscriptionPlansResponse>("/subscription-plans", {
+  return apiFetch<ListSubscriptionPlansResponse>("/backoffice/subscription-plans", {
     method: "GET",
   });
 }

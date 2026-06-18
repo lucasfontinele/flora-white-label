@@ -1,16 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useToast } from "@/components/ui/toast";
+import { ApiRequestError } from "@/lib/http";
 import { OrganizationRegistrationForm } from "../components/organization-registration-form";
-import { organizationsQueryKey } from "../queries/use-organizations";
+import { useCreateOrganization } from "../queries/use-organizations";
 import { useSubscriptionPlans } from "../queries/use-subscription-plans";
+import type { OrganizationWriteBody } from "../types";
+
+function describeSaveError(error: unknown): string {
+  if (error instanceof ApiRequestError && (error.status === 400 || error.status === 422)) {
+    return "Verifique os dados do formulário e tente novamente.";
+  }
+
+  return "Não foi possível cadastrar a organização. Tente novamente.";
+}
 
 export default function NewOrganizationPage() {
-  const queryClient = useQueryClient();
+  const router = useRouter();
   const plansQuery = useSubscriptionPlans();
+  const createMutation = useCreateOrganization();
+  const { toast } = useToast();
+
+  function handleSubmit(body: OrganizationWriteBody) {
+    createMutation.mutate(body, {
+      onSuccess: (organization) => {
+        toast({
+          variant: "success",
+          title: "Organização cadastrada",
+          description: `${organization.tradeName} foi criada com sucesso.`,
+        });
+        router.push("/organizations");
+      },
+      onError: (error) => {
+        toast({ variant: "error", title: "Erro ao cadastrar", description: describeSaveError(error) });
+      },
+    });
+  }
 
   return (
     <div className="flex max-w-5xl flex-col gap-6">
@@ -31,10 +60,10 @@ export default function NewOrganizationPage() {
       </section>
       <OrganizationRegistrationForm
         availablePlans={plansQuery.data?.data ?? []}
+        errorMessage={createMutation.isError ? describeSaveError(createMutation.error) : undefined}
         isLoadingPlans={plansQuery.isLoading}
-        onCreated={() => {
-          void queryClient.invalidateQueries({ queryKey: organizationsQueryKey({ page: 1, perPage: 20 }) });
-        }}
+        onSubmit={handleSubmit}
+        pending={createMutation.isPending}
         plansError={plansQuery.error instanceof Error ? plansQuery.error : null}
       />
     </div>

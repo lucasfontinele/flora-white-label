@@ -1,44 +1,37 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type {
-  CreateOrganizationRequest,
-  CreateOrganizationResponse,
-  SubscriptionPlanDto,
-} from "@flora/shared/organizations";
 import { useMemo, useState } from "react";
 import { useForm, type FieldPath, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import {
-  formatBrazilianPhone,
-  formatCep,
-  formatCnae,
-  formatCnpj,
-  formatUf,
-  isValidCnae,
-  normalizeCnae,
-} from "@/lib/masks";
-import { createOrganization } from "../requests/create-organization";
+import { formatCep, formatCnae, formatCnpj, formatUf, isValidCnae, normalizeCnae } from "@/lib/masks";
+import { cn } from "@/lib/utils";
 import {
   organizationRegistrationDefaultValues,
   organizationRegistrationSchema,
   organizationRegistrationStepFields,
+  toOrganizationWriteBody,
   type OrganizationRegistrationFormValues,
   type OrganizationRegistrationSchema,
 } from "../schemas/organization-registration-schema";
+import type { OrganizationWriteBody, SubscriptionPlan } from "../types";
 
 type OrganizationRegistrationFormProps = {
-  availablePlans?: SubscriptionPlanDto[];
+  availablePlans?: SubscriptionPlan[];
   isLoadingPlans?: boolean;
-  onCreate?: (input: CreateOrganizationRequest) => Promise<CreateOrganizationResponse>;
-  onCreated?: () => void;
   plansError?: Error | null;
+  initialValues?: OrganizationRegistrationFormValues;
+  submitLabel?: string;
+  submittingLabel?: string;
+  pending?: boolean;
+  errorMessage?: string;
+  onSubmit: (body: OrganizationWriteBody) => void | Promise<void>;
 };
 
-type StepKey = "company" | "address" | "plan" | "review";
+type StepKey = "organization" | "address" | "plan" | "review";
 
 type RegistrationStep = {
   description: string;
@@ -49,10 +42,10 @@ type RegistrationStep = {
 
 const steps: RegistrationStep[] = [
   {
-    key: "company",
+    key: "organization",
     title: "Dados da empresa",
     description: "Identificação legal e institucional da associação.",
-    fields: [...organizationRegistrationStepFields.company],
+    fields: [...organizationRegistrationStepFields.organization],
   },
   {
     key: "address",
@@ -69,7 +62,7 @@ const steps: RegistrationStep[] = [
   {
     key: "review",
     title: "Revisão",
-    description: "Confirme os dados antes de cadastrar a organização.",
+    description: "Confirme os dados antes de salvar a organização.",
     fields: [],
   },
 ];
@@ -77,42 +70,41 @@ const steps: RegistrationStep[] = [
 export function OrganizationRegistrationForm({
   availablePlans = [],
   isLoadingPlans = false,
-  onCreate = createOrganization,
-  onCreated,
   plansError = null,
-}: OrganizationRegistrationFormProps = {}) {
+  initialValues,
+  submitLabel = "Cadastrar organização",
+  submittingLabel = "Cadastrando...",
+  pending = false,
+  errorMessage,
+  onSubmit,
+}: OrganizationRegistrationFormProps) {
   const [step, setStep] = useState(0);
   const [secondaryCnaeDraft, setSecondaryCnaeDraft] = useState("");
   const [secondaryCnaeError, setSecondaryCnaeError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
   const currentStep = steps[step] as RegistrationStep;
   const isFirstStep = step === 0;
   const isReviewStep = currentStep.key === "review";
   const progress = useMemo(() => `Etapa ${step + 1} de ${steps.length}`, [step]);
 
   const {
-    formState: { errors, isSubmitting },
+    formState: { errors },
     handleSubmit,
     register,
-    reset,
     setValue,
     trigger,
     watch,
   } = useForm<OrganizationRegistrationFormValues, unknown, OrganizationRegistrationSchema>({
-    defaultValues: organizationRegistrationDefaultValues,
+    defaultValues: initialValues ?? organizationRegistrationDefaultValues,
     mode: "onBlur",
     resolver: zodResolver(organizationRegistrationSchema),
   });
 
   const values = watch();
-  const secondaryCnaes = values.company.secondaryCnaes ?? [];
-  const selectedPlan = availablePlans.find((plan) => plan.id === values.subscriptionPlanId);
+  const secondaryCnaes = values.organization.secondaryCnaes ?? [];
+  const selectedPlan = availablePlans.find((plan) => plan.id === values.currentPlanId);
 
   async function goNext() {
-    setStatus(null);
-
-    if (currentStep.key === "company" && secondaryCnaeDraft.trim() && !addSecondaryCnae(secondaryCnaeDraft)) {
+    if (currentStep.key === "organization" && secondaryCnaeDraft.trim() && !addSecondaryCnae(secondaryCnaeDraft)) {
       return;
     }
 
@@ -124,25 +116,11 @@ export function OrganizationRegistrationForm({
   }
 
   function goBack() {
-    setStatus(null);
     setStep((current) => Math.max(current - 1, 0));
   }
 
   async function submit(data: OrganizationRegistrationSchema) {
-    setStatus(null);
-
-    try {
-      const response = await onCreate(data);
-      setSubmitted(true);
-      setStatus(`Organização ${response.data.company.tradeName} cadastrada.`);
-      onCreated?.();
-      reset(organizationRegistrationDefaultValues);
-      setSecondaryCnaeDraft("");
-      setSecondaryCnaeError(null);
-      setStep(0);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Não foi possível cadastrar a organização.");
-    }
+    await onSubmit(toOrganizationWriteBody(data));
   }
 
   function addSecondaryCnae(rawValue = secondaryCnaeDraft) {
@@ -174,7 +152,7 @@ export function OrganizationRegistrationForm({
       next.push(normalized);
     }
 
-    setValue("company.secondaryCnaes", next, { shouldDirty: true, shouldValidate: true });
+    setValue("organization.secondaryCnaes", next, { shouldDirty: true, shouldValidate: true });
     setSecondaryCnaeDraft("");
     setSecondaryCnaeError(null);
     return true;
@@ -182,7 +160,7 @@ export function OrganizationRegistrationForm({
 
   function removeSecondaryCnae(value: string) {
     setValue(
-      "company.secondaryCnaes",
+      "organization.secondaryCnaes",
       secondaryCnaes.filter((item) => item !== value),
       { shouldDirty: true, shouldValidate: true },
     );
@@ -196,44 +174,37 @@ export function OrganizationRegistrationForm({
         <p className="text-sm text-[var(--text-secondary)]">{currentStep.description}</p>
       </div>
 
-      {currentStep.key === "company" ? (
+      {currentStep.key === "organization" ? (
         <Card>
           <CardHeader>
             <CardTitle>Identificação</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <FormField
-              error={errors.company?.legalName}
+              error={errors.organization?.legalName}
               label="Razão social"
-              name="company.legalName"
+              name="organization.legalName"
               register={register}
             />
             <FormField
-              error={errors.company?.tradeName}
+              error={errors.organization?.tradeName}
               label="Nome fantasia"
-              name="company.tradeName"
+              name="organization.tradeName"
               register={register}
             />
             <FormField
-              error={errors.company?.cnpj}
+              error={errors.organization?.cnpj}
               label="CNPJ"
               mask={formatCnpj}
-              name="company.cnpj"
+              name="organization.cnpj"
               register={register}
               setValue={setValue}
             />
             <FormField
-              error={errors.company?.foundationDate}
-              label="Data de fundação"
-              name="company.foundationDate"
-              register={register}
-              type="date"
-            />
-            <FormField
-              error={errors.company?.primaryCnae}
+              error={errors.organization?.primaryCnae}
               label="CNAE principal"
               mask={formatCnae}
-              name="company.primaryCnae"
+              name="organization.primaryCnae"
               placeholder="0000-0/00"
               register={register}
               setValue={setValue}
@@ -241,14 +212,14 @@ export function OrganizationRegistrationForm({
             <div className="md:col-span-2">
               <label
                 className="mb-1 block text-sm font-medium text-[var(--text-secondary)]"
-                htmlFor="company-secondary-cnaes"
+                htmlFor="organization-secondary-cnaes"
               >
                 CNAEs secundários
               </label>
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
                   <Input
-                    id="company-secondary-cnaes"
+                    id="organization-secondary-cnaes"
                     onChange={(event) => {
                       const value = event.target.value;
 
@@ -300,9 +271,9 @@ export function OrganizationRegistrationForm({
                   </div>
                 ) : null}
               </div>
-              {secondaryCnaeError || getFieldErrorMessage(errors.company?.secondaryCnaes) ? (
+              {secondaryCnaeError || getFieldErrorMessage(errors.organization?.secondaryCnaes) ? (
                 <span className="mt-1 block text-xs text-[var(--error-600)]">
-                  {secondaryCnaeError ?? getFieldErrorMessage(errors.company?.secondaryCnaes)}
+                  {secondaryCnaeError ?? getFieldErrorMessage(errors.organization?.secondaryCnaes)}
                 </span>
               ) : null}
             </div>
@@ -317,18 +288,26 @@ export function OrganizationRegistrationForm({
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <FormField
-              error={errors.address?.cep}
+              className="md:col-span-3"
+              error={errors.address?.title}
+              label="Título do endereço (opcional)"
+              name="address.title"
+              placeholder="Sede, Filial..."
+              register={register}
+            />
+            <FormField
+              error={errors.address?.zipcode}
               label="CEP"
               mask={formatCep}
-              name="address.cep"
+              name="address.zipcode"
               register={register}
               setValue={setValue}
             />
             <FormField
               className="md:col-span-2"
-              error={errors.address?.logradouro}
+              error={errors.address?.street}
               label="Logradouro"
-              name="address.logradouro"
+              name="address.street"
               register={register}
             />
             <FormField error={errors.address?.number} label="Número" name="address.number" register={register} />
@@ -371,23 +350,37 @@ export function OrganizationRegistrationForm({
               <p className="text-sm text-[var(--text-secondary)]">Nenhum plano disponível.</p>
             ) : null}
             <div className="grid gap-3 md:grid-cols-3">
-              {availablePlans.map((plan) => (
-                <label
-                  className="flex cursor-pointer flex-col gap-3 rounded-md border border-border p-4 transition-colors hover:border-primary"
-                  key={plan.id}
-                >
-                  <input className="sr-only" type="radio" value={plan.id} {...register("subscriptionPlanId")} />
-                  <span className="font-heading text-lg text-[var(--text-primary)]">{plan.name}</span>
-                  <span className="text-2xl font-semibold text-[var(--text-primary)]">
-                    {formatCurrency(plan.priceInCents)}
-                  </span>
-                  <span className="text-sm text-[var(--text-secondary)]">{formatPlanOperators(plan)}</span>
-                  <span className="text-sm text-[var(--text-secondary)]">{plan.maxActiveUsers} usuários</span>
-                </label>
-              ))}
+              {availablePlans.map((plan) => {
+                const isSelected = values.currentPlanId === plan.id;
+
+                return (
+                  <label
+                    className={cn(
+                      "flex cursor-pointer flex-col gap-3 rounded-md border p-4 transition-colors hover:border-primary",
+                      isSelected ? "border-primary bg-primary-subtle shadow-primary" : "border-border",
+                    )}
+                    key={plan.id}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-heading text-lg text-[var(--text-primary)]">{plan.title}</span>
+                      {isSelected ? (
+                        <span className="shrink-0 text-[var(--green-700)]">
+                          <Icon name="check-circle-2" size={20} />
+                        </span>
+                      ) : null}
+                    </div>
+                    <input className="sr-only" type="radio" value={plan.id} {...register("currentPlanId")} />
+                    <span className="text-2xl font-semibold text-[var(--text-primary)]">
+                      {formatCurrency(plan.priceInCents)}
+                    </span>
+                    <span className="text-sm text-[var(--text-secondary)]">{formatPlanOperators(plan)}</span>
+                    <span className="text-sm text-[var(--text-secondary)]">{plan.patientsLimit} usuários</span>
+                  </label>
+                );
+              })}
             </div>
-            {errors.subscriptionPlanId?.message ? (
-              <span className="block text-xs text-[var(--error-600)]">{errors.subscriptionPlanId.message}</span>
+            {errors.currentPlanId?.message ? (
+              <span className="block text-xs text-[var(--error-600)]">{errors.currentPlanId.message}</span>
             ) : null}
           </CardContent>
         </Card>
@@ -399,35 +392,35 @@ export function OrganizationRegistrationForm({
             <CardTitle>Resumo</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm text-[var(--text-secondary)] md:grid-cols-2">
-            <SummaryItem label="Organização" value={values.company.tradeName || values.company.legalName} />
-            <SummaryItem label="CNPJ" value={values.company.cnpj} />
-            <SummaryItem label="CNAE principal" value={formatCnae(values.company.primaryCnae)} />
+            <SummaryItem label="Organização" value={values.organization.tradeName || values.organization.legalName} />
+            <SummaryItem label="CNPJ" value={formatCnpj(values.organization.cnpj)} />
+            <SummaryItem label="CNAE principal" value={formatCnae(values.organization.primaryCnae)} />
             <SummaryItem
               label="CNAEs secundários"
               value={secondaryCnaes.map((cnae) => formatCnae(cnae)).join(", ")}
             />
             <SummaryItem label="Cidade/UF" value={`${values.address.city}/${values.address.state}`} />
-            <SummaryItem label="Plano" value={selectedPlan?.name ?? values.subscriptionPlanId} />
+            <SummaryItem label="Plano" value={selectedPlan?.title ?? values.currentPlanId} />
           </CardContent>
         </Card>
       ) : null}
 
-      {status ? (
-        <p className={submitted ? "text-sm text-[var(--success-600)]" : "text-sm text-[var(--text-secondary)]"}>
-          {status}
+      {errorMessage ? (
+        <p className="text-sm text-[var(--error-600)]" role="alert">
+          {errorMessage}
         </p>
       ) : null}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-        <Button disabled={isFirstStep || isSubmitting} onClick={goBack} type="button" variant="secondary">
+        <Button disabled={isFirstStep || pending} onClick={goBack} type="button" variant="secondary">
           Voltar
         </Button>
         {isReviewStep ? (
-          <Button disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Cadastrando..." : "Cadastrar organização"}
+          <Button disabled={pending} type="submit">
+            {pending ? submittingLabel : submitLabel}
           </Button>
         ) : (
-          <Button disabled={isSubmitting} onClick={goNext} type="button">
+          <Button disabled={pending} onClick={goNext} type="button">
             Continuar
           </Button>
         )}
@@ -443,10 +436,10 @@ function formatCurrency(valueInCents: number) {
   }).format(valueInCents / 100);
 }
 
-function formatPlanOperators(plan: SubscriptionPlanDto) {
-  if (plan.operatorLimitType === "unlimited") return "Operadores ilimitados";
+function formatPlanOperators(plan: SubscriptionPlan) {
+  if (plan.unlimitedOperators) return "Operadores ilimitados";
 
-  return `${plan.maxOperators ?? 0} operadores`;
+  return `${plan.operatorsLimit} operadores`;
 }
 
 function FormField({

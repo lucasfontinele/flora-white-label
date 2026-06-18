@@ -4,30 +4,33 @@ import { listOrganizations } from "./list-organizations";
 const response = {
   data: [
     {
-      city: "Palmas",
-      cnpj: "11222333000181",
-      createdAt: "2026-06-16T00:00:00.000Z",
       id: "org_1",
-      legalName: "Associacao Medicinal Exemplo LTDA",
-      state: "TO",
-      subscriptionPlan: {
-        code: "starter",
-        id: "plan_starter",
-        maxActiveUsers: 50,
-        maxOperators: 10,
-        name: "Starter",
-        operatorLimitType: "limited",
-        priceInCents: 59700,
-      },
       tradeName: "Associacao Exemplo",
+      legalName: "Associacao Medicinal Exemplo LTDA",
+      cnpj: "11222333000181",
+      primaryCnae: "9430800",
+      secondaryCnaes: ["9499500"],
+      currentPlan: {
+        id: "plan_starter",
+        title: "Starter",
+        priceInCents: 59700,
+        operatorsLimit: 10,
+        patientsLimit: 50,
+      },
+      address: {
+        id: "addr_1",
+        title: null,
+        zipcode: "77001000",
+        street: "Quadra 101 Sul",
+        neighborhood: "Plano Diretor Sul",
+        complement: null,
+        city: "Palmas",
+        state: "TO",
+      },
+      createdAt: "2026-06-16T00:00:00.000Z",
+      updatedAt: "2026-06-16T00:00:00.000Z",
     },
   ],
-  pagination: {
-    page: 1,
-    perPage: 20,
-    total: 1,
-    totalPages: 1,
-  },
 };
 
 describe("listOrganizations", () => {
@@ -35,14 +38,14 @@ describe("listOrganizations", () => {
     vi.unstubAllGlobals();
   });
 
-  it("requests the organization list with pagination and temporary Master headers", async () => {
+  it("requests the organization list with temporary Master headers", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(listOrganizations({ page: 1, perPage: 20 })).resolves.toEqual(response);
+    await expect(listOrganizations()).resolves.toEqual(response);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3333/organizations?page=1&perPage=20",
+      "http://localhost:3333/backoffice/organizations",
       expect.objectContaining({
         headers: expect.any(Headers),
         method: "GET",

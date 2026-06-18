@@ -1,0 +1,365 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Backoffice Organizations API
+  version: 0.1.0
+  description: API contract for the master backoffice organization CRUD.
+servers:
+  - url: http://localhost:3333
+paths:
+  /backoffice/organizations:
+    post:
+      summary: Create an organization with address
+      operationId: createOrganization
+      tags:
+        - Organizations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationWriteRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/PlanNotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+    get:
+      summary: List organizations
+      operationId: listOrganizations
+      tags:
+        - Organizations
+      responses:
+        "200":
+          description: Organizations list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrganizationResponse"
+  /backoffice/organizations/{id}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      summary: Get an organization by ID
+      operationId: getOrganization
+      tags:
+        - Organizations
+      responses:
+        "200":
+          description: Organization found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/OrganizationNotFound"
+    put:
+      summary: Fully update an organization and its address
+      operationId: updateOrganization
+      tags:
+        - Organizations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationWriteRequest"
+      responses:
+        "200":
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/OrganizationOrPlanNotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+    delete:
+      summary: Delete an organization
+      operationId: deleteOrganization
+      tags:
+        - Organizations
+      responses:
+        "204":
+          description: Organization deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/OrganizationNotFound"
+components:
+  parameters:
+    OrganizationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Organization identifier.
+  schemas:
+    OrganizationWriteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - organization
+        - address
+      properties:
+        organization:
+          $ref: "#/components/schemas/OrganizationWriteData"
+        address:
+          $ref: "#/components/schemas/AddressWriteData"
+    OrganizationWriteData:
+      type: object
+      additionalProperties: false
+      required:
+        - tradeName
+        - legalName
+        - cnpj
+        - primaryCnae
+        - currentPlanId
+      properties:
+        tradeName:
+          type: string
+          minLength: 1
+        legalName:
+          type: string
+          minLength: 1
+        cnpj:
+          type: string
+          minLength: 1
+          description: Masked or unmasked CNPJ; stored as 14 digits.
+        primaryCnae:
+          type: string
+          minLength: 1
+          description: Masked or unmasked CNAE; stored as 7 digits.
+        secondaryCnaes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        currentPlanId:
+          type: string
+          minLength: 1
+    AddressWriteData:
+      type: object
+      additionalProperties: false
+      required:
+        - zipcode
+        - street
+        - neighborhood
+        - city
+        - state
+      properties:
+        title:
+          anyOf:
+            - type: string
+            - type: "null"
+        zipcode:
+          type: string
+          minLength: 1
+          description: Masked or unmasked CEP; stored as 8 digits.
+        street:
+          type: string
+          minLength: 1
+        neighborhood:
+          type: string
+          minLength: 1
+        complement:
+          anyOf:
+            - type: string
+            - type: "null"
+        city:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: Brazilian UF.
+    OrganizationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - tradeName
+        - legalName
+        - cnpj
+        - primaryCnae
+        - secondaryCnaes
+        - currentPlan
+        - address
+      properties:
+        id:
+          type: string
+        tradeName:
+          type: string
+        legalName:
+          type: string
+        cnpj:
+          type: string
+          pattern: "^\\d{14}$"
+        primaryCnae:
+          type: string
+          pattern: "^\\d{7}$"
+        secondaryCnaes:
+          type: array
+          items:
+            type: string
+            pattern: "^\\d{7}$"
+        currentPlan:
+          $ref: "#/components/schemas/CurrentPlanSummary"
+        address:
+          $ref: "#/components/schemas/AddressResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CurrentPlanSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - priceInCents
+        - operatorsLimit
+        - patientsLimit
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        priceInCents:
+          type: integer
+          minimum: 0
+        operatorsLimit:
+          type: integer
+          minimum: 0
+        patientsLimit:
+          type: integer
+          minimum: 1
+    AddressResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - zipcode
+        - street
+        - neighborhood
+        - complement
+        - city
+        - state
+      properties:
+        id:
+          type: string
+        title:
+          anyOf:
+            - type: string
+            - type: "null"
+        zipcode:
+          type: string
+          pattern: "^\\d{8}$"
+        street:
+          type: string
+        neighborhood:
+          type: string
+        complement:
+          anyOf:
+            - type: string
+            - type: "null"
+        city:
+          type: string
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Request payload or params validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: ValidationError
+            message: Invalid request body.
+    DomainValidationError:
+      description: Domain validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: DomainValidationError
+            message: Invalid CNPJ.
+    PlanNotFound:
+      description: Current plan not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: NotFoundError
+            message: Subscription plan "plan-id" was not found.
+    OrganizationNotFound:
+      description: Organization not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: NotFoundError
+            message: Organization "organization-id" was not found.
+    OrganizationOrPlanNotFound:
+      description: Organization or current plan not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict with an existing organization
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: ConflictError
+            message: An organization with CNPJ "11222333000181" already exists.

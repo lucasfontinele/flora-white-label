@@ -1,39 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { organizationRegistrationSchema, organizationRegistrationStepFields } from "./organization-registration-schema";
+import {
+  organizationRegistrationSchema,
+  organizationRegistrationStepFields,
+  toOrganizationWriteBody,
+} from "./organization-registration-schema";
 
 const validInput = {
-  address: {
-    cep: "77001-000",
-    city: "Palmas",
-    complement: "",
-    logradouro: "Quadra 101 Sul",
-    neighborhood: "Plano Diretor Sul",
-    number: "10",
-    state: "TO",
-  },
-  company: {
-    cnpj: "11.222.333/0001-81",
-    foundationDate: "2020-01-15",
+  organization: {
     legalName: "Associacao Medicinal Exemplo LTDA",
+    tradeName: "Associacao Exemplo",
+    cnpj: "11.222.333/0001-81",
     primaryCnae: "9430-8/00",
     secondaryCnaes: ["9499-5/00"],
-    tradeName: "Associacao Exemplo",
   },
-  subscriptionPlanId: "plan_starter",
+  address: {
+    title: "",
+    zipcode: "77001-000",
+    street: "Quadra 101 Sul",
+    number: "10",
+    complement: "",
+    neighborhood: "Plano Diretor Sul",
+    city: "Palmas",
+    state: "TO",
+  },
+  currentPlanId: "plan_starter",
 };
 
 describe("organizationRegistrationSchema", () => {
-  it("accepts valid input with optional complement and secondary CNAEs omitted", () => {
+  it("accepts valid input with optional fields omitted", () => {
     const result = organizationRegistrationSchema.safeParse({
       ...validInput,
-      address: {
-        ...validInput.address,
-        complement: undefined,
-      },
-      company: {
-        ...validInput.company,
-        secondaryCnaes: undefined,
-      },
+      address: { ...validInput.address, complement: undefined, title: undefined, number: undefined },
+      organization: { ...validInput.organization, secondaryCnaes: undefined },
     });
 
     expect(result.success).toBe(true);
@@ -42,30 +40,24 @@ describe("organizationRegistrationSchema", () => {
   it("normalizes masked fields before submission", () => {
     const result = organizationRegistrationSchema.parse(validInput);
 
-    expect(result.address.cep).toBe("77001000");
+    expect(result.address.zipcode).toBe("77001000");
     expect(result.address.state).toBe("TO");
-    expect(result.company.cnpj).toBe("11222333000181");
-    expect(result.company.primaryCnae).toBe("9430800");
-    expect(result.company.secondaryCnaes).toEqual(["9499500"]);
+    expect(result.organization.cnpj).toBe("11222333000181");
+    expect(result.organization.primaryCnae).toBe("9430800");
+    expect(result.organization.secondaryCnaes).toEqual(["9499500"]);
   });
 
   it("rejects missing required organization fields", () => {
     const result = organizationRegistrationSchema.safeParse({
       ...validInput,
-      company: {
-        ...validInput.company,
-        legalName: "",
-      },
+      organization: { ...validInput.organization, legalName: "" },
     });
 
     expect(result.success).toBe(false);
   });
 
-  it("rejects invalid cents-safe plan input", () => {
-    const result = organizationRegistrationSchema.safeParse({
-      ...validInput,
-      subscriptionPlanId: "",
-    });
+  it("rejects an empty plan selection", () => {
+    const result = organizationRegistrationSchema.safeParse({ ...validInput, currentPlanId: "" });
 
     expect(result.success).toBe(false);
   });
@@ -73,38 +65,59 @@ describe("organizationRegistrationSchema", () => {
   it("rejects descriptive or duplicated secondary CNAEs", () => {
     const descriptive = organizationRegistrationSchema.safeParse({
       ...validInput,
-      company: {
-        ...validInput.company,
-        secondaryCnaes: ["9430-8/00 Atividades associativas"],
-      },
+      organization: { ...validInput.organization, secondaryCnaes: ["9430-8/00 Atividades associativas"] },
     });
     const duplicated = organizationRegistrationSchema.safeParse({
       ...validInput,
-      company: {
-        ...validInput.company,
-        secondaryCnaes: ["9430-8/00", "9430800"],
-      },
+      organization: { ...validInput.organization, secondaryCnaes: ["9430-8/00", "9430800"] },
     });
 
     expect(descriptive.success).toBe(false);
     expect(duplicated.success).toBe(false);
   });
 
-  it("rejects a future foundation date", () => {
-    const result = organizationRegistrationSchema.safeParse({
-      ...validInput,
-      company: {
-        ...validInput.company,
-        foundationDate: "2999-01-01",
+  it("exposes field groups for step-by-step validation", () => {
+    expect(organizationRegistrationStepFields.organization).toContain("organization.legalName");
+    expect(organizationRegistrationStepFields.address).toContain("address.zipcode");
+    expect(organizationRegistrationStepFields.plan).toEqual(["currentPlanId"]);
+  });
+});
+
+describe("toOrganizationWriteBody", () => {
+  it("maps the validated values into the API write body, folding the number into the street", () => {
+    const parsed = organizationRegistrationSchema.parse(validInput);
+    const body = toOrganizationWriteBody(parsed);
+
+    expect(body).toEqual({
+      organization: {
+        tradeName: "Associacao Exemplo",
+        legalName: "Associacao Medicinal Exemplo LTDA",
+        cnpj: "11222333000181",
+        primaryCnae: "9430800",
+        secondaryCnaes: ["9499500"],
+        currentPlanId: "plan_starter",
+      },
+      address: {
+        title: null,
+        zipcode: "77001000",
+        street: "Quadra 101 Sul, 10",
+        neighborhood: "Plano Diretor Sul",
+        complement: null,
+        city: "Palmas",
+        state: "TO",
       },
     });
-
-    expect(result.success).toBe(false);
   });
 
-  it("exposes field groups for step-by-step validation", () => {
-    expect(organizationRegistrationStepFields.company).toContain("company.legalName");
-    expect(organizationRegistrationStepFields.address).toContain("address.cep");
-    expect(organizationRegistrationStepFields.plan).toEqual(["subscriptionPlanId"]);
+  it("keeps the street unchanged when no number is provided and preserves optional text", () => {
+    const parsed = organizationRegistrationSchema.parse({
+      ...validInput,
+      address: { ...validInput.address, number: "", title: "Sede", complement: "Sala 2" },
+    });
+    const body = toOrganizationWriteBody(parsed);
+
+    expect(body.address.street).toBe("Quadra 101 Sul");
+    expect(body.address.title).toBe("Sede");
+    expect(body.address.complement).toBe("Sala 2");
   });
 });

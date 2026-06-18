@@ -1,54 +1,44 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createOrganization } from "./create-organization";
+import type { OrganizationWriteBody } from "../types";
 
-const input = {
-  address: {
-    cep: "77001000",
-    city: "Palmas",
-    logradouro: "Quadra 101 Sul",
-    neighborhood: "Plano Diretor Sul",
-    number: "10",
-    state: "TO",
-  },
-  company: {
-    cnpj: "11222333000181",
-    foundationDate: "2020-01-15",
-    facebook: "https://facebook.com/associacao",
-    instagram: "https://instagram.com/associacao",
-    institutionalEmail: "contato@associacao.org.br",
-    linkedin: "https://linkedin.com/company/associacao",
+const body: OrganizationWriteBody = {
+  organization: {
+    tradeName: "Associacao Exemplo",
     legalName: "Associacao Medicinal Exemplo LTDA",
-    phone: "6333330000",
+    cnpj: "11222333000181",
     primaryCnae: "9430800",
     secondaryCnaes: ["9499500"],
-    site: "https://associacao.org.br",
-    tradeName: "Associacao Exemplo",
-    whatsapp: "63999990000",
+    currentPlanId: "plan_starter",
   },
-  subscriptionPlanId: "plan_starter",
+  address: {
+    title: null,
+    zipcode: "77001000",
+    street: "Quadra 101 Sul, 10",
+    neighborhood: "Plano Diretor Sul",
+    complement: null,
+    city: "Palmas",
+    state: "TO",
+  },
 };
 
 const response = {
-  data: {
-    address: {
-      id: "addr_1",
-      ...input.address,
-    },
-    company: input.company,
-    createdAt: "2026-06-16T00:00:00.000Z",
-    createdByMasterUserId: "master_1",
-    id: "org_1",
-    subscriptionPlan: {
-      code: "starter",
-      id: "plan_starter",
-      maxActiveUsers: 50,
-      maxOperators: 10,
-      name: "Starter",
-      operatorLimitType: "limited",
-      priceInCents: 59700,
-    },
-    updatedAt: "2026-06-16T00:00:00.000Z",
+  id: "org_1",
+  tradeName: body.organization.tradeName,
+  legalName: body.organization.legalName,
+  cnpj: body.organization.cnpj,
+  primaryCnae: body.organization.primaryCnae,
+  secondaryCnaes: body.organization.secondaryCnaes,
+  currentPlan: {
+    id: "plan_starter",
+    title: "Starter",
+    priceInCents: 59700,
+    operatorsLimit: 10,
+    patientsLimit: 50,
   },
+  address: { id: "addr_1", ...body.address },
+  createdAt: "2026-06-16T00:00:00.000Z",
+  updatedAt: "2026-06-16T00:00:00.000Z",
 };
 
 describe("createOrganization", () => {
@@ -56,16 +46,16 @@ describe("createOrganization", () => {
     vi.unstubAllGlobals();
   });
 
-  it("posts an organization registration payload", async () => {
+  it("posts an organization registration payload to the backoffice endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(createOrganization(input)).resolves.toEqual(response);
+    await expect(createOrganization(body)).resolves.toEqual(response);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3333/organizations",
+      "http://localhost:3333/backoffice/organizations",
       expect.objectContaining({
-        body: JSON.stringify(input),
+        body: JSON.stringify(body),
         headers: expect.any(Headers),
         method: "POST",
       }),

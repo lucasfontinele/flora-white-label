@@ -1,22 +1,66 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Icon } from "@/components/ui/icon";
+import { useToast } from "@/components/ui/toast";
+import { ApiRequestError } from "@/lib/http";
 import { OrganizationListTable } from "./components/organization-list-table";
-import { useOrganizations } from "./queries/use-organizations";
+import { useDeleteOrganization, useOrganizations } from "./queries/use-organizations";
+import type { Organization } from "./types";
+
+function describeDeleteError(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    if (error.status === 404) {
+      return "Organização não encontrada. Atualize a página e tente novamente.";
+    }
+    if (error.status === 409) {
+      return "Esta organização possui vínculos e não pode ser excluída.";
+    }
+  }
+
+  return "Não foi possível excluir a organização. Tente novamente.";
+}
 
 export default function MasterOrganizationsPage() {
-  const query = useOrganizations({ page: 1, perPage: 20 });
-  const data = query.data ?? {
-    data: [],
-    pagination: {
-      page: 1,
-      perPage: 20,
-      total: 0,
-      totalPages: 0,
-    },
-  };
+  const query = useOrganizations();
+  const deleteMutation = useDeleteOrganization();
+  const { toast } = useToast();
+  const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null);
+
+  const organizations = query.data?.data ?? [];
+
+  function requestDelete(organization: Organization) {
+    deleteMutation.reset();
+    setOrganizationToDelete(organization);
+  }
+
+  function cancelDelete() {
+    if (deleteMutation.isPending) return;
+    deleteMutation.reset();
+    setOrganizationToDelete(null);
+  }
+
+  function confirmDelete() {
+    if (!organizationToDelete) return;
+    const { tradeName } = organizationToDelete;
+
+    deleteMutation.mutate(organizationToDelete.id, {
+      onSuccess: () => {
+        setOrganizationToDelete(null);
+        toast({
+          variant: "success",
+          title: "Organização excluída",
+          description: `${tradeName} foi removida com sucesso.`,
+        });
+      },
+      onError: (error) => {
+        toast({ variant: "error", title: "Erro ao excluir", description: describeDeleteError(error) });
+      },
+    });
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,9 +83,29 @@ export default function MasterOrganizationsPage() {
       <OrganizationListTable
         error={query.error instanceof Error ? query.error : null}
         isLoading={query.isLoading}
+        onDelete={requestDelete}
         onRetry={() => void query.refetch()}
-        organizations={data.data}
-        pagination={data.pagination}
+        organizations={organizations}
+      />
+
+      <ConfirmDialog
+        open={organizationToDelete !== null}
+        title="Excluir organização"
+        description={
+          organizationToDelete ? (
+            <>
+              Tem certeza que deseja excluir a organização <strong>{organizationToDelete.tradeName}</strong>? Esta ação
+              não pode ser desfeita.
+            </>
+          ) : null
+        }
+        confirmLabel="Excluir"
+        confirmVariant="danger"
+        pending={deleteMutation.isPending}
+        pendingLabel="Excluindo..."
+        errorMessage={deleteMutation.isError ? describeDeleteError(deleteMutation.error) : undefined}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
       />
     </div>
   );

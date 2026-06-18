@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { env } from "../../../../config/env.js";
+import { organizationRoutes } from "../../../../modules/organizations/presentation/http/organization-routes.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { prismaPlugin } from "./plugins/prisma.js";
@@ -29,6 +30,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(swaggerDocsPlugin);
 
   await app.register(healthRoute);
+  await app.register(organizationRoutes);
   await app.register(subscriptionPlanRoutes);
 
   await app.register(swaggerUi, {

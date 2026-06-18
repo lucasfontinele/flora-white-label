@@ -11,4 +11,17 @@ export class PrismaAddressRepository implements AddressRepository {
       data: AddressMapper.toPersistence(address),
     });
   }
+
+  async save(address: Address): Promise<void> {
+    await this.prisma.getClient().address.update({
+      where: { id: address.id },
+      data: AddressMapper.toUpdatePersistence(address),
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.getClient().address.delete({
+      where: { id },
+    });
+  }
 }

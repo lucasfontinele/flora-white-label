@@ -38,6 +38,10 @@ export class Address extends Entity<AddressProps> {
       throw new DomainValidationError("Address zipcode is required.");
     }
 
+    if (zipcode.length !== 8) {
+      throw new DomainValidationError("Address zipcode must have exactly 8 digits.");
+    }
+
     const street = input.street.trim();
     if (street.length === 0) {
       throw new DomainValidationError("Address street is required.");

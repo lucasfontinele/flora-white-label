@@ -1,7 +1,18 @@
-import type { Prisma, Organization as PrismaOrganization } from "@prisma/client";
+import type {
+  Address as PrismaAddress,
+  Organization as PrismaOrganization,
+  Prisma,
+  SubscriptionPlan as PrismaSubscriptionPlan,
+} from "@prisma/client";
+import type { OrganizationReadModel } from "../../application/repositories/OrganizationRepository.js";
 import { Organization } from "../../domain/entities/Organization.js";
 import { Cnpj } from "../../domain/value-objects/Cnpj.js";
 import { Cnae } from "../../domain/value-objects/Cnae.js";
+
+export type PrismaOrganizationWithDetails = PrismaOrganization & {
+  address: PrismaAddress;
+  currentPlan: PrismaSubscriptionPlan;
+};
 
 export class OrganizationMapper {
   static toDomain(record: PrismaOrganization): Organization {
@@ -29,6 +40,50 @@ export class OrganizationMapper {
       secondaryCnaes: organization.secondaryCnaes.map((cnae) => cnae.value),
       currentPlanId: organization.currentPlanId,
       addressId: organization.addressId,
+    };
+  }
+
+  static toUpdatePersistence(
+    organization: Organization,
+  ): Prisma.OrganizationUncheckedUpdateInput {
+    return {
+      tradeName: organization.tradeName,
+      legalName: organization.legalName,
+      cnpj: organization.cnpj.value,
+      primaryCnae: organization.primaryCnae.value,
+      secondaryCnaes: organization.secondaryCnaes.map((cnae) => cnae.value),
+      currentPlanId: organization.currentPlanId,
+      addressId: organization.addressId,
+    };
+  }
+
+  static toReadModel(record: PrismaOrganizationWithDetails): OrganizationReadModel {
+    return {
+      id: record.id,
+      tradeName: record.tradeName,
+      legalName: record.legalName,
+      cnpj: record.cnpj,
+      primaryCnae: record.primaryCnae,
+      secondaryCnaes: record.secondaryCnaes,
+      currentPlan: {
+        id: record.currentPlan.id,
+        title: record.currentPlan.title,
+        priceInCents: record.currentPlan.priceInCents,
+        operatorsLimit: record.currentPlan.operatorsLimit,
+        patientsLimit: record.currentPlan.patientsLimit,
+      },
+      address: {
+        id: record.address.id,
+        title: record.address.title,
+        zipcode: record.address.zipcode,
+        street: record.address.street,
+        neighborhood: record.address.neighborhood,
+        complement: record.address.complement,
+        city: record.address.city,
+        state: record.address.state,
+      },
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
     };
   }
 }

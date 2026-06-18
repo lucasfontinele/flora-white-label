@@ -29,4 +29,16 @@ export class AddressMapper {
       state: address.state,
     };
   }
+
+  static toUpdatePersistence(address: Address): Prisma.AddressUncheckedUpdateInput {
+    return {
+      title: address.title,
+      zipcode: address.zipcode,
+      street: address.street,
+      neighborhood: address.neighborhood,
+      complement: address.complement,
+      city: address.city,
+      state: address.state,
+    };
+  }
 }
