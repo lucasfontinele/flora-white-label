@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { AuthenticationError } from "../../../../shared/application/errors/AuthenticationError.js";
 import type { HashService } from "../../../../shared/application/cryptography/HashService.js";
 import type { JwtPayload, JwtService } from "../../../../shared/application/tokens/JwtService.js";
+import type {
+  AuthenticatedUserContext,
+  AuthenticatedUserContextRepository,
+} from "../../../users/application/repositories/AuthenticatedUserContextRepository.js";
 import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import { User } from "../../../users/domain/entities/User.js";
 import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
@@ -29,6 +33,14 @@ class InMemoryUserRepository implements UserRepository {
     if (index >= 0) {
       this.users[index] = user;
     }
+  }
+}
+
+class InMemoryAuthenticatedUserContextRepository implements AuthenticatedUserContextRepository {
+  constructor(private readonly contexts: AuthenticatedUserContext[]) {}
+
+  async findByUserId(userId: string): Promise<AuthenticatedUserContext | null> {
+    return this.contexts.find((context) => context.user.id === userId) ?? null;
   }
 }
 
@@ -67,22 +79,43 @@ function makeUser(profile: UserProfile, id = `user-${profile}`): User {
       email: Email.create(`${profile.toLowerCase()}@example.com`),
       passwordHash: PasswordHash.fromHash("hashed-password"),
       profile,
-      guardianId:
-        profile === UserProfile.Guardian || profile === UserProfile.Patient
-          ? "guardian-1"
-          : undefined,
+      guardianId: profile === UserProfile.Guardian ? "guardian-1" : undefined,
       patientId: profile === UserProfile.Patient ? "patient-1" : undefined,
     },
     id,
   );
 }
 
-function makeSut(options: { users?: User[]; passwordMatches?: boolean } = {}) {
+function toAuthenticatedContext(user: User): AuthenticatedUserContext {
+  return {
+    user: {
+      id: user.id,
+      email: user.email.value,
+      profile: user.profile,
+      organizationId: user.organizationId,
+      guardianId: user.guardianId,
+      patientId: user.patientId,
+    },
+    managedPatients: [],
+  };
+}
+
+function makeSut(
+  options: {
+    users?: User[];
+    contexts?: AuthenticatedUserContext[];
+    passwordMatches?: boolean;
+  } = {},
+) {
   const userRepository = new InMemoryUserRepository(options.users ?? [makeUser(UserProfile.Master)]);
+  const contextRepository = new InMemoryAuthenticatedUserContextRepository(
+    options.contexts ?? (options.users ?? [makeUser(UserProfile.Master)]).map(toAuthenticatedContext),
+  );
   const hashService = new TrackingHashService(options.passwordMatches ?? true);
   const jwtService = new TrackingJwtService();
   const useCase = new AuthenticateUserUseCase({
     userRepository,
+    contextRepository,
     hashService,
     jwtService,
   });
@@ -140,9 +173,148 @@ describe("AuthenticateUserUseCase", () => {
         organizationId: "org-1",
         guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
+        guardian: null,
+        patient: null,
+        managedPatients: [],
       },
     });
     expect(JSON.stringify(output)).not.toContain("passwordHash");
+  });
+
+  it("returns guardian data and managed patients when the authenticated user is a Guardian", async () => {
+    const user = makeUser(UserProfile.Guardian);
+    const sut = makeSut({
+      users: [user],
+      contexts: [
+        {
+          user: {
+            id: user.id,
+            email: user.email.value,
+            profile: user.profile,
+            organizationId: user.organizationId,
+            guardianId: user.guardianId,
+          },
+          guardian: {
+            id: "guardian-1",
+            name: "Bob Tutor",
+            document: "52998224725",
+          },
+          managedPatients: [
+            {
+              id: "patient-1",
+              name: "Alice Doe",
+              document: "11144477735",
+              underPrivileged: false,
+            },
+            {
+              id: "patient-2",
+              name: "Charlie Doe",
+              document: "93541134780",
+              underPrivileged: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const output = await sut.useCase.execute({
+      email: user.email.value,
+      password: "secret",
+    });
+
+    expect(output.context.guardian).toEqual({
+      id: "guardian-1",
+      name: "Bob Tutor",
+      document: "52998224725",
+    });
+    expect(output.context.patient).toBeNull();
+    expect(output.context.managedPatients).toEqual([
+      {
+        id: "patient-1",
+        name: "Alice Doe",
+        document: "11144477735",
+        relationshipLabel: "Paciente vinculado",
+        underPrivileged: false,
+      },
+      {
+        id: "patient-2",
+        name: "Charlie Doe",
+        document: "93541134780",
+        relationshipLabel: "Paciente vinculado",
+        underPrivileged: true,
+      },
+    ]);
+  });
+
+  it("returns only the authenticated patient data when the user is a Patient", async () => {
+    const user = User.create(
+      {
+        organizationId: "org-1",
+        email: Email.create("patient@example.com"),
+        passwordHash: PasswordHash.fromHash("hashed-password"),
+        profile: UserProfile.Patient,
+        guardianId: "guardian-1",
+        patientId: "patient-1",
+      },
+      "user-Patient",
+    );
+    const sut = makeSut({
+      users: [user],
+      contexts: [
+        {
+          user: {
+            id: user.id,
+            email: user.email.value,
+            profile: user.profile,
+            organizationId: user.organizationId,
+            guardianId: "guardian-1",
+            patientId: "patient-1",
+          },
+          guardian: {
+            id: "guardian-1",
+            name: "Bob Tutor",
+            document: "52998224725",
+          },
+          patient: {
+            id: "patient-1",
+            name: "Alice Doe",
+            document: "11144477735",
+            underPrivileged: false,
+          },
+          managedPatients: [
+            {
+              id: "patient-1",
+              name: "Alice Doe",
+              document: "11144477735",
+              underPrivileged: false,
+            },
+            {
+              id: "patient-2",
+              name: "Charlie Doe",
+              document: "93541134780",
+              underPrivileged: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const output = await sut.useCase.execute({
+      email: user.email.value,
+      password: "secret",
+    });
+
+    expect(output.user.guardianId).toBeNull();
+    expect(output.context.guardianId).toBeNull();
+    expect(output.context.guardian).toBeNull();
+    expect(output.context.patient).toEqual({
+      id: "patient-1",
+      name: "Alice Doe",
+      document: "11144477735",
+      relationshipLabel: "Titular",
+      underPrivileged: false,
+    });
+    expect(output.context.managedPatients).toEqual([]);
   });
 
   it("throws a generic AuthenticationError when the email is unknown", async () => {

@@ -53,6 +53,15 @@ describe("auth schemas", () => {
       "Organization",
       "PatientPortal",
     ]);
+    expect(authContextResponseSchema.required).toEqual([
+      "view",
+      "organizationId",
+      "guardianId",
+      "patientId",
+      "guardian",
+      "patient",
+      "managedPatients",
+    ]);
     expect(loginResponseSchema.required).toEqual(["accessToken", "user", "context"]);
   });
 });

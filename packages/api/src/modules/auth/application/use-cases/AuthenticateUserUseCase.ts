@@ -1,6 +1,11 @@
 import { AuthenticationError } from "../../../../shared/application/errors/AuthenticationError.js";
 import type { HashService } from "../../../../shared/application/cryptography/HashService.js";
 import type { JwtPayload, JwtService } from "../../../../shared/application/tokens/JwtService.js";
+import type {
+  AuthenticatedUserContext,
+  AuthenticatedUserContextPatient,
+  AuthenticatedUserContextRepository,
+} from "../../../users/application/repositories/AuthenticatedUserContextRepository.js";
 import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
 import { Email } from "../../../users/domain/value-objects/Email.js";
@@ -22,6 +27,20 @@ export interface AuthTokenPayload extends JwtPayload {
   patientId: string | null;
 }
 
+export interface AuthPatientContext {
+  id: string;
+  name: string;
+  document: string;
+  relationshipLabel: string;
+  underPrivileged: boolean;
+}
+
+export interface AuthGuardianContext {
+  id: string;
+  name: string;
+  document: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   user: {
@@ -37,11 +56,15 @@ export interface LoginResponse {
     organizationId: string;
     guardianId: string | null;
     patientId: string | null;
+    guardian: AuthGuardianContext | null;
+    patient: AuthPatientContext | null;
+    managedPatients: AuthPatientContext[];
   };
 }
 
 export interface AuthenticateUserDependencies {
   userRepository: UserRepository;
+  contextRepository: AuthenticatedUserContextRepository;
   hashService: HashService;
   jwtService: JwtService;
 }
@@ -71,7 +94,7 @@ export class AuthenticateUserUseCase {
       email: user.email.value,
       profile: user.profile,
       organizationId: user.organizationId,
-      guardianId: user.guardianId ?? null,
+      guardianId: user.profile === UserProfile.Guardian ? (user.guardianId ?? null) : null,
       patientId: user.patientId ?? null,
     };
 
@@ -85,6 +108,7 @@ export class AuthenticateUserUseCase {
     };
 
     const accessToken = await this.deps.jwtService.sign(tokenPayload);
+    const authenticatedContext = await this.deps.contextRepository.findByUserId(user.id);
 
     return {
       accessToken,
@@ -94,6 +118,18 @@ export class AuthenticateUserUseCase {
         organizationId: publicUser.organizationId,
         guardianId: publicUser.guardianId,
         patientId: publicUser.patientId,
+        guardian:
+          user.profile === UserProfile.Guardian ? (authenticatedContext?.guardian ?? null) : null,
+        patient:
+          user.profile === UserProfile.Patient
+            ? this.resolvePatientContext(authenticatedContext, publicUser.patientId)
+            : null,
+        managedPatients:
+          user.profile === UserProfile.Guardian
+            ? (authenticatedContext?.managedPatients.map((patient) =>
+                this.toPatientContext(patient, publicUser.patientId),
+              ) ?? [])
+            : [],
       },
     };
   }
@@ -108,5 +144,32 @@ export class AuthenticateUserUseCase {
       case UserProfile.Patient:
         return "PatientPortal";
     }
+  }
+
+  private resolvePatientContext(
+    context: AuthenticatedUserContext | null,
+    patientId: string | null,
+  ): AuthPatientContext | null {
+    if (!context || !patientId) {
+      return null;
+    }
+
+    const patient =
+      context.patient ?? context.managedPatients.find((managedPatient) => managedPatient.id === patientId);
+
+    return patient ? this.toPatientContext(patient, patientId) : null;
+  }
+
+  private toPatientContext(
+    patient: AuthenticatedUserContextPatient,
+    userPatientId: string | null,
+  ): AuthPatientContext {
+    return {
+      id: patient.id,
+      name: patient.name,
+      document: patient.document,
+      relationshipLabel: patient.id === userPatientId ? "Titular" : "Paciente vinculado",
+      underPrivileged: patient.underPrivileged,
+    };
   }
 }

@@ -17,6 +17,9 @@ export class AuthPresenter {
         organizationId: output.context.organizationId,
         guardianId: output.context.guardianId,
         patientId: output.context.patientId,
+        guardian: output.context.guardian,
+        patient: output.context.patient,
+        managedPatients: output.context.managedPatients,
       },
     };
   }

@@ -70,10 +70,65 @@ export const authUserResponseSchema = {
   },
 } as const;
 
+export const authGuardianContextResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "name", "document"],
+  properties: {
+    id: {
+      type: "string",
+      minLength: 1,
+    },
+    name: {
+      type: "string",
+      minLength: 1,
+    },
+    document: {
+      type: "string",
+      minLength: 1,
+    },
+  },
+} as const;
+
+export const authPatientContextResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "name", "document", "relationshipLabel", "underPrivileged"],
+  properties: {
+    id: {
+      type: "string",
+      minLength: 1,
+    },
+    name: {
+      type: "string",
+      minLength: 1,
+    },
+    document: {
+      type: "string",
+      minLength: 1,
+    },
+    relationshipLabel: {
+      type: "string",
+      minLength: 1,
+    },
+    underPrivileged: {
+      type: "boolean",
+    },
+  },
+} as const;
+
 export const authContextResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["view", "organizationId", "guardianId", "patientId"],
+  required: [
+    "view",
+    "organizationId",
+    "guardianId",
+    "patientId",
+    "guardian",
+    "patient",
+    "managedPatients",
+  ],
   properties: {
     view: {
       type: "string",
@@ -88,6 +143,16 @@ export const authContextResponseSchema = {
     },
     patientId: {
       type: ["string", "null"],
+    },
+    guardian: {
+      anyOf: [authGuardianContextResponseSchema, { type: "null" }],
+    },
+    patient: {
+      anyOf: [authPatientContextResponseSchema, { type: "null" }],
+    },
+    managedPatients: {
+      type: "array",
+      items: authPatientContextResponseSchema,
     },
   },
 } as const;

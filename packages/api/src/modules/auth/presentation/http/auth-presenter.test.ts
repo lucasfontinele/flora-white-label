@@ -18,6 +18,9 @@ describe("AuthPresenter", () => {
         organizationId: "org-1",
         guardianId: null,
         patientId: null,
+        guardian: null,
+        patient: null,
+        managedPatients: [],
       },
     });
 
@@ -36,6 +39,9 @@ describe("AuthPresenter", () => {
         organizationId: "org-1",
         guardianId: null,
         patientId: null,
+        guardian: null,
+        patient: null,
+        managedPatients: [],
       },
     });
     expect(JSON.stringify(output)).not.toContain("passwordHash");
