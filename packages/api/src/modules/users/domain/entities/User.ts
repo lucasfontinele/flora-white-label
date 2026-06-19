@@ -71,10 +71,6 @@ export class User extends Entity<UserProps> {
   }
 
   becomePatient(patientId: string): void {
-    if (!this.props.guardianId) {
-      throw new DomainValidationError("User must be linked to a guardian before becoming a patient.");
-    }
-
     const normalizedPatientId = User.normalizeId(patientId, "patientId");
     const nextProps = {
       ...this.props,
@@ -115,10 +111,6 @@ export class User extends Entity<UserProps> {
 
     if (props.profile === UserProfile.Guardian && !props.guardianId) {
       throw new DomainValidationError("Guardian users must be linked to a guardian.");
-    }
-
-    if (props.profile === UserProfile.Patient && !props.guardianId) {
-      throw new DomainValidationError("Patient users must be linked to a guardian.");
     }
 
     if (props.profile === UserProfile.Patient && !props.patientId) {

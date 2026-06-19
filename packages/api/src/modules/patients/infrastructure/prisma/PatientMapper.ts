@@ -11,7 +11,7 @@ export class PatientMapper {
     return Patient.create(
       {
         organizationId: record.organizationId,
-        guardianId: record.guardianId,
+        guardianId: record.guardianId ?? undefined,
         name: record.name,
         document: Document.create(record.document),
         birthdate: record.birthdate,
@@ -26,7 +26,7 @@ export class PatientMapper {
     return {
       id: patient.id,
       organizationId: patient.organizationId,
-      guardianId: patient.guardianId,
+      guardianId: patient.guardianId ?? null,
       name: patient.name,
       document: patient.document.value,
       birthdate: patient.birthdate,

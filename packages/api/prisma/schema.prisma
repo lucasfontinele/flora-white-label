@@ -50,7 +50,7 @@ model Guardian {
 model Patient {
   id              String   @id @default(uuid())
   organizationId  String
-  guardianId      String
+  guardianId      String?
   name            String
   document        String
   birthdate       DateTime
@@ -59,7 +59,7 @@ model Patient {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  guardian    Guardian            @relation(fields: [guardianId], references: [id])
+  guardian    Guardian?           @relation(fields: [guardianId], references: [id])
   users       User[]              @relation("UserPatient")
   assessments PatientAssessment[]
 

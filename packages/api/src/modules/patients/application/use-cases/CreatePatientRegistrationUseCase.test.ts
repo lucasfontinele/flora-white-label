@@ -155,23 +155,20 @@ function selfResponsibleInput(
 }
 
 describe("CreatePatientRegistrationUseCase", () => {
-  it("creates a guardian from the patient data when isSelfResponsible is true", async () => {
+  it("creates a self-responsible patient without a guardian when isSelfResponsible is true", async () => {
     const sut = makeSut();
 
     const output = await sut.useCase.execute(selfResponsibleInput());
 
-    expect(sut.guardianRepository.guardians).toHaveLength(1);
-    const guardian = first(sut.guardianRepository.guardians);
-    expect(guardian.name).toBe("Alice Doe");
-    expect(guardian.document.value).toBe("11144477735");
-    expect(output.guardianId).toBe(guardian.id);
+    expect(sut.guardianRepository.guardians).toHaveLength(0);
+    expect(output.guardianId).toBeUndefined();
 
     const patient = first(sut.patientRepository.patients);
-    expect(patient.guardianId).toBe(guardian.id);
+    expect(patient.guardianId).toBeUndefined();
 
     const user = first(sut.userRepository.users);
     expect(user.profile).toBe(UserProfile.Patient);
-    expect(user.guardianId).toBe(guardian.id);
+    expect(user.guardianId).toBeUndefined();
     expect(user.patientId).toBe(patient.id);
   });
 
@@ -210,16 +207,44 @@ describe("CreatePatientRegistrationUseCase", () => {
     expect(patient.guardianId).toBe(guardian.id);
   });
 
-  it("creates a PatientAssessment when underPrivileged is true", async () => {
+  it("creates a PatientAssessment when underPrivileged is true and a guardian exists", async () => {
     const sut = makeSut();
 
-    const output = await sut.useCase.execute(selfResponsibleInput({ underPrivileged: true }));
+    const output = await sut.useCase.execute({
+      organizationId: "org-1",
+      user: { email: "tutor-assessment@example.com", password: "secret123", profile: "Guardian" },
+      guardian: {
+        name: "Bob Tutor",
+        document: OTHER_CPF,
+        birthdate: "1970-02-02",
+        gender: "M",
+      },
+      patient: {
+        name: "Alice Doe",
+        document: PATIENT_CPF,
+        birthdate: "2010-05-10",
+        gender: "F",
+        underPrivileged: true,
+        isSelfResponsible: false,
+      },
+    });
 
     expect(sut.patientAssessmentRepository.assessments).toHaveLength(1);
     const assessment = first(sut.patientAssessmentRepository.assessments);
     expect(assessment.isApproved).toBe(false);
     expect(assessment.approvedAt).toBeNull();
     expect(output.patientAssessmentId).toBe(assessment.id);
+  });
+
+  it("does not create a PatientAssessment for an under-privileged self-responsible patient without guardian", async () => {
+    const sut = makeSut();
+
+    const output = await sut.useCase.execute(selfResponsibleInput({ underPrivileged: true }));
+
+    expect(sut.guardianRepository.guardians).toHaveLength(0);
+    expect(sut.patientAssessmentRepository.assessments).toHaveLength(0);
+    expect(output.guardianId).toBeUndefined();
+    expect(output.patientAssessmentId).toBeUndefined();
   });
 
   it("does not create a PatientAssessment when underPrivileged is false", async () => {

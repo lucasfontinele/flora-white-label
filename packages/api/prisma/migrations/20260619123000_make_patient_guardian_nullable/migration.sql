@@ -1,0 +1,1 @@
+ALTER TABLE "patients" ALTER COLUMN "guardianId" DROP NOT NULL;

@@ -20,10 +20,12 @@ describe("User", () => {
     expect(() => makeUser({ profile: UserProfile.Guardian })).toThrow(DomainValidationError);
   });
 
-  it("fails when a Patient user has no guardianId", () => {
-    expect(() => makeUser({ profile: UserProfile.Patient, patientId: "patient-1" })).toThrow(
-      DomainValidationError,
-    );
+  it("allows a Patient user without guardianId", () => {
+    const user = makeUser({ profile: UserProfile.Patient, patientId: "patient-1" });
+
+    expect(user.profile).toBe(UserProfile.Patient);
+    expect(user.guardianId).toBeUndefined();
+    expect(user.patientId).toBe("patient-1");
   });
 
   it("fails when a Patient user has no patientId", () => {
@@ -51,10 +53,14 @@ describe("User", () => {
     expect(user.patientId).toBeUndefined();
   });
 
-  it("requires a guardianId before becoming a patient", () => {
+  it("becomes a patient without requiring a guardianId", () => {
     const user = makeUser();
 
-    expect(() => user.becomePatient("patient-1")).toThrow(DomainValidationError);
+    user.becomePatient("patient-1");
+
+    expect(user.profile).toBe(UserProfile.Patient);
+    expect(user.guardianId).toBeUndefined();
+    expect(user.patientId).toBe("patient-1");
   });
 
   it("links a guardian user as patient and updates the profile", () => {

@@ -4,7 +4,7 @@ import type { UnitOfWork } from "../../../../shared/application/transaction/Unit
 import { ConflictError } from "../../../../shared/application/errors/ConflictError.js";
 import { Document } from "../../../../shared/domain/value-objects/Document.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
-import { Gender, genderFromCode } from "../../../../shared/domain/enums/Gender.js";
+import { type Gender, genderFromCode } from "../../../../shared/domain/enums/Gender.js";
 import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import type { GuardianRepository } from "../../../guardians/application/repositories/GuardianRepository.js";
 import type { PatientRepository } from "../repositories/PatientRepository.js";
@@ -33,8 +33,8 @@ const inputSchema = z.object({
     password: z.string().min(1),
     profile: z.enum(["Patient", "Guardian"]),
   }),
-  // Optional: when the patient is self-responsible the guardian is derived from
-  // the patient's own data, so a guardian block is not required.
+  // Optional for self-responsible patients. When present for non-self-responsible
+  // patients, this is the legal guardian that will access the portal.
   guardian: personSchema.optional(),
   patient: personSchema.extend({
     underPrivileged: z.boolean(),
@@ -67,7 +67,7 @@ export interface CreatePatientRegistrationInput {
 
 export interface CreatePatientRegistrationOutput {
   userId: string;
-  guardianId: string;
+  guardianId?: string;
   patientId: string;
   patientAssessmentId?: string;
 }
@@ -82,9 +82,9 @@ export interface CreatePatientRegistrationDependencies {
 }
 
 /**
- * Registers a patient together with the responsible guardian and the systemic
- * user, preserving consistency across User, Guardian, Patient and (when the
- * patient is under-privileged) PatientAssessment within a single transaction.
+ * Registers a patient and the systemic user, optionally binding them to a legal
+ * guardian. Self-responsible patients access the portal through a Patient user;
+ * patients with a legal guardian are managed through a Guardian user.
  */
 export class CreatePatientRegistrationUseCase {
   constructor(private readonly deps: CreatePatientRegistrationDependencies) {}
@@ -103,28 +103,28 @@ export class CreatePatientRegistrationUseCase {
     }
 
     const patientGender = genderFromCode(data.patient.gender);
-    const guardianData = this.resolveGuardianData(data, patientDocument, patientGender);
+    const guardianData = data.patient.isSelfResponsible ? undefined : this.resolveGuardianData(data);
 
     // Reuse an existing guardian (same document within the organization) when
     // present; otherwise a new guardian will be created in the transaction.
-    const existingGuardian = await this.deps.guardianRepository.findByDocument(
-      data.organizationId,
-      guardianData.document,
-    );
+    const existingGuardian = guardianData
+      ? await this.deps.guardianRepository.findByDocument(data.organizationId, guardianData.document)
+      : null;
 
-    const guardian =
-      existingGuardian ??
-      Guardian.create({
-        organizationId: data.organizationId,
-        name: guardianData.name,
-        document: guardianData.document,
-        birthdate: guardianData.birthdate,
-        gender: guardianData.gender,
-      });
+    const guardian = guardianData
+      ? (existingGuardian ??
+        Guardian.create({
+          organizationId: data.organizationId,
+          name: guardianData.name,
+          document: guardianData.document,
+          birthdate: guardianData.birthdate,
+          gender: guardianData.gender,
+        }))
+      : undefined;
 
     const patient = Patient.create({
       organizationId: data.organizationId,
-      guardianId: guardian.id,
+      guardianId: guardian?.id,
       name: data.patient.name,
       document: patientDocument,
       birthdate: data.patient.birthdate,
@@ -139,16 +139,16 @@ export class CreatePatientRegistrationUseCase {
       email,
       passwordHash: PasswordHash.fromHash(passwordHashed),
       profile: userProfile,
-      guardianId: guardian.id,
+      guardianId: guardian?.id,
       patientId: userProfile === UserProfile.Patient ? patient.id : undefined,
     });
 
-    const assessment = data.patient.underPrivileged
+    const assessment = data.patient.underPrivileged && guardian
       ? PatientAssessment.createPending({ patientId: patient.id, guardianId: guardian.id })
       : undefined;
 
     await this.deps.unitOfWork.execute(async () => {
-      if (!existingGuardian) {
+      if (guardian && !existingGuardian) {
         await this.deps.guardianRepository.create(guardian);
       }
       await this.deps.patientRepository.create(patient);
@@ -160,7 +160,7 @@ export class CreatePatientRegistrationUseCase {
 
     return {
       userId: user.id,
-      guardianId: guardian.id,
+      guardianId: guardian?.id,
       patientId: patient.id,
       patientAssessmentId: assessment?.id,
     };
@@ -168,18 +168,7 @@ export class CreatePatientRegistrationUseCase {
 
   private resolveGuardianData(
     data: z.infer<typeof inputSchema>,
-    patientDocument: Document,
-    patientGender: Gender,
   ): { name: string; document: Document; birthdate: Date; gender: Gender } {
-    if (data.patient.isSelfResponsible) {
-      return {
-        name: data.patient.name,
-        document: patientDocument,
-        birthdate: data.patient.birthdate,
-        gender: patientGender,
-      };
-    }
-
     if (!data.guardian) {
       throw new DomainValidationError(
         "A guardian is required when the patient is not self-responsible.",

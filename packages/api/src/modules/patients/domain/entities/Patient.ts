@@ -5,7 +5,7 @@ import type { Gender } from "../../../../shared/domain/enums/Gender.js";
 
 export interface PatientProps {
   organizationId: string;
-  guardianId: string;
+  guardianId?: string;
   name: string;
   document: Document;
   birthdate: Date;
@@ -14,9 +14,9 @@ export interface PatientProps {
 }
 
 /**
- * Patient aggregate root — the central actor of the registration form. Always
- * bound to a Guardian via `guardianId`. The `underPrivileged` flag (inability
- * to afford the future annual fee) belongs to the patient, never the guardian.
+ * Patient aggregate root — the central actor of the registration form. It may
+ * be bound to a legal guardian, but self-responsible patients do not require
+ * one. The `underPrivileged` flag belongs to the patient, never the guardian.
  */
 export class Patient extends AggregateRoot<PatientProps> {
   private constructor(props: PatientProps, id?: string) {
@@ -24,12 +24,14 @@ export class Patient extends AggregateRoot<PatientProps> {
   }
 
   static create(props: PatientProps, id?: string): Patient {
-    if (props.organizationId.trim().length === 0) {
+    const organizationId = props.organizationId.trim();
+    if (organizationId.length === 0) {
       throw new DomainValidationError("Patient requires an organizationId.");
     }
 
-    if (props.guardianId.trim().length === 0) {
-      throw new DomainValidationError("Patient must have a guardianId.");
+    const guardianId = props.guardianId?.trim();
+    if (props.guardianId !== undefined && guardianId?.length === 0) {
+      throw new DomainValidationError("Patient guardianId cannot be empty.");
     }
 
     const name = props.name.trim();
@@ -41,14 +43,14 @@ export class Patient extends AggregateRoot<PatientProps> {
       throw new DomainValidationError("Patient birthdate is required and must be a valid date.");
     }
 
-    return new Patient({ ...props, name }, id);
+    return new Patient({ ...props, organizationId, guardianId, name }, id);
   }
 
   get organizationId(): string {
     return this.props.organizationId;
   }
 
-  get guardianId(): string {
+  get guardianId(): string | undefined {
     return this.props.guardianId;
   }
 

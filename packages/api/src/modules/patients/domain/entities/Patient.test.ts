@@ -16,8 +16,15 @@ const baseProps = {
 };
 
 describe("Patient", () => {
-  it("cannot be created without a guardianId", () => {
+  it("cannot be created with an empty guardianId", () => {
     expect(() => Patient.create({ ...baseProps, guardianId: "" })).toThrow(DomainValidationError);
+  });
+
+  it("creates a valid patient without a guardian", () => {
+    const patient = Patient.create({ ...baseProps, underPrivileged: false });
+
+    expect(patient.guardianId).toBeUndefined();
+    expect(patient.document.value).toBe("11144477735");
   });
 
   it("creates a valid patient bound to a guardian", () => {
