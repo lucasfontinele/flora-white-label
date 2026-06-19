@@ -13,6 +13,8 @@ const envSchema = z.object({
   HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(3333),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters."),
+  JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
   CORS_ALLOWED_ORIGINS: z
     .string()
     .default("http://localhost:3000")

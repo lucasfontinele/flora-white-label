@@ -4,7 +4,7 @@ import type {
   AuthenticatedUserContextRepository,
 } from "../repositories/AuthenticatedUserContextRepository.js";
 
-export type AuthenticatedUserProfile = "Master" | "Patient" | "Guardian";
+export type AuthenticatedUserProfile = "Master" | "Organization" | "Patient" | "Guardian";
 
 export interface GetAuthenticatedUserContextInput {
   userId: string;

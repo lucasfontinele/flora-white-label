@@ -6,12 +6,14 @@ import { UserProfile } from "../../domain/enums/UserProfile.js";
 
 const PROFILE_TO_PRISMA: Record<UserProfile, PrismaUserProfile> = {
   [UserProfile.Master]: PrismaUserProfile.Master,
+  [UserProfile.Organization]: PrismaUserProfile.Organization,
   [UserProfile.Patient]: PrismaUserProfile.Patient,
   [UserProfile.Guardian]: PrismaUserProfile.Guardian,
 };
 
 const PROFILE_FROM_PRISMA: Record<PrismaUserProfile, UserProfile> = {
   [PrismaUserProfile.Master]: UserProfile.Master,
+  [PrismaUserProfile.Organization]: UserProfile.Organization,
   [PrismaUserProfile.Patient]: UserProfile.Patient,
   [PrismaUserProfile.Guardian]: UserProfile.Guardian,
 };

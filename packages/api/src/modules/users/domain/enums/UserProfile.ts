@@ -4,6 +4,7 @@
  */
 export enum UserProfile {
   Master = "Master",
+  Organization = "Organization",
   Patient = "Patient",
   Guardian = "Guardian",
 }

@@ -9,6 +9,7 @@ import type {
 
 const PROFILE_FROM_PRISMA: Record<PrismaUserProfile, UserProfile> = {
   [PrismaUserProfile.Master]: UserProfile.Master,
+  [PrismaUserProfile.Organization]: UserProfile.Organization,
   [PrismaUserProfile.Patient]: UserProfile.Patient,
   [PrismaUserProfile.Guardian]: UserProfile.Guardian,
 };

@@ -42,6 +42,15 @@ describe("User", () => {
     ).toThrow(DomainValidationError);
   });
 
+  it("allows Organization users with only organization scope", () => {
+    const user = makeUser({ profile: UserProfile.Organization });
+
+    expect(user.profile).toBe(UserProfile.Organization);
+    expect(user.organizationId).toBe("org-1");
+    expect(user.guardianId).toBeUndefined();
+    expect(user.patientId).toBeUndefined();
+  });
+
   it("requires a guardianId before becoming a patient", () => {
     const user = makeUser();
 

@@ -149,6 +149,7 @@ model OrganizationSettings {
 
 enum UserProfile {
   Master
+  Organization
   Patient
   Guardian
 }
