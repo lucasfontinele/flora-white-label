@@ -106,11 +106,17 @@ export const patientRegistrationParamsJsonSchema = {
   },
 } as const;
 
+// NOTE: the branches intentionally omit `additionalProperties: false` at the
+// top level. Fastify's AJV defaults to `removeAdditional: true`, and inside a
+// `oneOf` that strips the data while testing each branch — e.g. validating a
+// LegalGuardian body against the Patient branch would delete `guardian`, then
+// the LegalGuardian branch fails for a missing `guardian` and the whole `oneOf`
+// is rejected. The `const` discriminator already makes the branches mutually
+// exclusive, and the Zod schema above enforces strictness on the parsed body.
 export const patientRegistrationBodyJsonSchema = {
   oneOf: [
     {
       type: "object",
-      additionalProperties: false,
       required: ["registrationType", "user", "patient"],
       properties: {
         registrationType: { const: RegistrationType.Patient },
@@ -120,7 +126,6 @@ export const patientRegistrationBodyJsonSchema = {
     },
     {
       type: "object",
-      additionalProperties: false,
       required: ["registrationType", "user", "guardian", "patient"],
       properties: {
         registrationType: { const: RegistrationType.LegalGuardian },
@@ -131,7 +136,6 @@ export const patientRegistrationBodyJsonSchema = {
     },
     {
       type: "object",
-      additionalProperties: false,
       required: ["registrationType", "user", "guardian"],
       properties: {
         registrationType: { const: RegistrationType.PetTutor },

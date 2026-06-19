@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ApiGender, PatientRegistrationBody } from "../types";
 
 const digits = (value: string) => value.replace(/\D/g, "");
 const isValidCpf = (value: string) => {
@@ -32,6 +33,7 @@ const registrationBaseSchema = z.object({
   gender: z.enum(["masculino", "feminino", "outro", "prefiro_nao_informar"], {
     message: "Selecione uma opção de gênero.",
   }),
+  underPrivileged: z.boolean().default(false),
   email: emailSchema,
   password: z
     .string()
@@ -54,6 +56,9 @@ const registrationBaseSchema = z.object({
   guardianCpf: z.string().optional(),
   guardianRg: z.string().optional(),
   guardianRelationship: z.enum(["pai_mae", "tutor", "filho", "cuidador", "procurador"]).optional(),
+  guardianGender: z
+    .enum(["masculino", "feminino", "outro", "prefiro_nao_informar"])
+    .default("prefiro_nao_informar"),
   guardianBirthDate: z.string().optional(),
   guardianPhone: z.string().optional(),
   guardianCep: z.string().optional(),
@@ -152,3 +157,66 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, cont
 });
 
 export type RegistrationSchema = z.infer<typeof registrationSchema>;
+
+const genderToApi: Record<RegistrationSchema["gender"], ApiGender> = {
+  masculino: "M",
+  feminino: "F",
+  outro: "O",
+  prefiro_nao_informar: "N/A",
+};
+
+// "DD/MM/YYYY" (masked) → "YYYY-MM-DD" (ISO date expected by the API).
+function toIsoDate(value: string): string {
+  const onlyDigits = digits(value);
+  if (onlyDigits.length !== 8) return value;
+
+  return `${onlyDigits.slice(4, 8)}-${onlyDigits.slice(2, 4)}-${onlyDigits.slice(0, 2)}`;
+}
+
+function toPerson(input: { name: string; document: string; birthDate: string; gender: RegistrationSchema["gender"] }) {
+  return {
+    name: input.name.trim(),
+    document: digits(input.document),
+    birthdate: toIsoDate(input.birthDate),
+    gender: genderToApi[input.gender],
+  };
+}
+
+/**
+ * Maps the rich registration form to the API payload. The shape is chosen by
+ * the selected profile (`role` → `registrationType`); fields the API does not
+ * accept (phone, address, pet, nickname, RG, relationship) are intentionally
+ * omitted because the registration endpoint validates strictly.
+ */
+export function toPatientRegistrationBody(data: RegistrationSchema): PatientRegistrationBody {
+  const user = { email: data.email.trim().toLowerCase(), password: data.password };
+  const mainPerson = {
+    name: data.fullName,
+    document: data.cpf,
+    birthDate: data.birthDate,
+    gender: data.gender,
+  };
+
+  if (data.role === "pet_tutor") {
+    // The tutor is the account holder; the pet itself is not part of this payload.
+    return { registrationType: "PetTutor", user, guardian: toPerson(mainPerson) };
+  }
+
+  const patient = { ...toPerson(mainPerson), underPrivileged: data.underPrivileged };
+
+  if (data.role === "legal_guardian") {
+    return {
+      registrationType: "LegalGuardian",
+      user,
+      guardian: toPerson({
+        name: data.guardianFullName ?? "",
+        document: data.guardianCpf ?? "",
+        birthDate: data.guardianBirthDate ?? "",
+        gender: data.guardianGender,
+      }),
+      patient,
+    };
+  }
+
+  return { registrationType: "Patient", user, patient };
+}

@@ -2,19 +2,19 @@
 
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { CreatePatientRegistrationRequest } from "@flora/shared/patients";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { getApiErrorMessage } from "@/lib/http";
 import { cn } from "@/lib/utils";
 import { createPatientRegistration } from "../requests/create-patient-registration";
 import { getAddressByCep } from "../requests/get-address-by-cep";
-import { registrationSchema, type RegistrationSchema } from "../schemas/registration-schema";
+import { registrationSchema, toPatientRegistrationBody, type RegistrationSchema } from "../schemas/registration-schema";
 import { useRegistrationDraftStore } from "../stores/registration-draft-store";
 
 type StepKind = "profile" | "personal" | "access" | "pet" | "contact" | "address" | "legalGuardian";
@@ -27,7 +27,14 @@ type RegistrationStep = {
 };
 
 const profileStepFields: Array<keyof RegistrationSchema> = ["role"];
-const personalStepFields: Array<keyof RegistrationSchema> = ["fullName", "cpf", "birthDate", "nickname", "gender"];
+const personalStepFields: Array<keyof RegistrationSchema> = [
+  "fullName",
+  "cpf",
+  "birthDate",
+  "nickname",
+  "gender",
+  "underPrivileged",
+];
 const accessStepFields: Array<keyof RegistrationSchema> = ["email", "password", "passwordConfirmation"];
 const contactStepFields: Array<keyof RegistrationSchema> = ["phone"];
 const addressStepFields: Array<keyof RegistrationSchema> = [
@@ -45,6 +52,7 @@ const legalGuardianStepFields: Array<keyof RegistrationSchema> = [
   "guardianCpf",
   "guardianRg",
   "guardianRelationship",
+  "guardianGender",
   "guardianBirthDate",
   "guardianPhone",
   "guardianCep",
@@ -174,7 +182,8 @@ const documentCards = [
 
 const petSpeciesOptions = ["Canina", "Felina", "Equina", "Aviária", "Exótica", "Silvestre", "Outras"] as const;
 
-type RegistrationFormData = z.infer<typeof registrationSchema>;
+// Input shape (what the fields hold); `RegistrationSchema` is the parsed output.
+type RegistrationFormData = z.input<typeof registrationSchema>;
 
 const defaultValues: RegistrationFormData = {
   role: "patient",
@@ -183,6 +192,7 @@ const defaultValues: RegistrationFormData = {
   birthDate: "",
   nickname: "",
   gender: "prefiro_nao_informar",
+  underPrivileged: false,
   email: "",
   password: "",
   passwordConfirmation: "",
@@ -198,6 +208,7 @@ const defaultValues: RegistrationFormData = {
   guardianCpf: "",
   guardianRg: "",
   guardianRelationship: "pai_mae",
+  guardianGender: "prefiro_nao_informar",
   guardianBirthDate: "",
   guardianPhone: "",
   guardianCep: "",
@@ -250,7 +261,7 @@ export function RegistrationForm() {
     setValue,
     trigger,
     watch,
-  } = useForm<RegistrationFormData>({
+  } = useForm<RegistrationFormData, unknown, RegistrationSchema>({
     resolver: zodResolver(registrationSchema),
     defaultValues,
     mode: "onBlur",
@@ -442,15 +453,15 @@ export function RegistrationForm() {
     await lookupGuardianCep(value);
   }
 
-  async function onSubmit(data: RegistrationFormData) {
+  async function onSubmit(data: RegistrationSchema) {
     setSubmitError(null);
 
     try {
-      await createPatientRegistration(data as CreatePatientRegistrationRequest);
+      await createPatientRegistration(toPatientRegistrationBody(data));
       clearDraft();
       setSubmitted(true);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Não foi possível enviar o cadastro.");
+      setSubmitError(getApiErrorMessage(error, "Não foi possível enviar o cadastro."));
     }
   }
 
@@ -514,6 +525,7 @@ export function RegistrationForm() {
           cpfRequired
           errors={errors}
           register={register}
+          showUnderPrivileged={role !== "pet_tutor"}
         />
       ) : null}
 
@@ -655,12 +667,14 @@ function PersonalStep({
   cpfRequired,
   errors,
   register,
+  showUnderPrivileged,
 }: {
   birthDateField: UseFormRegisterReturn<"birthDate">;
   cpfField: UseFormRegisterReturn<"cpf">;
   cpfRequired?: boolean;
   errors: FieldErrors<RegistrationFormData>;
   register: ReturnType<typeof useForm<RegistrationFormData>>["register"];
+  showUnderPrivileged?: boolean;
 }) {
   return (
     <Card className="p-5 md:p-6">
@@ -688,6 +702,23 @@ function PersonalStep({
             <option value="prefiro_nao_informar">Prefiro não informar</option>
           </select>
         </Field>
+        {showUnderPrivileged ? (
+          <div className="md:col-span-2 xl:col-span-12">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary-border">
+              <input
+                className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-primary)]"
+                type="checkbox"
+                {...register("underPrivileged")}
+              />
+              <span className="min-w-0">
+                <span className="block font-bold text-[var(--text-primary)]">Paciente hipossuficiente</span>
+                <span className="mt-1 block text-sm text-[var(--text-secondary)]">
+                  Marque se o paciente se enquadra em baixa renda para fins de avaliação social.
+                </span>
+              </span>
+            </label>
+          </div>
+        ) : null}
       </div>
     </Card>
   );
@@ -894,6 +925,17 @@ function LegalGuardianStep({
               <option value="filho">Filho</option>
               <option value="cuidador">Cuidador</option>
               <option value="procurador">Procurador</option>
+            </select>
+          </Field>
+          <Field className="md:col-span-1 xl:col-span-2" error={errors.guardianGender?.message} label="Gênero" required>
+            <select
+              className="h-11 w-full rounded-md border border-input bg-card px-4 text-base shadow-xs focus:border-[var(--border-focus)]"
+              {...register("guardianGender")}
+            >
+              <option value="masculino">Masculino</option>
+              <option value="feminino">Feminino</option>
+              <option value="outro">Outro</option>
+              <option value="prefiro_nao_informar">Prefiro não informar</option>
             </select>
           </Field>
           <Field className="md:col-span-2 xl:col-span-4" error={errors.guardianPhone?.message} label="Telefone celular" required>

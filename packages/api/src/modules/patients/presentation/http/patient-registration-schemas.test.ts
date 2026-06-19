@@ -1,6 +1,8 @@
+import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 import { RegistrationType } from "../../domain/enums/RegistrationType.js";
 import {
+  patientRegistrationBodyJsonSchema,
   patientRegistrationBodySchemaDiscriminated,
   patientRegistrationParamsSchema,
 } from "./patient-registration-schemas.js";
@@ -94,5 +96,40 @@ describe("patient registration schemas", () => {
       true,
     );
     expect(patientRegistrationParamsSchema.safeParse({ organizationId: "" }).success).toBe(false);
+  });
+});
+
+// Regression: the body JSON schema must accept each profile through Fastify's
+// AJV layer. A previous version used `additionalProperties: false` per branch,
+// which `removeAdditional` mutated inside `oneOf`, breaking LegalGuardian.
+describe("patient registration body JSON schema (Fastify/AJV layer)", () => {
+  async function validate(body: unknown): Promise<number> {
+    const app = Fastify();
+    app.post("/t", { schema: { body: patientRegistrationBodyJsonSchema } }, async () => ({ ok: true }));
+    const response = await app.inject({ method: "POST", url: "/t", payload: body as object });
+    await app.close();
+    return response.statusCode;
+  }
+
+  it("accepts a LegalGuardian body with guardian and patient", async () => {
+    await expect(
+      validate({
+        registrationType: RegistrationType.LegalGuardian,
+        user,
+        guardian,
+        patient: { ...patient, underPrivileged: true },
+      }),
+    ).resolves.toBe(200);
+  });
+
+  it("accepts Patient and PetTutor bodies", async () => {
+    await expect(validate({ registrationType: RegistrationType.Patient, user, patient })).resolves.toBe(200);
+    await expect(validate({ registrationType: RegistrationType.PetTutor, user, guardian })).resolves.toBe(200);
+  });
+
+  it("rejects a LegalGuardian body missing the guardian", async () => {
+    await expect(
+      validate({ registrationType: RegistrationType.LegalGuardian, user, patient }),
+    ).resolves.toBe(400);
   });
 });
