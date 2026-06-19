@@ -24,6 +24,14 @@ class InMemoryUserRepository implements UserRepository {
     return this.users.find((user) => user.email.value === email.value) ?? null;
   }
 
+  async findByEmailInOrganization(organizationId: string, email: Email): Promise<User | null> {
+    return (
+      this.users.find(
+        (user) => user.organizationId === organizationId && user.email.value === email.value,
+      ) ?? null
+    );
+  }
+
   async create(user: User): Promise<void> {
     this.users.push(user);
   }

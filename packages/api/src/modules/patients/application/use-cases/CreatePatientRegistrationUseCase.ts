@@ -1,185 +1,278 @@
-import { z } from "zod";
 import type { HashService } from "../../../../shared/application/cryptography/HashService.js";
-import type { UnitOfWork } from "../../../../shared/application/transaction/UnitOfWork.js";
 import { ConflictError } from "../../../../shared/application/errors/ConflictError.js";
+import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
+import type { UnitOfWork } from "../../../../shared/application/transaction/UnitOfWork.js";
 import { Document } from "../../../../shared/domain/value-objects/Document.js";
-import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
-import { type Gender, genderFromCode } from "../../../../shared/domain/enums/Gender.js";
-import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
+import { genderFromCode } from "../../../../shared/domain/enums/Gender.js";
 import type { GuardianRepository } from "../../../guardians/application/repositories/GuardianRepository.js";
-import type { PatientRepository } from "../repositories/PatientRepository.js";
-import type { PatientAssessmentRepository } from "../repositories/PatientAssessmentRepository.js";
+import { Guardian } from "../../../guardians/domain/entities/Guardian.js";
+import type { OrganizationRepository } from "../../../organizations/application/repositories/OrganizationRepository.js";
+import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import { User } from "../../../users/domain/entities/User.js";
+import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
 import { Email } from "../../../users/domain/value-objects/Email.js";
 import { PasswordHash } from "../../../users/domain/value-objects/PasswordHash.js";
-import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
-import { Guardian } from "../../../guardians/domain/entities/Guardian.js";
 import { Patient } from "../../domain/entities/Patient.js";
-import { PatientAssessment } from "../../domain/entities/PatientAssessment.js";
+import { RegistrationType } from "../../domain/enums/RegistrationType.js";
+import type { PatientRepository } from "../repositories/PatientRepository.js";
 
-const genderCodeSchema = z.enum(["M", "F", "O", "N/A"]);
+export type GenderCode = "M" | "F" | "O" | "N/A";
 
-const personSchema = z.object({
-  name: z.string().min(1),
-  document: z.string().min(1),
-  birthdate: z.coerce.date(),
-  gender: genderCodeSchema,
-});
-
-const inputSchema = z.object({
-  organizationId: z.string().min(1),
-  user: z.object({
-    email: z.string().min(1),
-    password: z.string().min(1),
-    profile: z.enum(["Patient", "Guardian"]),
-  }),
-  // Optional for self-responsible patients. When present for non-self-responsible
-  // patients, this is the legal guardian that will access the portal.
-  guardian: personSchema.optional(),
-  patient: personSchema.extend({
-    underPrivileged: z.boolean(),
-    isSelfResponsible: z.boolean(),
-  }),
-});
-
-export interface CreatePatientRegistrationInput {
-  organizationId: string;
-  user: {
-    email: string;
-    password: string;
-    profile: "Patient" | "Guardian";
-  };
-  guardian?: {
-    name: string;
-    document: string;
-    birthdate: Date | string;
-    gender: "M" | "F" | "O" | "N/A";
-  };
-  patient: {
-    name: string;
-    document: string;
-    birthdate: Date | string;
-    gender: "M" | "F" | "O" | "N/A";
-    underPrivileged: boolean;
-    isSelfResponsible: boolean;
-  };
+export interface PatientRegistrationUserInput {
+  email: string;
+  password: string;
 }
+
+export interface PatientRegistrationGuardianInput {
+  name: string;
+  document: string;
+  birthdate: Date | string;
+  gender: GenderCode;
+}
+
+export interface PatientRegistrationPatientInput {
+  name: string;
+  document: string;
+  birthdate: Date | string;
+  gender: GenderCode;
+  underPrivileged: boolean;
+}
+
+export type CreatePatientRegistrationInput =
+  | {
+      organizationId: string;
+      registrationType: RegistrationType.Patient;
+      user: PatientRegistrationUserInput;
+      patient: PatientRegistrationPatientInput;
+    }
+  | {
+      organizationId: string;
+      registrationType: RegistrationType.LegalGuardian;
+      user: PatientRegistrationUserInput;
+      guardian: PatientRegistrationGuardianInput;
+      patient: PatientRegistrationPatientInput;
+    }
+  | {
+      organizationId: string;
+      registrationType: RegistrationType.PetTutor;
+      user: PatientRegistrationUserInput;
+      guardian: PatientRegistrationGuardianInput;
+    };
 
 export interface CreatePatientRegistrationOutput {
   userId: string;
-  guardianId?: string;
-  patientId: string;
-  patientAssessmentId?: string;
+  guardianId: string | null;
+  patientId: string | null;
+  registrationType: RegistrationType;
 }
 
 export interface CreatePatientRegistrationDependencies {
+  organizationRepository: OrganizationRepository;
   userRepository: UserRepository;
   guardianRepository: GuardianRepository;
   patientRepository: PatientRepository;
-  patientAssessmentRepository: PatientAssessmentRepository;
   hashService: HashService;
   unitOfWork: UnitOfWork;
 }
 
-/**
- * Registers a patient and the systemic user, optionally binding them to a legal
- * guardian. Self-responsible patients access the portal through a Patient user;
- * patients with a legal guardian are managed through a Guardian user.
- */
 export class CreatePatientRegistrationUseCase {
   constructor(private readonly deps: CreatePatientRegistrationDependencies) {}
 
   async execute(input: CreatePatientRegistrationInput): Promise<CreatePatientRegistrationOutput> {
-    const data = inputSchema.parse(input);
+    const organizationId = input.organizationId.trim();
 
-    const email = Email.create(data.user.email);
-    if (await this.deps.userRepository.findByEmail(email)) {
-      throw new ConflictError(`A user with email "${email.value}" already exists.`);
+    const organization = await this.deps.organizationRepository.findById(organizationId);
+    if (!organization) {
+      throw new NotFoundError("Organization not found.");
     }
 
-    const patientDocument = Document.create(data.patient.document);
-    if (await this.deps.patientRepository.findByDocument(data.organizationId, patientDocument)) {
-      throw new ConflictError("A patient with this document already exists in the organization.");
+    const email = Email.create(input.user.email);
+    if (await this.deps.userRepository.findByEmailInOrganization(organizationId, email)) {
+      throw new ConflictError("A user with this email already exists in the organization.");
     }
 
-    const patientGender = genderFromCode(data.patient.gender);
-    const guardianData = data.patient.isSelfResponsible ? undefined : this.resolveGuardianData(data);
+    switch (input.registrationType) {
+      case RegistrationType.Patient:
+        return this.createPatientRegistration(organizationId, email, input);
+      case RegistrationType.LegalGuardian:
+        return this.createLegalGuardianRegistration(organizationId, email, input);
+      case RegistrationType.PetTutor:
+        return this.createPetTutorRegistration(organizationId, email, input);
+    }
+  }
 
-    // Reuse an existing guardian (same document within the organization) when
-    // present; otherwise a new guardian will be created in the transaction.
-    const existingGuardian = guardianData
-      ? await this.deps.guardianRepository.findByDocument(data.organizationId, guardianData.document)
-      : null;
-
-    const guardian = guardianData
-      ? (existingGuardian ??
-        Guardian.create({
-          organizationId: data.organizationId,
-          name: guardianData.name,
-          document: guardianData.document,
-          birthdate: guardianData.birthdate,
-          gender: guardianData.gender,
-        }))
-      : undefined;
-
-    const patient = Patient.create({
-      organizationId: data.organizationId,
-      guardianId: guardian?.id,
-      name: data.patient.name,
-      document: patientDocument,
-      birthdate: data.patient.birthdate,
-      gender: patientGender,
-      underPrivileged: data.patient.underPrivileged,
-    });
-
-    const userProfile = data.patient.isSelfResponsible ? UserProfile.Patient : UserProfile.Guardian;
-    const passwordHashed = await this.deps.hashService.hash(data.user.password);
-    const user = User.create({
-      organizationId: data.organizationId,
+  private async createPatientRegistration(
+    organizationId: string,
+    email: Email,
+    input: Extract<CreatePatientRegistrationInput, { registrationType: RegistrationType.Patient }>,
+  ): Promise<CreatePatientRegistrationOutput> {
+    const patientDocument = await this.ensureUniquePatientDocument(organizationId, input.patient.document);
+    const patient = this.makePatient(organizationId, input.patient, patientDocument);
+    const user = await this.makeUser({
+      organizationId,
       email,
-      passwordHash: PasswordHash.fromHash(passwordHashed),
-      profile: userProfile,
-      guardianId: guardian?.id,
-      patientId: userProfile === UserProfile.Patient ? patient.id : undefined,
+      password: input.user.password,
+      profile: UserProfile.Patient,
+      patientId: patient.id,
     });
-
-    const assessment = data.patient.underPrivileged && guardian
-      ? PatientAssessment.createPending({ patientId: patient.id, guardianId: guardian.id })
-      : undefined;
 
     await this.deps.unitOfWork.execute(async () => {
-      if (guardian && !existingGuardian) {
-        await this.deps.guardianRepository.create(guardian);
-      }
       await this.deps.patientRepository.create(patient);
       await this.deps.userRepository.create(user);
-      if (assessment) {
-        await this.deps.patientAssessmentRepository.create(assessment);
-      }
     });
 
     return {
       userId: user.id,
-      guardianId: guardian?.id,
+      guardianId: null,
       patientId: patient.id,
-      patientAssessmentId: assessment?.id,
+      registrationType: RegistrationType.Patient,
     };
   }
 
-  private resolveGuardianData(
-    data: z.infer<typeof inputSchema>,
-  ): { name: string; document: Document; birthdate: Date; gender: Gender } {
-    if (!data.guardian) {
-      throw new DomainValidationError(
-        "A guardian is required when the patient is not self-responsible.",
-      );
-    }
+  private async createLegalGuardianRegistration(
+    organizationId: string,
+    email: Email,
+    input: Extract<
+      CreatePatientRegistrationInput,
+      { registrationType: RegistrationType.LegalGuardian }
+    >,
+  ): Promise<CreatePatientRegistrationOutput> {
+    const guardianDocument = await this.ensureUniqueGuardianDocument(
+      organizationId,
+      input.guardian.document,
+    );
+    const patientDocument = await this.ensureUniquePatientDocument(organizationId, input.patient.document);
+    const guardian = this.makeGuardian(organizationId, input.guardian, guardianDocument);
+    const patient = this.makePatient(organizationId, input.patient, patientDocument, guardian.id);
+    const user = await this.makeUser({
+      organizationId,
+      email,
+      password: input.user.password,
+      profile: UserProfile.Guardian,
+      guardianId: guardian.id,
+    });
+
+    await this.deps.unitOfWork.execute(async () => {
+      await this.deps.guardianRepository.create(guardian);
+      await this.deps.patientRepository.create(patient);
+      await this.deps.userRepository.create(user);
+    });
 
     return {
-      name: data.guardian.name,
-      document: Document.create(data.guardian.document),
-      birthdate: data.guardian.birthdate,
-      gender: genderFromCode(data.guardian.gender),
+      userId: user.id,
+      guardianId: guardian.id,
+      patientId: patient.id,
+      registrationType: RegistrationType.LegalGuardian,
     };
+  }
+
+  private async createPetTutorRegistration(
+    organizationId: string,
+    email: Email,
+    input: Extract<CreatePatientRegistrationInput, { registrationType: RegistrationType.PetTutor }>,
+  ): Promise<CreatePatientRegistrationOutput> {
+    const guardianDocument = await this.ensureUniqueGuardianDocument(
+      organizationId,
+      input.guardian.document,
+    );
+    const guardian = this.makeGuardian(organizationId, input.guardian, guardianDocument);
+    const user = await this.makeUser({
+      organizationId,
+      email,
+      password: input.user.password,
+      profile: UserProfile.Guardian,
+      guardianId: guardian.id,
+    });
+
+    await this.deps.unitOfWork.execute(async () => {
+      await this.deps.guardianRepository.create(guardian);
+      await this.deps.userRepository.create(user);
+    });
+
+    return {
+      userId: user.id,
+      guardianId: guardian.id,
+      patientId: null,
+      registrationType: RegistrationType.PetTutor,
+    };
+  }
+
+  private async ensureUniquePatientDocument(
+    organizationId: string,
+    documentValue: string,
+  ): Promise<Document> {
+    const document = Document.create(documentValue);
+    if (await this.deps.patientRepository.findByDocument(organizationId, document)) {
+      throw new ConflictError("A patient with this document already exists in the organization.");
+    }
+
+    return document;
+  }
+
+  private async ensureUniqueGuardianDocument(
+    organizationId: string,
+    documentValue: string,
+  ): Promise<Document> {
+    const document = Document.create(documentValue);
+    if (await this.deps.guardianRepository.findByDocument(organizationId, document)) {
+      throw new ConflictError("A guardian with this document already exists in the organization.");
+    }
+
+    return document;
+  }
+
+  private makePatient(
+    organizationId: string,
+    input: PatientRegistrationPatientInput,
+    document: Document,
+    guardianId?: string,
+  ): Patient {
+    return Patient.create({
+      organizationId,
+      guardianId,
+      name: input.name,
+      document,
+      birthdate: this.toDate(input.birthdate),
+      gender: genderFromCode(input.gender),
+      underPrivileged: input.underPrivileged,
+    });
+  }
+
+  private makeGuardian(
+    organizationId: string,
+    input: PatientRegistrationGuardianInput,
+    document: Document,
+  ): Guardian {
+    return Guardian.create({
+      organizationId,
+      name: input.name,
+      document,
+      birthdate: this.toDate(input.birthdate),
+      gender: genderFromCode(input.gender),
+    });
+  }
+
+  private async makeUser(input: {
+    organizationId: string;
+    email: Email;
+    password: string;
+    profile: UserProfile;
+    guardianId?: string;
+    patientId?: string;
+  }): Promise<User> {
+    const passwordHashed = await this.deps.hashService.hash(input.password);
+
+    return User.create({
+      organizationId: input.organizationId,
+      email: input.email,
+      passwordHash: PasswordHash.fromHash(passwordHashed),
+      profile: input.profile,
+      guardianId: input.guardianId,
+      patientId: input.patientId,
+    });
+  }
+
+  private toDate(value: Date | string): Date {
+    return value instanceof Date ? value : new Date(value);
   }
 }

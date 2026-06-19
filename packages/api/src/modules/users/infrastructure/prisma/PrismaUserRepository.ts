@@ -23,6 +23,14 @@ export class PrismaUserRepository implements UserRepository {
     return record ? UserMapper.toDomain(record) : null;
   }
 
+  async findByEmailInOrganization(organizationId: string, email: Email): Promise<User | null> {
+    const record = await this.prisma.getClient().user.findFirst({
+      where: { organizationId, email: email.value },
+    });
+
+    return record ? UserMapper.toDomain(record) : null;
+  }
+
   async create(user: User): Promise<void> {
     await this.prisma.getClient().user.create({
       data: UserMapper.toPersistence(user),

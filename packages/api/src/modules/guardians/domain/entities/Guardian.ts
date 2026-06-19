@@ -12,9 +12,8 @@ export interface GuardianProps {
 }
 
 /**
- * Responsible party. Always exists for a patient: it may represent a third
- * party who is responsible for the patient, or the patient themselves when they
- * are the title-holder (self-responsible).
+ * Responsible party or pet tutor associated with an organization. Human
+ * patients may exist without one when they are registered as their own user.
  */
 export class Guardian extends Entity<GuardianProps> {
   private constructor(props: GuardianProps, id?: string) {
