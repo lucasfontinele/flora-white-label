@@ -1,9 +1,11 @@
+/**
+ * The API returns errors as `{ error: "ConflictError", message: "..." }`. Older
+ * shapes nested everything under `error` (`{ error: { code, message } }`), so we
+ * tolerate both when parsing.
+ */
 type ApiErrorBody = {
-  error?: {
-    code?: string;
-    details?: unknown;
-    message?: string;
-  };
+  error?: string | { code?: string; details?: unknown; message?: string };
+  message?: string;
 };
 
 export class ApiRequestError extends Error {
@@ -16,6 +18,21 @@ export class ApiRequestError extends Error {
     super(message);
     this.name = "ApiRequestError";
   }
+}
+
+/**
+ * Extracts a user-facing message from a thrown error. Prefers the API's
+ * `message`; falls back to a generic sentence for network/unknown failures.
+ */
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Não foi possível completar a ação. Tente novamente.",
+): string {
+  if (error instanceof ApiRequestError && error.message) {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
@@ -41,12 +58,8 @@ export async function apiFetch<T>(input: RequestInfo | URL, init?: ApiFetchInit)
 
   if (!response.ok) {
     const errorBody = await readErrorBody(response);
-    throw new ApiRequestError(
-      errorBody.error?.message ?? `Falha na requisição: ${response.status}`,
-      response.status,
-      errorBody.error?.code,
-      errorBody.error?.details,
-    );
+    const { message, code, details } = extractApiError(errorBody, response.status);
+    throw new ApiRequestError(message, response.status, code, details);
   }
 
   if (response.status === 204) return undefined as T;
@@ -67,4 +80,24 @@ async function readErrorBody(response: Response): Promise<ApiErrorBody> {
   } catch {
     return {};
   }
+}
+
+function extractApiError(
+  body: ApiErrorBody,
+  status: number,
+): { message: string; code?: string; details?: unknown } {
+  const fallback = `Falha na requisição: ${status}`;
+
+  if (typeof body.error === "object" && body.error !== null) {
+    return {
+      message: body.error.message ?? body.message ?? fallback,
+      code: body.error.code,
+      details: body.error.details,
+    };
+  }
+
+  return {
+    message: body.message ?? fallback,
+    code: typeof body.error === "string" ? body.error : undefined,
+  };
 }

@@ -7,25 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
-import { ApiRequestError } from "@/lib/http";
 import { OrganizationRegistrationForm } from "../../components/organization-registration-form";
 import { useOrganization, useUpdateOrganization } from "../../queries/use-organizations";
 import { useSubscriptionPlans } from "../../queries/use-subscription-plans";
 import type { OrganizationRegistrationFormValues } from "../../schemas/organization-registration-schema";
 import type { Organization, OrganizationWriteBody } from "../../types";
-
-function describeSaveError(error: unknown): string {
-  if (error instanceof ApiRequestError) {
-    if (error.status === 400 || error.status === 422) {
-      return "Verifique os dados do formulário e tente novamente.";
-    }
-    if (error.status === 404) {
-      return "Organização não encontrada. Atualize a página e tente novamente.";
-    }
-  }
-
-  return "Não foi possível salvar a organização. Tente novamente.";
-}
 
 function organizationToFormValues(organization: Organization): OrganizationRegistrationFormValues {
   return {
@@ -75,9 +61,6 @@ export default function EditOrganizationPage() {
           });
           router.push("/organizations");
         },
-        onError: (error) => {
-          toast({ variant: "error", title: "Erro ao salvar", description: describeSaveError(error) });
-        },
       },
     );
   }
@@ -126,7 +109,6 @@ export default function EditOrganizationPage() {
       ) : (
         <OrganizationRegistrationForm
           availablePlans={plansQuery.data?.data ?? []}
-          errorMessage={updateMutation.isError ? describeSaveError(updateMutation.error) : undefined}
           initialValues={organizationToFormValues(organization)}
           isLoadingPlans={plansQuery.isLoading}
           onSubmit={handleSubmit}

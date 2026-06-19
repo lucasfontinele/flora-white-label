@@ -6,23 +6,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
-import { ApiRequestError } from "@/lib/http";
 import { OrganizationListTable } from "./components/organization-list-table";
 import { useDeleteOrganization, useOrganizations } from "./queries/use-organizations";
 import type { Organization } from "./types";
-
-function describeDeleteError(error: unknown): string {
-  if (error instanceof ApiRequestError) {
-    if (error.status === 404) {
-      return "Organização não encontrada. Atualize a página e tente novamente.";
-    }
-    if (error.status === 409) {
-      return "Esta organização possui vínculos e não pode ser excluída.";
-    }
-  }
-
-  return "Não foi possível excluir a organização. Tente novamente.";
-}
 
 export default function MasterOrganizationsPage() {
   const query = useOrganizations();
@@ -55,9 +41,6 @@ export default function MasterOrganizationsPage() {
           title: "Organização excluída",
           description: `${tradeName} foi removida com sucesso.`,
         });
-      },
-      onError: (error) => {
-        toast({ variant: "error", title: "Erro ao excluir", description: describeDeleteError(error) });
       },
     });
   }
@@ -103,7 +86,6 @@ export default function MasterOrganizationsPage() {
         confirmVariant="danger"
         pending={deleteMutation.isPending}
         pendingLabel="Excluindo..."
-        errorMessage={deleteMutation.isError ? describeDeleteError(deleteMutation.error) : undefined}
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />

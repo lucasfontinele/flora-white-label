@@ -5,19 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
-import { ApiRequestError } from "@/lib/http";
 import { OrganizationRegistrationForm } from "../components/organization-registration-form";
 import { useCreateOrganization } from "../queries/use-organizations";
 import { useSubscriptionPlans } from "../queries/use-subscription-plans";
 import type { OrganizationWriteBody } from "../types";
-
-function describeSaveError(error: unknown): string {
-  if (error instanceof ApiRequestError && (error.status === 400 || error.status === 422)) {
-    return "Verifique os dados do formulário e tente novamente.";
-  }
-
-  return "Não foi possível cadastrar a organização. Tente novamente.";
-}
 
 export default function NewOrganizationPage() {
   const router = useRouter();
@@ -34,9 +25,6 @@ export default function NewOrganizationPage() {
           description: `${organization.tradeName} foi criada com sucesso.`,
         });
         router.push("/organizations");
-      },
-      onError: (error) => {
-        toast({ variant: "error", title: "Erro ao cadastrar", description: describeSaveError(error) });
       },
     });
   }
@@ -60,7 +48,6 @@ export default function NewOrganizationPage() {
       </section>
       <OrganizationRegistrationForm
         availablePlans={plansQuery.data?.data ?? []}
-        errorMessage={createMutation.isError ? describeSaveError(createMutation.error) : undefined}
         isLoadingPlans={plansQuery.isLoading}
         onSubmit={handleSubmit}
         pending={createMutation.isPending}
