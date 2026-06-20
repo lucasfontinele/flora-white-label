@@ -11,6 +11,7 @@ export interface UserProps {
   profile: UserProfile;
   guardianId?: string;
   patientId?: string;
+  organizationEmployeeId?: string;
 }
 
 /**
@@ -54,6 +55,18 @@ export class User extends Entity<UserProps> {
     return this.props.patientId;
   }
 
+  get organizationEmployeeId(): string | undefined {
+    return this.props.organizationEmployeeId;
+  }
+
+  linkOrganizationEmployee(organizationEmployeeId: string): void {
+    const normalizedId = User.normalizeId(organizationEmployeeId, "organizationEmployeeId");
+    const nextProps = { ...this.props, organizationEmployeeId: normalizedId };
+    User.validate(nextProps);
+
+    this.props.organizationEmployeeId = normalizedId;
+  }
+
   linkGuardian(guardianId: string): void {
     const normalizedGuardianId = User.normalizeId(guardianId, "guardianId");
     const nextProps = { ...this.props, guardianId: normalizedGuardianId };
@@ -91,10 +104,17 @@ export class User extends Entity<UserProps> {
         props.guardianId === undefined ? undefined : User.normalizeId(props.guardianId, "guardianId"),
       patientId:
         props.patientId === undefined ? undefined : User.normalizeId(props.patientId, "patientId"),
+      organizationEmployeeId:
+        props.organizationEmployeeId === undefined
+          ? undefined
+          : User.normalizeId(props.organizationEmployeeId, "organizationEmployeeId"),
     };
   }
 
-  private static normalizeId(value: string, fieldName: "guardianId" | "patientId"): string {
+  private static normalizeId(
+    value: string,
+    fieldName: "guardianId" | "patientId" | "organizationEmployeeId",
+  ): string {
     const normalized = value.trim();
 
     if (normalized.length === 0) {
@@ -119,6 +139,10 @@ export class User extends Entity<UserProps> {
 
     if (props.patientId && props.profile !== UserProfile.Patient) {
       throw new DomainValidationError("Only Patient users can be linked to a patient.");
+    }
+
+    if (props.organizationEmployeeId && props.profile !== UserProfile.Organization) {
+      throw new DomainValidationError("Only Organization users can be linked to an employee.");
     }
   }
 }

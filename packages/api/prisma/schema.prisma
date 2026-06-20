@@ -13,18 +13,20 @@ datasource db {
 }
 
 model User {
-  id             String      @id @default(uuid())
-  organizationId String
-  email          String
-  passwordHashed String
-  profile        UserProfile
-  guardianId     String?
-  patientId      String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                     String      @id @default(uuid())
+  organizationId         String
+  email                  String
+  passwordHashed         String
+  profile                UserProfile
+  guardianId             String?
+  patientId              String?
+  organizationEmployeeId String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
 
-  guardian Guardian? @relation("UserGuardian", fields: [guardianId], references: [id])
-  patient  Patient?  @relation("UserPatient", fields: [patientId], references: [id])
+  guardian             Guardian?             @relation("UserGuardian", fields: [guardianId], references: [id])
+  patient              Patient?              @relation("UserPatient", fields: [patientId], references: [id])
+  organizationEmployee OrganizationEmployee? @relation("UserOrganizationEmployee", fields: [organizationEmployeeId], references: [id])
 
   @@unique([organizationId, email])
   @@map("users")
@@ -127,11 +129,28 @@ model Organization {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  currentPlan SubscriptionPlan      @relation(fields: [currentPlanId], references: [id])
-  address     Address               @relation(fields: [addressId], references: [id])
+  currentPlan SubscriptionPlan       @relation(fields: [currentPlanId], references: [id])
+  address     Address                @relation(fields: [addressId], references: [id])
   settings    OrganizationSettings?
+  employees   OrganizationEmployee[]
 
   @@map("organizations")
+}
+
+model OrganizationEmployee {
+  id             String   @id @default(uuid())
+  organizationId String
+  fullName       String
+  document       String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  users        User[]       @relation("UserOrganizationEmployee")
+
+  @@unique([organizationId, document])
+  @@map("organizations_employees")
 }
 
 model OrganizationSettings {

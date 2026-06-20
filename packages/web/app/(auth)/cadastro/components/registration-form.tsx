@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { Turnstile, TURNSTILE_SITE_KEY } from "@/components/ui/turnstile";
 import { getApiErrorMessage } from "@/lib/http";
 import { cn } from "@/lib/utils";
 import { createPatientRegistration } from "../requests/create-patient-registration";
@@ -244,6 +245,9 @@ export function RegistrationForm({ organizationId }: { organizationId?: string }
   const [lastGuardianCepLookup, setLastGuardianCepLookup] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Bumped to remount the widget and request a fresh (single-use) token.
+  const [captchaKey, setCaptchaKey] = useState(0);
   const draftAppliedRef = useRef(false);
   const clearDraft = useRegistrationDraftStore((state) => state.clearDraft);
   const hasHydrated = useRegistrationDraftStore((state) => state.hasHydrated);
@@ -456,12 +460,20 @@ export function RegistrationForm({ organizationId }: { organizationId?: string }
   async function onSubmit(data: RegistrationSchema) {
     setSubmitError(null);
 
+    if (!captchaToken) {
+      setSubmitError("Confirme a verificação de segurança antes de enviar.");
+      return;
+    }
+
     try {
-      await createPatientRegistration(toPatientRegistrationBody(data), organizationId);
+      await createPatientRegistration(toPatientRegistrationBody(data), organizationId, captchaToken);
       clearDraft();
       setSubmitted(true);
     } catch (error) {
       setSubmitError(getApiErrorMessage(error, "Não foi possível enviar o cadastro."));
+      // The token is single-use; reset the widget for a retry.
+      setCaptchaToken(null);
+      setCaptchaKey((current) => current + 1);
     }
   }
 
@@ -561,6 +573,27 @@ export function RegistrationForm({ organizationId }: { organizationId?: string }
         />
       ) : null}
 
+      {visibleStep === steps.length - 1 ? (
+        <Card className="p-5 md:p-6">
+          <div className="mb-4 flex items-start gap-3 rounded-md bg-primary-subtle p-4">
+            <Icon name="shield-check" size={20} className="text-primary" />
+            <div>
+              <h3 className="font-heading">Verificação de segurança</h3>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                Confirme que você não é um robô para concluir o cadastro.
+              </p>
+            </div>
+          </div>
+          <Turnstile
+            key={captchaKey}
+            siteKey={TURNSTILE_SITE_KEY}
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+            onError={() => setCaptchaToken(null)}
+          />
+        </Card>
+      ) : null}
+
       {submitError ? (
         <Card className="border-error bg-error-subtle p-4 text-error">
           <div className="flex items-start gap-3">
@@ -580,7 +613,7 @@ export function RegistrationForm({ organizationId }: { organizationId?: string }
             <Icon name="arrow-right" size={18} />
           </Button>
         ) : (
-          <Button disabled={isSubmitting} type="submit">
+          <Button disabled={isSubmitting || !captchaToken} type="submit">
             Enviar cadastro
           </Button>
         )}

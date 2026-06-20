@@ -11,14 +11,17 @@ export class AuthPresenter {
         organizationId: output.user.organizationId,
         guardianId: output.user.guardianId,
         patientId: output.user.patientId,
+        organizationEmployeeId: output.user.organizationEmployeeId,
       },
       context: {
         view: output.context.view,
         organizationId: output.context.organizationId,
         guardianId: output.context.guardianId,
         patientId: output.context.patientId,
+        organizationEmployeeId: output.context.organizationEmployeeId,
         guardian: output.context.guardian,
         patient: output.context.patient,
+        employee: output.context.employee,
         managedPatients: output.context.managedPatients,
       },
     };

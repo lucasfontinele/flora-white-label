@@ -7,6 +7,7 @@ export interface AuthenticatedUserContextUser {
   organizationId: string;
   guardianId?: string;
   patientId?: string;
+  organizationEmployeeId?: string;
 }
 
 export interface AuthenticatedUserContextGuardian {
@@ -22,10 +23,19 @@ export interface AuthenticatedUserContextPatient {
   underPrivileged: boolean;
 }
 
+export interface AuthenticatedUserContextEmployee {
+  id: string;
+  organizationId: string;
+  fullName: string;
+  document: string;
+  isActive: boolean;
+}
+
 export interface AuthenticatedUserContext {
   user: AuthenticatedUserContextUser;
   guardian?: AuthenticatedUserContextGuardian;
   patient?: AuthenticatedUserContextPatient;
+  employee?: AuthenticatedUserContextEmployee;
   managedPatients: AuthenticatedUserContextPatient[];
 }
 

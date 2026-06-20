@@ -44,6 +44,16 @@ describe("createPatientRegistration", () => {
     expect(headers.has("x-master-user-id")).toBe(false);
   });
 
+  it("sends the captcha token in the x-captcha-token header when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createPatientRegistration(body, "org-123", "turnstile-token-abc");
+
+    const headers = fetchMock.mock.calls[0]?.[1].headers as Headers;
+    expect(headers.get("x-captcha-token")).toBe("turnstile-token-abc");
+  });
+
   it("surfaces the API error message on conflict", async () => {
     vi.stubGlobal(
       "fetch",

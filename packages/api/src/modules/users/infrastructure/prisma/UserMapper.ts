@@ -28,6 +28,7 @@ export class UserMapper {
         profile: PROFILE_FROM_PRISMA[record.profile],
         guardianId: record.guardianId ?? undefined,
         patientId: record.patientId ?? undefined,
+        organizationEmployeeId: record.organizationEmployeeId ?? undefined,
       },
       record.id,
     );
@@ -42,6 +43,7 @@ export class UserMapper {
       profile: PROFILE_TO_PRISMA[user.profile],
       guardianId: user.guardianId ?? null,
       patientId: user.patientId ?? null,
+      organizationEmployeeId: user.organizationEmployeeId ?? null,
     };
   }
 
@@ -53,6 +55,7 @@ export class UserMapper {
       profile: PROFILE_TO_PRISMA[user.profile],
       guardianId: user.guardianId ?? null,
       patientId: user.patientId ?? null,
+      organizationEmployeeId: user.organizationEmployeeId ?? null,
     };
   }
 }

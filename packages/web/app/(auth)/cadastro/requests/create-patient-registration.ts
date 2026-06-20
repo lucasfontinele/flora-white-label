@@ -8,10 +8,12 @@ const defaultOrganizationId = process.env.NEXT_PUBLIC_ORGANIZATION_ID ?? "org-vi
 export async function createPatientRegistration(
   body: PatientRegistrationBody,
   organizationId: string = defaultOrganizationId,
+  captchaToken?: string,
 ) {
   return apiFetch<PatientRegistrationResponse>(`/organizations/${organizationId}/patient-registrations`, {
     body: JSON.stringify(body),
     method: "POST",
     skipMasterHeaders: true,
+    headers: captchaToken ? { "x-captcha-token": captchaToken } : undefined,
   });
 }

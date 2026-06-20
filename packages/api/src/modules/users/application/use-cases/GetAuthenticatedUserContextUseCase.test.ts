@@ -74,6 +74,36 @@ describe("GetAuthenticatedUserContextUseCase", () => {
     expect(output.capabilities.isPatient).toBe(false);
   });
 
+  it("returns the employee context and isEmployee for an Organization employee", async () => {
+    const useCase = makeUseCase({
+      user: {
+        id: "user-org",
+        email: "operadora@example.com",
+        profile: UserProfile.Organization,
+        organizationId: "org-1",
+        organizationEmployeeId: "employee-1",
+      },
+      employee: {
+        id: "employee-1",
+        organizationId: "org-1",
+        fullName: "Maria Operadora",
+        document: "52998224725",
+        isActive: true,
+      },
+      managedPatients: [],
+    });
+
+    const output = await useCase.execute({ userId: "user-org" });
+
+    expect(output.capabilities.isEmployee).toBe(true);
+    expect(output.employee).toEqual({
+      id: "employee-1",
+      fullName: "Maria Operadora",
+      document: "52998224725",
+      isActive: true,
+    });
+  });
+
   it("returns isPatient and uses user.patientId as the active patient", async () => {
     const useCase = makeUseCase({
       ...guardianOnlyContext,

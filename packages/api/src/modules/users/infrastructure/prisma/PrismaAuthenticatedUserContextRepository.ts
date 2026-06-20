@@ -31,6 +31,7 @@ export class PrismaAuthenticatedUserContextRepository
           },
         },
         patient: true,
+        organizationEmployee: true,
       },
     });
 
@@ -46,6 +47,7 @@ export class PrismaAuthenticatedUserContextRepository
         organizationId: record.organizationId,
         guardianId: record.guardianId ?? undefined,
         patientId: record.patientId ?? undefined,
+        organizationEmployeeId: record.organizationEmployeeId ?? undefined,
       },
       guardian: record.guardian
         ? {
@@ -55,6 +57,15 @@ export class PrismaAuthenticatedUserContextRepository
           }
         : undefined,
       patient: record.patient ? this.toContextPatient(record.patient) : undefined,
+      employee: record.organizationEmployee
+        ? {
+            id: record.organizationEmployee.id,
+            organizationId: record.organizationEmployee.organizationId,
+            fullName: record.organizationEmployee.fullName,
+            document: record.organizationEmployee.document,
+            isActive: record.organizationEmployee.isActive,
+          }
+        : undefined,
       managedPatients: record.guardian?.patients.map((patient) => this.toContextPatient(patient)) ?? [],
     };
   }

@@ -58,8 +58,10 @@ describe("auth schemas", () => {
       "organizationId",
       "guardianId",
       "patientId",
+      "organizationEmployeeId",
       "guardian",
       "patient",
+      "employee",
       "managedPatients",
     ]);
     expect(loginResponseSchema.required).toEqual(["accessToken", "user", "context"]);

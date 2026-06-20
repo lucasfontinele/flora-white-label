@@ -36,6 +36,15 @@ const envSchema = z.object({
         .map((domain) => domain.trim().toLowerCase())
         .filter((domain) => domain.length > 0),
     ),
+  // Cloudflare Turnstile (bot mitigation). Set to "false" to fully bypass the
+  // check (offline dev / CI without network).
+  TURNSTILE_ENABLED: z
+    .string()
+    .default("true")
+    .transform((value) => value.trim().toLowerCase() !== "false"),
+  // Defaults to Cloudflare's "always passes" test secret, so local dev works
+  // out of the box. Use the real secret key in production.
+  TURNSTILE_SECRET_KEY: z.string().min(1).default("1x0000000000000000000000000000000AA"),
 });
 
 const parsed = envSchema.safeParse(process.env);

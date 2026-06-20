@@ -43,7 +43,15 @@ export const errorResponseSchema = {
 export const authUserResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "email", "profile", "organizationId", "guardianId", "patientId"],
+  required: [
+    "id",
+    "email",
+    "profile",
+    "organizationId",
+    "guardianId",
+    "patientId",
+    "organizationEmployeeId",
+  ],
   properties: {
     id: {
       type: "string",
@@ -66,6 +74,32 @@ export const authUserResponseSchema = {
     },
     patientId: {
       type: ["string", "null"],
+    },
+    organizationEmployeeId: {
+      type: ["string", "null"],
+    },
+  },
+} as const;
+
+export const authEmployeeContextResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "fullName", "document", "isActive"],
+  properties: {
+    id: {
+      type: "string",
+      minLength: 1,
+    },
+    fullName: {
+      type: "string",
+      minLength: 1,
+    },
+    document: {
+      type: "string",
+      minLength: 1,
+    },
+    isActive: {
+      type: "boolean",
     },
   },
 } as const;
@@ -125,8 +159,10 @@ export const authContextResponseSchema = {
     "organizationId",
     "guardianId",
     "patientId",
+    "organizationEmployeeId",
     "guardian",
     "patient",
+    "employee",
     "managedPatients",
   ],
   properties: {
@@ -144,11 +180,17 @@ export const authContextResponseSchema = {
     patientId: {
       type: ["string", "null"],
     },
+    organizationEmployeeId: {
+      type: ["string", "null"],
+    },
     guardian: {
       anyOf: [authGuardianContextResponseSchema, { type: "null" }],
     },
     patient: {
       anyOf: [authPatientContextResponseSchema, { type: "null" }],
+    },
+    employee: {
+      anyOf: [authEmployeeContextResponseSchema, { type: "null" }],
     },
     managedPatients: {
       type: "array",

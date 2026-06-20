@@ -22,6 +22,13 @@ export interface ManagedPatientContext extends AuthenticatedUserPatientContext {
   isActive: boolean;
 }
 
+export interface AuthenticatedUserEmployeeContext {
+  id: string;
+  fullName: string;
+  document: string;
+  isActive: boolean;
+}
+
 export interface GetAuthenticatedUserContextOutput {
   user: {
     id: string;
@@ -34,12 +41,14 @@ export interface GetAuthenticatedUserContextOutput {
     name: string;
     document: string;
   };
+  employee?: AuthenticatedUserEmployeeContext;
   activePatient?: AuthenticatedUserPatientContext;
   managedPatients: ManagedPatientContext[];
   capabilities: {
     canManagePatients: boolean;
     canBecomePatient: boolean;
     isPatient: boolean;
+    isEmployee: boolean;
   };
 }
 
@@ -68,6 +77,9 @@ export class GetAuthenticatedUserContextUseCase {
       isActive: patient.id === activePatientId,
     }));
 
+    const isEmployee =
+      context.user.profile === "Organization" && Boolean(context.user.organizationEmployeeId);
+
     return {
       user: {
         id: context.user.id,
@@ -76,6 +88,15 @@ export class GetAuthenticatedUserContextUseCase {
         organizationId: context.user.organizationId,
       },
       guardian: context.guardian,
+      employee:
+        isEmployee && context.employee
+          ? {
+              id: context.employee.id,
+              fullName: context.employee.fullName,
+              document: context.employee.document,
+              isActive: context.employee.isActive,
+            }
+          : undefined,
       activePatient: activePatientSource
         ? this.toPatientContext(activePatientSource, context.user.patientId)
         : undefined,
@@ -84,6 +105,7 @@ export class GetAuthenticatedUserContextUseCase {
         canManagePatients: Boolean(context.user.guardianId),
         canBecomePatient: Boolean(context.user.guardianId && !context.user.patientId),
         isPatient: Boolean(context.user.patientId),
+        isEmployee,
       },
     };
   }

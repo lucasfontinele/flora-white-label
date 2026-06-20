@@ -25,6 +25,7 @@ export interface AuthTokenPayload extends JwtPayload {
   organizationId: string;
   guardianId: string | null;
   patientId: string | null;
+  organizationEmployeeId: string | null;
 }
 
 export interface AuthPatientContext {
@@ -41,6 +42,13 @@ export interface AuthGuardianContext {
   document: string;
 }
 
+export interface AuthEmployeeContext {
+  id: string;
+  fullName: string;
+  document: string;
+  isActive: boolean;
+}
+
 export interface LoginResponse {
   accessToken: string;
   user: {
@@ -50,14 +58,17 @@ export interface LoginResponse {
     organizationId: string;
     guardianId: string | null;
     patientId: string | null;
+    organizationEmployeeId: string | null;
   };
   context: {
     view: AuthView;
     organizationId: string;
     guardianId: string | null;
     patientId: string | null;
+    organizationEmployeeId: string | null;
     guardian: AuthGuardianContext | null;
     patient: AuthPatientContext | null;
+    employee: AuthEmployeeContext | null;
     managedPatients: AuthPatientContext[];
   };
 }
@@ -89,6 +100,8 @@ export class AuthenticateUserUseCase {
       throw new AuthenticationError();
     }
 
+    const isEmployee = user.profile === UserProfile.Organization;
+
     const publicUser = {
       id: user.id,
       email: user.email.value,
@@ -96,6 +109,7 @@ export class AuthenticateUserUseCase {
       organizationId: user.organizationId,
       guardianId: user.profile === UserProfile.Guardian ? (user.guardianId ?? null) : null,
       patientId: user.patientId ?? null,
+      organizationEmployeeId: isEmployee ? (user.organizationEmployeeId ?? null) : null,
     };
 
     const tokenPayload: AuthTokenPayload = {
@@ -105,6 +119,7 @@ export class AuthenticateUserUseCase {
       organizationId: publicUser.organizationId,
       guardianId: publicUser.guardianId,
       patientId: publicUser.patientId,
+      organizationEmployeeId: publicUser.organizationEmployeeId,
     };
 
     const accessToken = await this.deps.jwtService.sign(tokenPayload);
@@ -118,11 +133,16 @@ export class AuthenticateUserUseCase {
         organizationId: publicUser.organizationId,
         guardianId: publicUser.guardianId,
         patientId: publicUser.patientId,
+        organizationEmployeeId: publicUser.organizationEmployeeId,
         guardian:
           user.profile === UserProfile.Guardian ? (authenticatedContext?.guardian ?? null) : null,
         patient:
           user.profile === UserProfile.Patient
             ? this.resolvePatientContext(authenticatedContext, publicUser.patientId)
+            : null,
+        employee:
+          isEmployee && publicUser.organizationEmployeeId
+            ? this.resolveEmployeeContext(authenticatedContext)
             : null,
         managedPatients:
           user.profile === UserProfile.Guardian
@@ -131,6 +151,21 @@ export class AuthenticateUserUseCase {
               ) ?? [])
             : [],
       },
+    };
+  }
+
+  private resolveEmployeeContext(
+    context: AuthenticatedUserContext | null,
+  ): AuthEmployeeContext | null {
+    if (!context?.employee) {
+      return null;
+    }
+
+    return {
+      id: context.employee.id,
+      fullName: context.employee.fullName,
+      document: context.employee.document,
+      isActive: context.employee.isActive,
     };
   }
 

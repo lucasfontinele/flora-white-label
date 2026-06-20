@@ -1,4 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { makeCaptchaVerifier } from "../../../../shared/infrastructure/captcha/make-captcha-verifier.factory.js";
+import { makeCaptchaPreHandler } from "../../../../shared/presentation/http/fastify/captcha-prehandler.js";
 import { makeCreatePatientRegistrationUseCase } from "../../infrastructure/create-patient-registration.factory.js";
 import {
   patientRegistrationBodyJsonSchema,
@@ -18,10 +20,12 @@ function sendValidationError(reply: FastifyReply, message: string): FastifyReply
 
 export async function patientRegistrationRoutes(app: FastifyInstance): Promise<void> {
   const createPatientRegistrationUseCase = makeCreatePatientRegistrationUseCase(app.prisma);
+  const captchaPreHandler = makeCaptchaPreHandler(makeCaptchaVerifier());
 
   app.post(
     "/organizations/:organizationId/patient-registrations",
     {
+      preHandler: captchaPreHandler,
       schema: {
         tags: ["Patient Registrations"],
         summary: "Cria um cadastro inicial de paciente, responsável legal ou tutor de pet.",
@@ -30,6 +34,7 @@ export async function patientRegistrationRoutes(app: FastifyInstance): Promise<v
         response: {
           201: patientRegistrationResponseSchema,
           400: patientRegistrationErrorResponseSchema,
+          403: patientRegistrationErrorResponseSchema,
           404: patientRegistrationErrorResponseSchema,
           409: patientRegistrationErrorResponseSchema,
           422: patientRegistrationErrorResponseSchema,

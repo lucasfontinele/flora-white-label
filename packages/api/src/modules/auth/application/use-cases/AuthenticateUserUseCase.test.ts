@@ -164,6 +164,7 @@ describe("AuthenticateUserUseCase", () => {
         organizationId: "org-1",
         guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
+        organizationEmployeeId: null,
       },
     ]);
     expect(output).toEqual({
@@ -175,14 +176,17 @@ describe("AuthenticateUserUseCase", () => {
         organizationId: "org-1",
         guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
+        organizationEmployeeId: null,
       },
       context: {
         view,
         organizationId: "org-1",
         guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
+        organizationEmployeeId: null,
         guardian: null,
         patient: null,
+        employee: null,
         managedPatients: [],
       },
     });
@@ -323,6 +327,53 @@ describe("AuthenticateUserUseCase", () => {
       underPrivileged: false,
     });
     expect(output.context.managedPatients).toEqual([]);
+  });
+
+  it("returns the employee context when the user is an Organization employee", async () => {
+    const user = User.create(
+      {
+        organizationId: "org-1",
+        email: Email.create("operadora@example.com"),
+        passwordHash: PasswordHash.fromHash("hashed-password"),
+        profile: UserProfile.Organization,
+        organizationEmployeeId: "employee-1",
+      },
+      "user-Organization",
+    );
+    const sut = makeSut({
+      users: [user],
+      contexts: [
+        {
+          user: {
+            id: user.id,
+            email: user.email.value,
+            profile: user.profile,
+            organizationId: user.organizationId,
+            organizationEmployeeId: "employee-1",
+          },
+          employee: {
+            id: "employee-1",
+            organizationId: "org-1",
+            fullName: "Maria Operadora",
+            document: "52998224725",
+            isActive: true,
+          },
+          managedPatients: [],
+        },
+      ],
+    });
+
+    const output = await sut.useCase.execute({ email: user.email.value, password: "secret" });
+
+    expect(output.user.organizationEmployeeId).toBe("employee-1");
+    expect(output.context.view).toBe("Organization");
+    expect(output.context.organizationEmployeeId).toBe("employee-1");
+    expect(output.context.employee).toEqual({
+      id: "employee-1",
+      fullName: "Maria Operadora",
+      document: "52998224725",
+      isActive: true,
+    });
   });
 
   it("throws a generic AuthenticationError when the email is unknown", async () => {
