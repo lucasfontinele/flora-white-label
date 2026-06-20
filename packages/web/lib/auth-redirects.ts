@@ -1,8 +1,17 @@
-import type { UserType } from "@flora/shared/authentication";
+import type { AuthContextDto, AuthView } from "@flora/shared/authentication";
+import type { FloraSessionData } from "./session";
 
-export function landingPathForUserType(type: UserType) {
-  if (type === "MASTER") return "/painel";
-  if (type === "ORGANIZATION") return "/operacional/dashboard";
+export function landingPathForAuthView(view: AuthView) {
+  if (view === "BackofficeMaster") return "/painel";
+  if (view === "Organization") return "/operacional/dashboard";
 
   return "/dashboard";
+}
+
+export function landingPathForAuthContext(context: AuthContextDto) {
+  return landingPathForAuthView(context.view);
+}
+
+export function landingPathForSession(session: FloraSessionData) {
+  return session.context ? landingPathForAuthContext(session.context) : "/entrar";
 }

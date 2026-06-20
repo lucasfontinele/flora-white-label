@@ -15,9 +15,9 @@ describe("web POST /api/auth/logout", () => {
     mocks.getFloraSession.mockReset();
   });
 
-  it("invalidates the API session when present and clears IronSession", async () => {
+  it("clears IronSession when an access token is present", async () => {
     const destroy = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { signedOut: true } }), { status: 200 }));
+    const fetchMock = vi.fn();
     mocks.getFloraSession.mockResolvedValue({ accessToken: "access_token", destroy });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -25,16 +25,7 @@ describe("web POST /api/auth/logout", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ data: { signedOut: true } });
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe("http://localhost:3333/auth/logout");
-    expect(init).toMatchObject({
-      headers: {
-        Accept: "application/json",
-        Authorization: "Bearer access_token",
-      },
-      method: "POST",
-    });
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(destroy).toHaveBeenCalledOnce();
   });
 

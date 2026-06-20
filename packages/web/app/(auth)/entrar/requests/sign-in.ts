@@ -1,9 +1,9 @@
-import type { AuthSessionDto, AuthenticatedUserDto, LoginRequest } from "@flora/shared/authentication";
+import type { AuthContextDto, AuthenticatedUserDto, LoginRequest } from "@flora/shared/authentication";
 
 export type SignInResult = {
   redirectTo: string;
-  session: AuthSessionDto;
   user: AuthenticatedUserDto;
+  context: AuthContextDto;
 };
 
 export async function signIn(input: LoginRequest): Promise<SignInResult> {

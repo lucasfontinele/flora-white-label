@@ -42,17 +42,25 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
     mocks.signIn.mockResolvedValue({
       redirectTo: "/painel",
-      session: {
-        expiresAt: "2026-07-17T00:00:00.000Z",
-        id: "session_1",
-        organizationId: null,
-        userId: "user_master",
-      },
       user: {
         email: "master@flora.local",
         id: "user_master",
-        organizationId: null,
-        type: "MASTER",
+        organizationId: "org_master",
+        profile: "Master",
+        guardianId: null,
+        patientId: null,
+        organizationEmployeeId: null,
+      },
+      context: {
+        view: "BackofficeMaster",
+        organizationId: "org_master",
+        guardianId: null,
+        patientId: null,
+        organizationEmployeeId: null,
+        guardian: null,
+        patient: null,
+        employee: null,
+        managedPatients: [],
       },
     });
     render(<LoginForm />);

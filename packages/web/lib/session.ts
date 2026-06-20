@@ -1,14 +1,12 @@
 import { getIronSession, type IronSession, type SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
-import type { AuthSessionDto, AuthenticatedUserDto } from "@flora/shared/authentication";
+import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
 
 export type FloraSessionData = {
   accessToken?: string;
   accessTokenExpiresAt?: string;
-  refreshToken?: string;
-  refreshTokenExpiresAt?: string;
-  session?: AuthSessionDto;
   user?: AuthenticatedUserDto;
+  context?: AuthContextDto;
 };
 
 const sessionPassword =
@@ -29,7 +27,8 @@ export async function getFloraSession(): Promise<IronSession<FloraSessionData>> 
 }
 
 export function sessionHasAuth(session: FloraSessionData) {
-  return Boolean(session.accessToken && session.refreshToken && session.user && session.session);
+  if (!session.accessToken || !session.user || !session.context) return false;
+  return !isIsoDateExpired(session.accessTokenExpiresAt);
 }
 
 export function isIsoDateExpired(value: string | undefined, skewMs = 30_000) {
@@ -42,10 +41,26 @@ export function isIsoDateExpired(value: string | undefined, skewMs = 30_000) {
 }
 
 export function safeSessionSummary(session: FloraSessionData) {
-  if (!session.user || !session.session) return null;
+  if (!session.user || !session.context) return null;
 
   return {
-    session: session.session,
+    context: session.context,
     user: session.user,
   };
+}
+
+export function getJwtExpiresAt(token: string): string | undefined {
+  const [, payload] = token.split(".");
+  if (!payload) return undefined;
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(Buffer.from(normalizedPayload, "base64").toString("utf8")) as {
+      exp?: unknown;
+    };
+
+    return typeof decoded.exp === "number" ? new Date(decoded.exp * 1000).toISOString() : undefined;
+  } catch {
+    return undefined;
+  }
 }

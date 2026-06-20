@@ -1,11 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { landingPathForSession } from "@/lib/auth-redirects";
+import { getFloraSession, sessionHasAuth } from "@/lib/session";
 import { getTenant } from "@/lib/tenant";
 import { RegistrationForm } from "./components/registration-form";
 
 export default async function RegistrationPage() {
+  const session = await getFloraSession();
+
+  if (sessionHasAuth(session)) {
+    redirect(landingPathForSession(session));
+  }
+
   const tenant = await getTenant();
   return (
     <main className="min-h-screen bg-[var(--neutral-100)] px-4 py-6 md:px-8 lg:px-10">

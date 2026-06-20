@@ -1,8 +1,8 @@
-import type { AuthSessionDto, AuthenticatedUserDto } from "@flora/shared/authentication";
+import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
 
 export type WebCurrentSession = {
-  session: AuthSessionDto;
   user: AuthenticatedUserDto;
+  context: AuthContextDto;
 };
 
 export async function getCurrentSession(): Promise<WebCurrentSession | null> {

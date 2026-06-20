@@ -1,21 +1,14 @@
-import type { AuthenticatedUserProfileDto, UserRole } from "./patients.js";
-
-export type UserType = "MASTER" | "ORGANIZATION" | "STANDARD";
+export type AuthenticatedUserProfile = "Master" | "Organization" | "Patient" | "Guardian";
+export type AuthView = "BackofficeMaster" | "Organization" | "PatientPortal";
 
 export type AuthenticatedUserDto = {
   email: string;
   id: string;
-  organizationId: string | null;
-  profile?: AuthenticatedUserProfileDto | null;
-  role?: UserRole | null;
-  type: UserType;
-};
-
-export type AuthSessionDto = {
-  expiresAt: string;
-  id: string;
-  organizationId: string | null;
-  userId: string;
+  organizationId: string;
+  profile: AuthenticatedUserProfile;
+  guardianId: string | null;
+  patientId: string | null;
+  organizationEmployeeId: string | null;
 };
 
 export type LoginRequest = {
@@ -23,32 +16,49 @@ export type LoginRequest = {
   password: string;
 };
 
-export type AuthTokenPairDto = {
-  accessToken: string;
-  accessTokenExpiresAt: string;
-  refreshToken: string;
-  refreshTokenExpiresAt: string;
-  tokenType: "Bearer";
+export type AuthPatientContextDto = {
+  id: string;
+  name: string;
+  document: string;
+  relationshipLabel: string;
+  underPrivileged: boolean;
+};
+
+export type AuthGuardianContextDto = {
+  id: string;
+  name: string;
+  document: string;
+};
+
+export type AuthEmployeeContextDto = {
+  id: string;
+  fullName: string;
+  document: string;
+  isActive: boolean;
+};
+
+export type AuthContextDto = {
+  view: AuthView;
+  organizationId: string;
+  guardianId: string | null;
+  patientId: string | null;
+  organizationEmployeeId: string | null;
+  guardian: AuthGuardianContextDto | null;
+  patient: AuthPatientContextDto | null;
+  employee: AuthEmployeeContextDto | null;
+  managedPatients: AuthPatientContextDto[];
 };
 
 export type LoginResponse = {
-  data: {
-    session: AuthSessionDto;
-    tokens: AuthTokenPairDto;
-    user: AuthenticatedUserDto;
-  };
+  accessToken: string;
+  user: AuthenticatedUserDto;
+  context: AuthContextDto;
 };
-
-export type RefreshSessionRequest = {
-  refreshToken: string;
-};
-
-export type RefreshSessionResponse = LoginResponse;
 
 export type CurrentSessionResponse = {
   data: {
-    session: AuthSessionDto;
     user: AuthenticatedUserDto;
+    context: AuthContextDto;
   };
 };
 

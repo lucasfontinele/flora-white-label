@@ -1,8 +1,13 @@
 import type { LoginResponse } from "@flora/shared/authentication";
-import { landingPathForUserType } from "@/lib/auth-redirects";
-import { getFloraSession } from "@/lib/session";
+import { landingPathForAuthContext } from "@/lib/auth-redirects";
+import { getFloraSession, getJwtExpiresAt } from "@/lib/session";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+
+type ApiAuthError = {
+  error?: string | { message?: string };
+  message?: string;
+};
 
 export async function POST(request: Request) {
   const payload = await request.json();
@@ -16,15 +21,15 @@ export async function POST(request: Request) {
     },
     method: "POST",
   });
-  const body = (await response.json()) as LoginResponse | { error?: { message?: string } };
+  const body = (await response.json()) as LoginResponse | ApiAuthError;
 
-  if (!response.ok || !("data" in body)) {
-    const errorBody = body as { error?: { message?: string } };
+  if (!response.ok || !isLoginResponse(body)) {
+    const errorBody = body as ApiAuthError;
 
     return Response.json(
       {
         error: {
-          message: errorBody.error?.message ?? "Credenciais inválidas.",
+          message: authMessageForStatus(response.status, errorBody),
         },
       },
       { status: response.status },
@@ -32,19 +37,34 @@ export async function POST(request: Request) {
   }
 
   const session = await getFloraSession();
-  session.accessToken = body.data.tokens.accessToken;
-  session.accessTokenExpiresAt = body.data.tokens.accessTokenExpiresAt;
-  session.refreshToken = body.data.tokens.refreshToken;
-  session.refreshTokenExpiresAt = body.data.tokens.refreshTokenExpiresAt;
-  session.session = body.data.session;
-  session.user = body.data.user;
+  session.accessToken = body.accessToken;
+  session.accessTokenExpiresAt = getJwtExpiresAt(body.accessToken);
+  session.user = body.user;
+  session.context = body.context;
   await session.save();
 
   return Response.json({
     data: {
-      redirectTo: landingPathForUserType(body.data.user.type),
-      session: body.data.session,
-      user: body.data.user,
+      redirectTo: landingPathForAuthContext(body.context),
+      user: body.user,
+      context: body.context,
     },
   });
+}
+
+function isLoginResponse(body: LoginResponse | ApiAuthError): body is LoginResponse {
+  return (
+    typeof (body as LoginResponse).accessToken === "string" &&
+    Boolean((body as LoginResponse).user) &&
+    Boolean((body as LoginResponse).context)
+  );
+}
+
+function authMessageForStatus(status: number, body: ApiAuthError) {
+  if (status === 400) return "Revise e-mail e senha.";
+  if (status === 401) return "Credenciais inválidas.";
+  if (typeof body.error === "object" && body.error?.message) return body.error.message;
+  if (body.message && status < 500) return body.message;
+
+  return "Não foi possível entrar agora. Tente novamente.";
 }

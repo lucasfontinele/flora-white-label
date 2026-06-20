@@ -5,31 +5,38 @@ const mocks = vi.hoisted(() => ({
   getFloraSession: vi.fn(),
 }));
 
-vi.mock("@/lib/session", () => ({
-  getFloraSession: mocks.getFloraSession,
-}));
+vi.mock("@/lib/session", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/session")>();
+
+  return {
+    ...actual,
+    getFloraSession: mocks.getFloraSession,
+  };
+});
+
+const accessToken = makeJwt("2026-06-17T00:15:00.000Z");
 
 const loginResponse = {
-  data: {
-    session: {
-      expiresAt: "2026-07-17T00:00:00.000Z",
-      id: "session_1",
-      organizationId: null,
-      userId: "user_master",
-    },
-    tokens: {
-      accessToken: "access_token",
-      accessTokenExpiresAt: "2026-06-17T00:15:00.000Z",
-      refreshToken: "refresh_token",
-      refreshTokenExpiresAt: "2026-07-17T00:00:00.000Z",
-      tokenType: "Bearer",
-    },
-    user: {
-      email: "master@flora.local",
-      id: "user_master",
-      organizationId: null,
-      type: "MASTER",
-    },
+  accessToken,
+  user: {
+    email: "master@flora.local",
+    id: "user_master",
+    organizationId: "org_master",
+    profile: "Master",
+    guardianId: null,
+    patientId: null,
+    organizationEmployeeId: null,
+  },
+  context: {
+    view: "BackofficeMaster",
+    organizationId: "org_master",
+    guardianId: null,
+    patientId: null,
+    organizationEmployeeId: null,
+    guardian: null,
+    patient: null,
+    employee: null,
+    managedPatients: [],
   },
 };
 
@@ -63,19 +70,16 @@ describe("web POST /api/auth/login", () => {
     expect(body).toEqual({
       data: {
         redirectTo: "/painel",
-        session: loginResponse.data.session,
-        user: loginResponse.data.user,
+        user: loginResponse.user,
+        context: loginResponse.context,
       },
     });
-    expect(JSON.stringify(body)).not.toContain("access_token");
-    expect(JSON.stringify(body)).not.toContain("refresh_token");
+    expect(JSON.stringify(body)).not.toContain(accessToken);
     expect(session).toMatchObject({
-      accessToken: "access_token",
+      accessToken,
       accessTokenExpiresAt: "2026-06-17T00:15:00.000Z",
-      refreshToken: "refresh_token",
-      refreshTokenExpiresAt: "2026-07-17T00:00:00.000Z",
-      session: loginResponse.data.session,
-      user: loginResponse.data.user,
+      user: loginResponse.user,
+      context: loginResponse.context,
     });
     expect(save).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -93,7 +97,7 @@ describe("web POST /api/auth/login", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ error: { message: "Credenciais inválidas." } }), { status: 401 }),
+        new Response(JSON.stringify({ error: "AuthenticationError", message: "Invalid credentials." }), { status: 401 }),
       ),
     );
 
@@ -109,3 +113,12 @@ describe("web POST /api/auth/login", () => {
     expect(save).not.toHaveBeenCalled();
   });
 });
+
+function makeJwt(expiresAt: string) {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({ exp: Math.floor(new Date(expiresAt).getTime() / 1000) }),
+  ).toString("base64url");
+
+  return `${header}.${payload}.signature`;
+}
