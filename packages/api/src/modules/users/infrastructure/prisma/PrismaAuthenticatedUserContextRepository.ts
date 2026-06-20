@@ -39,6 +39,13 @@ export class PrismaAuthenticatedUserContextRepository
       return null;
     }
 
+    const organization = await this.prisma.getClient().organization.findUnique({
+      where: { id: record.organizationId },
+      include: {
+        settings: true,
+      },
+    });
+
     return {
       user: {
         id: record.id,
@@ -49,6 +56,17 @@ export class PrismaAuthenticatedUserContextRepository
         patientId: record.patientId ?? undefined,
         organizationEmployeeId: record.organizationEmployeeId ?? undefined,
       },
+      organization: organization
+        ? {
+            id: organization.id,
+            tradeName: organization.tradeName,
+            legalName: organization.legalName,
+            slug: organization.slug,
+            logoUrl: organization.settings?.logoUrl ?? null,
+            primaryColor: organization.settings?.primaryColor ?? null,
+            secondaryColor: organization.settings?.secondaryColor ?? null,
+          }
+        : undefined,
       guardian: record.guardian
         ? {
             id: record.guardian.id,

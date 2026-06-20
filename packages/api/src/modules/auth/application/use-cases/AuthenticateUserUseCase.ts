@@ -23,9 +23,9 @@ export interface AuthTokenPayload extends JwtPayload {
   email: string;
   profile: AuthenticatedUserProfile;
   organizationId: string;
-  guardianId: string | null;
   patientId: string | null;
-  organizationEmployeeId: string | null;
+  guardianId?: string;
+  organizationEmployeeId?: string;
 }
 
 export interface AuthPatientContext {
@@ -49,6 +49,16 @@ export interface AuthEmployeeContext {
   isActive: boolean;
 }
 
+export interface AuthOrganizationContext {
+  id: string;
+  tradeName: string;
+  legalName: string;
+  slug: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+}
+
 export interface LoginResponse {
   accessToken: string;
   user: {
@@ -56,16 +66,17 @@ export interface LoginResponse {
     email: string;
     profile: AuthenticatedUserProfile;
     organizationId: string;
-    guardianId: string | null;
     patientId: string | null;
-    organizationEmployeeId: string | null;
+    guardianId?: string;
+    organizationEmployeeId?: string;
   };
   context: {
     view: AuthView;
     organizationId: string;
-    guardianId: string | null;
     patientId: string | null;
-    organizationEmployeeId: string | null;
+    guardianId?: string;
+    organizationEmployeeId?: string;
+    organization: AuthOrganizationContext | null;
     guardian: AuthGuardianContext | null;
     patient: AuthPatientContext | null;
     employee: AuthEmployeeContext | null;
@@ -100,16 +111,14 @@ export class AuthenticateUserUseCase {
       throw new AuthenticationError();
     }
 
-    const isEmployee = user.profile === UserProfile.Organization;
-
     const publicUser = {
       id: user.id,
       email: user.email.value,
       profile: user.profile,
       organizationId: user.organizationId,
-      guardianId: user.profile === UserProfile.Guardian ? (user.guardianId ?? null) : null,
       patientId: user.patientId ?? null,
-      organizationEmployeeId: isEmployee ? (user.organizationEmployeeId ?? null) : null,
+      ...(user.guardianId ? { guardianId: user.guardianId } : {}),
+      ...(user.organizationEmployeeId ? { organizationEmployeeId: user.organizationEmployeeId } : {}),
     };
 
     const tokenPayload: AuthTokenPayload = {
@@ -117,13 +126,16 @@ export class AuthenticateUserUseCase {
       email: publicUser.email,
       profile: publicUser.profile,
       organizationId: publicUser.organizationId,
-      guardianId: publicUser.guardianId,
       patientId: publicUser.patientId,
-      organizationEmployeeId: publicUser.organizationEmployeeId,
+      ...(publicUser.guardianId ? { guardianId: publicUser.guardianId } : {}),
+      ...(publicUser.organizationEmployeeId
+        ? { organizationEmployeeId: publicUser.organizationEmployeeId }
+        : {}),
     };
 
     const accessToken = await this.deps.jwtService.sign(tokenPayload);
     const authenticatedContext = await this.deps.contextRepository.findByUserId(user.id);
+    const isEmployee = user.profile === UserProfile.Organization;
 
     return {
       accessToken,
@@ -131,9 +143,12 @@ export class AuthenticateUserUseCase {
       context: {
         view: this.resolveView(user.profile),
         organizationId: publicUser.organizationId,
-        guardianId: publicUser.guardianId,
         patientId: publicUser.patientId,
-        organizationEmployeeId: publicUser.organizationEmployeeId,
+        ...(publicUser.guardianId ? { guardianId: publicUser.guardianId } : {}),
+        ...(publicUser.organizationEmployeeId
+          ? { organizationEmployeeId: publicUser.organizationEmployeeId }
+          : {}),
+        organization: authenticatedContext?.organization ?? null,
         guardian:
           user.profile === UserProfile.Guardian ? (authenticatedContext?.guardian ?? null) : null,
         patient:

@@ -10,9 +10,17 @@ export default async function MasterLayout({ children }: { children: React.React
     redirect("/entrar");
   }
 
-  if (session.context?.view !== "BackofficeMaster") {
+  if (!session.user || !session.context) {
+    redirect("/entrar");
+  }
+
+  if (session.context.view !== "BackofficeMaster") {
     redirect(landingPathForSession(session));
   }
 
-  return <MasterShell>{children}</MasterShell>;
+  return (
+    <MasterShell user={session.user} context={session.context}>
+      {children}
+    </MasterShell>
+  );
 }

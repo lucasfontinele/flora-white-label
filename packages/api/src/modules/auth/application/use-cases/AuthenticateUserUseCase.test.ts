@@ -80,6 +80,16 @@ class TrackingJwtService implements JwtService {
   }
 }
 
+const authOrganization = {
+  id: "org-1",
+  tradeName: "Vida Verde",
+  legalName: "Associacao Vida Verde",
+  slug: "vida-verde",
+  logoUrl: null,
+  primaryColor: null,
+  secondaryColor: null,
+};
+
 function makeUser(profile: UserProfile, id = `user-${profile}`): User {
   return User.create(
     {
@@ -104,6 +114,7 @@ function toAuthenticatedContext(user: User): AuthenticatedUserContext {
       guardianId: user.guardianId,
       patientId: user.patientId,
     },
+    organization: authOrganization,
     managedPatients: [],
   };
 }
@@ -162,9 +173,8 @@ describe("AuthenticateUserUseCase", () => {
         email: user.email.value,
         profile,
         organizationId: "org-1",
-        guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
-        organizationEmployeeId: null,
+        ...(user.guardianId ? { guardianId: user.guardianId } : {}),
       },
     ]);
     expect(output).toEqual({
@@ -174,16 +184,15 @@ describe("AuthenticateUserUseCase", () => {
         email: user.email.value,
         profile,
         organizationId: "org-1",
-        guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
-        organizationEmployeeId: null,
+        ...(user.guardianId ? { guardianId: user.guardianId } : {}),
       },
       context: {
         view,
         organizationId: "org-1",
-        guardianId: user.guardianId ?? null,
         patientId: user.patientId ?? null,
-        organizationEmployeeId: null,
+        ...(user.guardianId ? { guardianId: user.guardianId } : {}),
+        organization: authOrganization,
         guardian: null,
         patient: null,
         employee: null,
@@ -316,8 +325,8 @@ describe("AuthenticateUserUseCase", () => {
       password: "secret",
     });
 
-    expect(output.user.guardianId).toBeNull();
-    expect(output.context.guardianId).toBeNull();
+    expect(output.user.guardianId).toBe("guardian-1");
+    expect(output.context.guardianId).toBe("guardian-1");
     expect(output.context.guardian).toBeNull();
     expect(output.context.patient).toEqual({
       id: "patient-1",

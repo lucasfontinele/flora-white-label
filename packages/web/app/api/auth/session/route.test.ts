@@ -19,17 +19,22 @@ const user = {
   id: "user_master",
   organizationId: "org_master",
   profile: "Master" as const,
-  guardianId: null,
   patientId: null,
-  organizationEmployeeId: null,
 };
 
 const context = {
   view: "BackofficeMaster" as const,
   organizationId: "org_master",
-  guardianId: null,
   patientId: null,
-  organizationEmployeeId: null,
+  organization: {
+    id: "org_master",
+    tradeName: "Flora",
+    legalName: "Flora Plataforma",
+    slug: "flora",
+    logoUrl: null,
+    primaryColor: null,
+    secondaryColor: null,
+  },
   guardian: null,
   patient: null,
   employee: null,

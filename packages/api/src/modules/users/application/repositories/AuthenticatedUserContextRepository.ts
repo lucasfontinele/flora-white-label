@@ -31,8 +31,19 @@ export interface AuthenticatedUserContextEmployee {
   isActive: boolean;
 }
 
+export interface AuthenticatedUserContextOrganization {
+  id: string;
+  tradeName: string;
+  legalName: string;
+  slug: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+}
+
 export interface AuthenticatedUserContext {
   user: AuthenticatedUserContextUser;
+  organization?: AuthenticatedUserContextOrganization;
   guardian?: AuthenticatedUserContextGuardian;
   patient?: AuthenticatedUserContextPatient;
   employee?: AuthenticatedUserContextEmployee;

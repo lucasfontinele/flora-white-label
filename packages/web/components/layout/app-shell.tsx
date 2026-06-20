@@ -22,6 +22,7 @@ type AppShellProps = {
   variant: "associated" | "master" | "organization";
   title: string;
   subtitle?: string;
+  tenantLabel?: string;
   nav: NavItem[];
   user: {
     name: string;
@@ -31,16 +32,26 @@ type AppShellProps = {
   actions?: React.ReactNode;
 };
 
-export function AppShell({ variant, title, subtitle, nav, user, children, actions }: AppShellProps) {
+export function AppShell({
+  variant,
+  title,
+  subtitle,
+  tenantLabel: tenantLabelOverride,
+  nav,
+  user,
+  children,
+  actions,
+}: AppShellProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const backoffice = variant === "master" || variant === "organization";
   const tenantLabel =
-    variant === "master"
+    tenantLabelOverride ??
+    (variant === "master"
       ? "Backoffice Master"
       : variant === "organization"
         ? "Operação · Vida Verde"
-        : "Portal do associado";
+        : "Portal do associado");
   const searchPlaceholder =
     variant === "master"
       ? "Buscar organização, CNPJ ou plano"

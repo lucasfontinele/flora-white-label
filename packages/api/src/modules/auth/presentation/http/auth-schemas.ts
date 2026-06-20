@@ -43,15 +43,7 @@ export const errorResponseSchema = {
 export const authUserResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: [
-    "id",
-    "email",
-    "profile",
-    "organizationId",
-    "guardianId",
-    "patientId",
-    "organizationEmployeeId",
-  ],
+  required: ["id", "email", "profile", "organizationId", "patientId"],
   properties: {
     id: {
       type: "string",
@@ -70,13 +62,13 @@ export const authUserResponseSchema = {
       minLength: 1,
     },
     guardianId: {
-      type: ["string", "null"],
+      type: "string",
     },
     patientId: {
       type: ["string", "null"],
     },
     organizationEmployeeId: {
-      type: ["string", "null"],
+      type: "string",
     },
   },
 } as const;
@@ -151,15 +143,55 @@ export const authPatientContextResponseSchema = {
   },
 } as const;
 
+export const authOrganizationContextResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "id",
+    "tradeName",
+    "legalName",
+    "slug",
+    "logoUrl",
+    "primaryColor",
+    "secondaryColor",
+  ],
+  properties: {
+    id: {
+      type: "string",
+      minLength: 1,
+    },
+    tradeName: {
+      type: "string",
+      minLength: 1,
+    },
+    legalName: {
+      type: "string",
+      minLength: 1,
+    },
+    slug: {
+      type: "string",
+      minLength: 1,
+    },
+    logoUrl: {
+      type: ["string", "null"],
+    },
+    primaryColor: {
+      type: ["string", "null"],
+    },
+    secondaryColor: {
+      type: ["string", "null"],
+    },
+  },
+} as const;
+
 export const authContextResponseSchema = {
   type: "object",
   additionalProperties: false,
   required: [
     "view",
     "organizationId",
-    "guardianId",
     "patientId",
-    "organizationEmployeeId",
+    "organization",
     "guardian",
     "patient",
     "employee",
@@ -175,13 +207,16 @@ export const authContextResponseSchema = {
       minLength: 1,
     },
     guardianId: {
-      type: ["string", "null"],
+      type: "string",
     },
     patientId: {
       type: ["string", "null"],
     },
     organizationEmployeeId: {
-      type: ["string", "null"],
+      type: "string",
+    },
+    organization: {
+      anyOf: [authOrganizationContextResponseSchema, { type: "null" }],
     },
     guardian: {
       anyOf: [authGuardianContextResponseSchema, { type: "null" }],

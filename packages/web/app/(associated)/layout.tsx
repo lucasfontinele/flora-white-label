@@ -13,7 +13,11 @@ export default async function AssociatedLayout({ children }: { children: React.R
     redirect("/entrar");
   }
 
-  if (session.context?.view !== "PatientPortal") {
+  if (!session.user || !session.context) {
+    redirect("/entrar");
+  }
+
+  if (session.context.view !== "PatientPortal") {
     redirect(landingPathForSession(session));
   }
 
@@ -21,7 +25,9 @@ export default async function AssociatedLayout({ children }: { children: React.R
     <ScenarioProvider>
       <MemberAccountProvider>
         <PatientProvider>
-          <AssociatedShell>{children}</AssociatedShell>
+          <AssociatedShell user={session.user} context={session.context}>
+            {children}
+          </AssociatedShell>
         </PatientProvider>
       </MemberAccountProvider>
     </ScenarioProvider>

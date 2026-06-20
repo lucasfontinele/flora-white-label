@@ -10,9 +10,17 @@ export default async function OrganizationLayout({ children }: { children: React
     redirect("/entrar");
   }
 
-  if (session.context?.view !== "Organization") {
+  if (!session.user || !session.context) {
+    redirect("/entrar");
+  }
+
+  if (session.context.view !== "Organization") {
     redirect(landingPathForSession(session));
   }
 
-  return <OrganizationShell>{children}</OrganizationShell>;
+  return (
+    <OrganizationShell user={session.user} context={session.context}>
+      {children}
+    </OrganizationShell>
+  );
 }

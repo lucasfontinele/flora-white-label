@@ -56,13 +56,19 @@ describe("auth schemas", () => {
     expect(authContextResponseSchema.required).toEqual([
       "view",
       "organizationId",
-      "guardianId",
       "patientId",
-      "organizationEmployeeId",
+      "organization",
       "guardian",
       "patient",
       "employee",
       "managedPatients",
+    ]);
+    expect(authUserResponseSchema.required).toEqual([
+      "id",
+      "email",
+      "profile",
+      "organizationId",
+      "patientId",
     ]);
     expect(loginResponseSchema.required).toEqual(["accessToken", "user", "context"]);
   });

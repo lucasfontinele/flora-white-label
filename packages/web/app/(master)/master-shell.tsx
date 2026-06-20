@@ -1,5 +1,6 @@
 "use client";
 
+import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { masterNav } from "@/components/layout/nav";
@@ -23,9 +24,16 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   },
 };
 
-export function MasterShell({ children }: { children: React.ReactNode }) {
+type MasterShellProps = {
+  user: AuthenticatedUserDto;
+  context: AuthContextDto;
+  children: React.ReactNode;
+};
+
+export function MasterShell({ user, context, children }: MasterShellProps) {
   const pathname = usePathname();
   const current = titles[pathname] ?? titles["/organizations"];
+  const organizationName = context.organization?.tradeName ?? "Backoffice Master";
 
   return (
     <AppShell
@@ -33,7 +41,7 @@ export function MasterShell({ children }: { children: React.ReactNode }) {
       title={current.title}
       subtitle={current.subtitle}
       nav={masterNav}
-      user={{ name: "Lucas Fontinele", detail: "Master SaaS" }}
+      user={{ name: user.email, detail: organizationName }}
     >
       {children}
     </AppShell>

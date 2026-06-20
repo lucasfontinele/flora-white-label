@@ -9,16 +9,21 @@ export class AuthPresenter {
         email: output.user.email,
         profile: output.user.profile,
         organizationId: output.user.organizationId,
-        guardianId: output.user.guardianId,
         patientId: output.user.patientId,
-        organizationEmployeeId: output.user.organizationEmployeeId,
+        ...(output.user.guardianId ? { guardianId: output.user.guardianId } : {}),
+        ...(output.user.organizationEmployeeId
+          ? { organizationEmployeeId: output.user.organizationEmployeeId }
+          : {}),
       },
       context: {
         view: output.context.view,
         organizationId: output.context.organizationId,
-        guardianId: output.context.guardianId,
         patientId: output.context.patientId,
-        organizationEmployeeId: output.context.organizationEmployeeId,
+        ...(output.context.guardianId ? { guardianId: output.context.guardianId } : {}),
+        ...(output.context.organizationEmployeeId
+          ? { organizationEmployeeId: output.context.organizationEmployeeId }
+          : {}),
+        organization: output.context.organization,
         guardian: output.context.guardian,
         patient: output.context.patient,
         employee: output.context.employee,

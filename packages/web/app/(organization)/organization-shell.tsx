@@ -1,5 +1,6 @@
 "use client";
 
+import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { organizationNav } from "@/components/layout/nav";
@@ -43,7 +44,13 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   },
 };
 
-export function OrganizationShell({ children }: { children: React.ReactNode }) {
+type OrganizationShellProps = {
+  user: AuthenticatedUserDto;
+  context: AuthContextDto;
+  children: React.ReactNode;
+};
+
+export function OrganizationShell({ user, context, children }: OrganizationShellProps) {
   const pathname = usePathname();
   const normalized = pathname.startsWith("/operacional/orders/")
     ? "/operacional/orders"
@@ -51,14 +58,17 @@ export function OrganizationShell({ children }: { children: React.ReactNode }) {
       ? "/operacional/approvals"
       : pathname;
   const current = titles[normalized] ?? titles["/operacional/dashboard"];
+  const organizationName = context.organization?.tradeName ?? "Organização";
+  const employeeName = context.employee?.fullName ?? user.email;
 
   return (
     <AppShell
       variant="organization"
       title={current.title}
       subtitle={current.subtitle}
+      tenantLabel={`Operação · ${organizationName}`}
       nav={organizationNav}
-      user={{ name: "Lucas Andrade", detail: "Operador" }}
+      user={{ name: employeeName, detail: organizationName }}
     >
       {children}
     </AppShell>

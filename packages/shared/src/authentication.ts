@@ -6,9 +6,9 @@ export type AuthenticatedUserDto = {
   id: string;
   organizationId: string;
   profile: AuthenticatedUserProfile;
-  guardianId: string | null;
   patientId: string | null;
-  organizationEmployeeId: string | null;
+  guardianId?: string;
+  organizationEmployeeId?: string;
 };
 
 export type LoginRequest = {
@@ -37,12 +37,23 @@ export type AuthEmployeeContextDto = {
   isActive: boolean;
 };
 
+export type AuthOrganizationContextDto = {
+  id: string;
+  tradeName: string;
+  legalName: string;
+  slug: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+};
+
 export type AuthContextDto = {
   view: AuthView;
   organizationId: string;
-  guardianId: string | null;
   patientId: string | null;
-  organizationEmployeeId: string | null;
+  guardianId?: string;
+  organizationEmployeeId?: string;
+  organization: AuthOrganizationContextDto | null;
   guardian: AuthGuardianContextDto | null;
   patient: AuthPatientContextDto | null;
   employee: AuthEmployeeContextDto | null;
