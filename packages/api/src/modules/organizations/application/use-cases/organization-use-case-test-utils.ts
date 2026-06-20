@@ -11,6 +11,7 @@ import { Organization } from "../../domain/entities/Organization.js";
 import { Cnae } from "../../domain/value-objects/Cnae.js";
 import { Cnpj } from "../../domain/value-objects/Cnpj.js";
 import type {
+  OrganizationPublicReadModel,
   OrganizationReadModel,
   OrganizationRepository,
 } from "../repositories/OrganizationRepository.js";
@@ -142,6 +143,21 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
     return this.organizations.find((organization) => organization.id === id) ?? null;
   }
 
+  async findBySlug(slug: string): Promise<OrganizationPublicReadModel | null> {
+    const organization = this.organizations.find((current) => current.slug === slug);
+
+    if (!organization) {
+      return null;
+    }
+
+    return {
+      id: organization.id,
+      tradeName: organization.tradeName,
+      slug: organization.slug,
+      settings: null,
+    };
+  }
+
   async findDetailsById(id: string): Promise<OrganizationReadModel | null> {
     const organization = await this.findById(id);
 
@@ -266,6 +282,7 @@ export function makeAddress(id = "address-1"): Address {
 export function makeOrganization(id = "organization-1", addressId = "address-1"): Organization {
   return Organization.create(
     {
+      slug: "flora-assoc",
       tradeName: "Flora Assoc",
       legalName: "Flora Associacao LTDA",
       cnpj: Cnpj.create("11.222.333/0001-81"),

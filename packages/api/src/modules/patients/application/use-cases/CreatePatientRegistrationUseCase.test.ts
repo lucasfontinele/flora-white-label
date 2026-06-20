@@ -10,9 +10,10 @@ import type { UnitOfWork } from "../../../../shared/application/transaction/Unit
 import type { Document } from "../../../../shared/domain/value-objects/Document.js";
 import type { GuardianRepository } from "../../../guardians/application/repositories/GuardianRepository.js";
 import type { Guardian } from "../../../guardians/domain/entities/Guardian.js";
-import type { OrganizationRepository } from "../../../organizations/application/repositories/OrganizationRepository.js";
 import type {
+  OrganizationPublicReadModel,
   OrganizationReadModel,
+  OrganizationRepository,
 } from "../../../organizations/application/repositories/OrganizationRepository.js";
 import { Organization } from "../../../organizations/domain/entities/Organization.js";
 import { Cnae } from "../../../organizations/domain/value-objects/Cnae.js";
@@ -47,6 +48,7 @@ class TrackingUnitOfWork implements UnitOfWork {
 class InMemoryOrganizationRepository implements OrganizationRepository {
   readonly organizations: Organization[] = [
     Organization.create({
+      slug: "org",
       tradeName: "Org",
       legalName: "Org Legal",
       cnpj: Cnpj.create("11222333000181"),
@@ -71,6 +73,14 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
 
   async findById(id: string): Promise<Organization | null> {
     return this.organizations.find((organization) => organization.id === id) ?? null;
+  }
+
+  async findBySlug(slug: string): Promise<OrganizationPublicReadModel | null> {
+    const organization = this.organizations.find((current) => current.slug === slug);
+
+    return organization
+      ? { id: organization.id, tradeName: organization.tradeName, slug: organization.slug, settings: null }
+      : null;
   }
 
   async findDetailsById(): Promise<OrganizationReadModel | null> {

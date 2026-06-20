@@ -1,5 +1,6 @@
 import type { TransactionalPrisma } from "../../../../shared/infrastructure/database/prisma/PrismaTransactionManager.js";
 import type {
+  OrganizationPublicReadModel,
   OrganizationReadModel,
   OrganizationRepository,
 } from "../../application/repositories/OrganizationRepository.js";
@@ -40,6 +41,30 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     });
 
     return record ? OrganizationMapper.toDomain(record) : null;
+  }
+
+  async findBySlug(slug: string): Promise<OrganizationPublicReadModel | null> {
+    const record = await this.prisma.getClient().organization.findUnique({
+      where: { slug },
+      include: { settings: true },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return {
+      id: record.id,
+      tradeName: record.tradeName,
+      slug: record.slug,
+      settings: record.settings
+        ? {
+            logoUrl: record.settings.logoUrl,
+            primaryColor: record.settings.primaryColor,
+            secondaryColor: record.settings.secondaryColor,
+          }
+        : null,
+    };
   }
 
   async findDetailsById(id: string): Promise<OrganizationReadModel | null> {

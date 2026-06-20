@@ -97,6 +97,7 @@ describe("UpdateOrganizationUseCase", () => {
     sut.organizationRepository.organizations.push(
       Organization.create(
         {
+          slug: "outra-assoc",
           tradeName: "Outra Assoc",
           legalName: "Outra Associacao LTDA",
           cnpj: Cnpj.create("12.544.992/0001-05"),

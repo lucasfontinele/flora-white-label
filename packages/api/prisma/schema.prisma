@@ -116,6 +116,7 @@ model Address {
 
 model Organization {
   id             String   @id @default(uuid())
+  slug           String   @unique
   tradeName      String
   legalName      String
   cnpj           String   @unique

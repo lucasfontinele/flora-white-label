@@ -6,6 +6,7 @@ import { AggregateRoot } from "../../../../shared/domain/entities/AggregateRoot.
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
 
 const baseProps = {
+  slug: "flora-assoc",
   tradeName: "Flora Assoc",
   legalName: "Flora Associação LTDA",
   cnpj: Cnpj.create("11.222.333/0001-81"),
@@ -40,6 +41,12 @@ describe("Organization", () => {
     );
   });
 
+  it("rejects an invalid slug", () => {
+    expect(() => Organization.create({ ...baseProps, slug: "Flora Assoc!" })).toThrow(
+      DomainValidationError,
+    );
+  });
+
   it("creates a valid organization", () => {
     const organization = Organization.create({
       ...baseProps,
@@ -48,6 +55,7 @@ describe("Organization", () => {
     });
 
     expect(organization).toBeInstanceOf(AggregateRoot);
+    expect(organization.slug).toBe("flora-assoc");
     expect(organization.tradeName).toBe("Flora Assoc");
     expect(organization.cnpj.value).toBe("11222333000181");
     expect(organization.primaryCnae.value).toBe("8630503");

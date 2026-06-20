@@ -5,6 +5,7 @@ import { Address } from "../../../addresses/domain/entities/Address.js";
 import type { AddressRepository } from "../../../addresses/application/repositories/AddressRepository.js";
 import type { SubscriptionPlanRepository } from "../../../subscription-plans/application/repositories/SubscriptionPlanRepository.js";
 import { Organization } from "../../domain/entities/Organization.js";
+import { slugify } from "../../domain/slug.js";
 import { Cnpj } from "../../domain/value-objects/Cnpj.js";
 import { Cnae } from "../../domain/value-objects/Cnae.js";
 import type {
@@ -74,7 +75,10 @@ export class CreateOrganizationUseCase {
         state: input.address.state,
       });
 
+      const slug = await this.generateUniqueSlug(input.organization.tradeName);
+
       const organization = Organization.create({
+        slug,
         tradeName: input.organization.tradeName,
         legalName: input.organization.legalName,
         cnpj,
@@ -96,5 +100,20 @@ export class CreateOrganizationUseCase {
 
       return details;
     });
+  }
+
+  // Derives a URL-safe slug from the trade name, appending a numeric suffix
+  // until it is unique (used for subdomain-based tenant resolution).
+  private async generateUniqueSlug(tradeName: string): Promise<string> {
+    const base = slugify(tradeName) || "organizacao";
+    let candidate = base;
+    let suffix = 2;
+
+    while (await this.deps.organizationRepository.findBySlug(candidate)) {
+      candidate = `${base}-${suffix}`;
+      suffix += 1;
+    }
+
+    return candidate;
   }
 }

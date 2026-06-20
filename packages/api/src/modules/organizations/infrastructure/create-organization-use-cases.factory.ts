@@ -5,6 +5,7 @@ import { PrismaSubscriptionPlanRepository } from "../../subscription-plans/infra
 import { CreateOrganizationUseCase } from "../application/use-cases/CreateOrganizationUseCase.js";
 import { DeleteOrganizationUseCase } from "../application/use-cases/DeleteOrganizationUseCase.js";
 import { GetOrganizationByIdUseCase } from "../application/use-cases/GetOrganizationByIdUseCase.js";
+import { GetOrganizationBySlugUseCase } from "../application/use-cases/GetOrganizationBySlugUseCase.js";
 import { ListOrganizationsUseCase } from "../application/use-cases/ListOrganizationsUseCase.js";
 import { UpdateOrganizationUseCase } from "../application/use-cases/UpdateOrganizationUseCase.js";
 import { PrismaOrganizationRepository } from "./prisma/PrismaOrganizationRepository.js";
@@ -13,6 +14,7 @@ export interface OrganizationUseCases {
   createOrganizationUseCase: CreateOrganizationUseCase;
   listOrganizationsUseCase: ListOrganizationsUseCase;
   getOrganizationByIdUseCase: GetOrganizationByIdUseCase;
+  getOrganizationBySlugUseCase: GetOrganizationBySlugUseCase;
   updateOrganizationUseCase: UpdateOrganizationUseCase;
   deleteOrganizationUseCase: DeleteOrganizationUseCase;
 }
@@ -32,6 +34,7 @@ export function makeOrganizationUseCases(prisma: PrismaService): OrganizationUse
     }),
     listOrganizationsUseCase: new ListOrganizationsUseCase(organizationRepository),
     getOrganizationByIdUseCase: new GetOrganizationByIdUseCase(organizationRepository),
+    getOrganizationBySlugUseCase: new GetOrganizationBySlugUseCase(organizationRepository),
     updateOrganizationUseCase: new UpdateOrganizationUseCase({
       subscriptionPlanRepository,
       organizationRepository,

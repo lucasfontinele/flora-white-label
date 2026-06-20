@@ -6,6 +6,7 @@ import { authRoutes } from "../../../../modules/auth/presentation/http/auth-rout
 import { organizationRoutes } from "../../../../modules/organizations/presentation/http/organization-routes.js";
 import { patientRegistrationRoutes } from "../../../../modules/patients/presentation/http/patient-registration-routes.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
+import { createCorsOriginDelegate } from "./cors-origin.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { swaggerDocsPlugin } from "./plugins/swagger.js";
@@ -23,7 +24,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: env.CORS_ALLOWED_ORIGINS,
+    origin: createCorsOriginDelegate({
+      domains: env.CORS_ALLOWED_ORIGIN_DOMAINS,
+      exactOrigins: env.CORS_ALLOWED_ORIGINS,
+    }),
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });

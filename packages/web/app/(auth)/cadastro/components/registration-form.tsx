@@ -236,7 +236,7 @@ function getStepsForRole(role: RegistrationFormData["role"]) {
   return patientSteps;
 }
 
-export function RegistrationForm() {
+export function RegistrationForm({ organizationId }: { organizationId?: string } = {}) {
   const [step, setStep] = useState(0);
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "found" | "error">("idle");
   const [guardianCepStatus, setGuardianCepStatus] = useState<"idle" | "loading" | "found" | "error">("idle");
@@ -457,7 +457,7 @@ export function RegistrationForm() {
     setSubmitError(null);
 
     try {
-      await createPatientRegistration(toPatientRegistrationBody(data));
+      await createPatientRegistration(toPatientRegistrationBody(data), organizationId);
       clearDraft();
       setSubmitted(true);
     } catch (error) {

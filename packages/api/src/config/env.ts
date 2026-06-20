@@ -15,14 +15,26 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters."),
   JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
+  // Exact origins that are always allowed (e.g. a marketing site).
   CORS_ALLOWED_ORIGINS: z
     .string()
-    .default("http://localhost:3000")
+    .default("")
     .transform((value) =>
       value
         .split(",")
         .map((origin) => origin.trim())
         .filter((origin) => origin.length > 0),
+    ),
+  // Base domains whose subdomains (any port/protocol) are allowed. Add client
+  // domains here as you point them at the app, e.g. "localhost,flora.app".
+  CORS_ALLOWED_ORIGIN_DOMAINS: z
+    .string()
+    .default("localhost")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((domain) => domain.trim().toLowerCase())
+        .filter((domain) => domain.length > 0),
     ),
 });
 

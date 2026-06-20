@@ -8,7 +8,10 @@ import {
   organizationListResponseSchema,
   organizationParamsJsonSchema,
   organizationParamsSchema,
+  organizationPublicResponseSchema,
   organizationResponseSchema,
+  organizationSlugParamsJsonSchema,
+  organizationSlugParamsSchema,
   organizationWriteBodyJsonSchema,
   updateOrganizationBodySchema,
   validationErrorResponseSchema,
@@ -75,6 +78,31 @@ export async function organizationRoutes(app: FastifyInstance): Promise<void> {
       return {
         data: output.data.map((organization) => OrganizationPresenter.toHttp(organization)),
       };
+    },
+  );
+
+  app.get(
+    "/organizations/by-slug/:slug",
+    {
+      schema: {
+        tags: ["Organizations"],
+        summary: "Resolve uma organização (tenant) pelo slug do subdomínio.",
+        params: organizationSlugParamsJsonSchema,
+        response: {
+          200: organizationPublicResponseSchema,
+          400: validationErrorResponseSchema,
+          404: validationErrorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = organizationSlugParamsSchema.safeParse(request.params);
+
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      return useCases.getOrganizationBySlugUseCase.execute(params.data);
     },
   );
 

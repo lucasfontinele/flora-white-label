@@ -1,9 +1,11 @@
 import { AggregateRoot } from "../../../../shared/domain/entities/AggregateRoot.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
+import { isValidSlug } from "../slug.js";
 import type { Cnpj } from "../value-objects/Cnpj.js";
 import type { Cnae } from "../value-objects/Cnae.js";
 
 export interface OrganizationProps {
+  slug: string;
   tradeName: string;
   legalName: string;
   cnpj: Cnpj;
@@ -43,7 +45,16 @@ export class Organization extends AggregateRoot<OrganizationProps> {
       throw new DomainValidationError("Organization requires an addressId.");
     }
 
-    return new Organization({ ...props, tradeName, legalName }, id);
+    const slug = props.slug.trim();
+    if (!isValidSlug(slug)) {
+      throw new DomainValidationError(`Invalid organization slug: "${props.slug}".`);
+    }
+
+    return new Organization({ ...props, slug, tradeName, legalName }, id);
+  }
+
+  get slug(): string {
+    return this.props.slug;
   }
 
   get tradeName(): string {

@@ -18,6 +18,7 @@ export class OrganizationMapper {
   static toDomain(record: PrismaOrganization): Organization {
     return Organization.create(
       {
+        slug: record.slug,
         tradeName: record.tradeName,
         legalName: record.legalName,
         cnpj: Cnpj.create(record.cnpj),
@@ -33,6 +34,7 @@ export class OrganizationMapper {
   static toPersistence(organization: Organization): Prisma.OrganizationUncheckedCreateInput {
     return {
       id: organization.id,
+      slug: organization.slug,
       tradeName: organization.tradeName,
       legalName: organization.legalName,
       cnpj: organization.cnpj.value,
@@ -47,6 +49,7 @@ export class OrganizationMapper {
     organization: Organization,
   ): Prisma.OrganizationUncheckedUpdateInput {
     return {
+      slug: organization.slug,
       tradeName: organization.tradeName,
       legalName: organization.legalName,
       cnpj: organization.cnpj.value,

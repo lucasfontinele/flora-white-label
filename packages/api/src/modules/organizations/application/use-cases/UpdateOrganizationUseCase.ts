@@ -80,6 +80,7 @@ export class UpdateOrganizationUseCase {
 
       const organization = Organization.create(
         {
+          slug: existingOrganization.slug,
           tradeName: input.organization.tradeName,
           legalName: input.organization.legalName,
           cnpj,

@@ -68,6 +68,12 @@ export const organizationParamsSchema = z
   })
   .strict();
 
+export const organizationSlugParamsSchema = z
+  .object({
+    slug: z.string().trim().min(1, "slug is required."),
+  })
+  .strict();
+
 export const listOrganizationsQuerySchema = z.object({}).strict();
 
 export const organizationWriteBodyJsonSchema = {
@@ -114,6 +120,36 @@ export const organizationParamsJsonSchema = {
   required: ["id"],
   properties: {
     id: { type: "string", minLength: 1 },
+  },
+} as const;
+
+export const organizationSlugParamsJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["slug"],
+  properties: {
+    slug: { type: "string", minLength: 1 },
+  },
+} as const;
+
+export const organizationPublicResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "tradeName", "slug", "settings"],
+  properties: {
+    id: { type: "string" },
+    tradeName: { type: "string" },
+    slug: { type: "string" },
+    settings: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      required: ["logoUrl", "primaryColor", "secondaryColor"],
+      properties: {
+        logoUrl: { type: ["string", "null"] },
+        primaryColor: { type: ["string", "null"] },
+        secondaryColor: { type: ["string", "null"] },
+      },
+    },
   },
 } as const;
 
