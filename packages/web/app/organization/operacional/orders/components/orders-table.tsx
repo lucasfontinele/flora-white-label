@@ -98,7 +98,7 @@ export function OrdersTable() {
                   <Td className="text-[var(--text-secondary)]">{order.createdAt}</Td>
                   <Td className="text-right">
                     <Button asChild size="icon" variant="ghost" aria-label={`Abrir ${order.number}`}>
-                      <Link href={`/operacional/orders/${order.id}`}>
+                      <Link href={`/organization/operacional/orders/${order.id}`}>
                         <Icon name="chevron-right" size={18} />
                       </Link>
                     </Button>

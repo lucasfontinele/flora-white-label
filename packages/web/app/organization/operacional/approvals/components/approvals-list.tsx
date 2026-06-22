@@ -115,7 +115,7 @@ function ApplicantRow({ applicant }: { applicant: Applicant }) {
           <p className="text-sm text-[var(--text-secondary)]">{applicant.resolution}</p>
         ) : null}
         <Button asChild variant="secondary" size="sm" className="ml-auto">
-          <Link href={`/operacional/approvals/${applicant.id}/details`}>
+          <Link href={`/organization/operacional/approvals/${applicant.id}/details`}>
             <Icon name="file-text" size={16} />
             Ver documentos
           </Link>

@@ -24,7 +24,7 @@ export default function NewOrganizationPage() {
           title: "Organização cadastrada",
           description: `${organization.tradeName} foi criada com sucesso.`,
         });
-        router.push("/organizations");
+        router.push("/backoffice/organizations");
       },
     });
   }
@@ -40,7 +40,7 @@ export default function NewOrganizationPage() {
           </p>
         </div>
         <Button asChild variant="secondary">
-          <Link href="/organizations">
+          <Link href="/backoffice/organizations">
             <Icon name="arrow-left" size={18} />
             Voltar para listagem
           </Link>

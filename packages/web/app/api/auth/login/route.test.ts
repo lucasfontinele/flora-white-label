@@ -74,7 +74,7 @@ describe("web POST /api/auth/login", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({
       data: {
-        redirectTo: "/painel",
+        redirectTo: "/backoffice/painel",
         user: loginResponse.user,
         context: loginResponse.context,
       },

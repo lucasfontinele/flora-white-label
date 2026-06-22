@@ -27,7 +27,7 @@ export default async function OperationalOrderDetailPage({
     <div className="space-y-5 pb-20 lg:pb-0">
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild size="icon" variant="ghost" aria-label="Voltar">
-          <Link href="/operacional/orders">
+          <Link href="/organization/operacional/orders">
             <Icon name="arrow-left" size={20} />
           </Link>
         </Button>
@@ -38,7 +38,7 @@ export default async function OperationalOrderDetailPage({
         <Badge tone={order.documentStatus === "OK" ? "success" : "warning"}>
           {order.documentStatus === "OK" ? "Documento verificado" : "Documento pendente"}
         </Badge>
-        <Link className="ml-auto text-sm font-bold text-[var(--green-700)]" href="/operacional/orders">
+        <Link className="ml-auto text-sm font-bold text-[var(--green-700)]" href="/organization/operacional/orders">
           Histórico interno
         </Link>
       </div>

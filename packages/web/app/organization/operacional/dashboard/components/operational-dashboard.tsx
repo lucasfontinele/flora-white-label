@@ -26,7 +26,7 @@ export function OperationalDashboard() {
         <Card className="p-5 md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="font-heading">Estoque baixo</h2>
-            <Link href="/operacional/inventory" className="text-sm font-bold text-[var(--green-700)]">
+            <Link href="/organization/operacional/inventory" className="text-sm font-bold text-[var(--green-700)]">
               Ver estoque
             </Link>
           </div>

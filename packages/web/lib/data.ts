@@ -129,7 +129,7 @@ export type OperatorOrder = {
 export const tenant = {
   id: "org-vida-verde",
   name: "Associação Vida Verde",
-  shortName: "Vida Verde",
+  shortName: "Paciente",
   portal: "Portal do associado",
 };
 

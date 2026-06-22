@@ -59,7 +59,7 @@ export default function EditOrganizationPage() {
             title: "Organização atualizada",
             description: `${updated.tradeName} foi atualizada com sucesso.`,
           });
-          router.push("/organizations");
+          router.push("/backoffice/organizations");
         },
       },
     );
@@ -76,7 +76,7 @@ export default function EditOrganizationPage() {
           </p>
         </div>
         <Button asChild variant="secondary">
-          <Link href="/organizations">
+          <Link href="/backoffice/organizations">
             <Icon name="arrow-left" size={18} />
             Voltar para listagem
           </Link>

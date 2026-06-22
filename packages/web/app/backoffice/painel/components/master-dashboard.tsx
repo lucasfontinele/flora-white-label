@@ -96,7 +96,7 @@ export function MasterDashboard() {
         <Card className="p-5 md:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-heading">Organizações por plano</h2>
-            <Link href="/organizations" className="text-sm font-bold text-[var(--green-700)]">
+            <Link href="/backoffice/organizations" className="text-sm font-bold text-[var(--green-700)]">
               Ver todas
             </Link>
           </div>
@@ -108,7 +108,7 @@ export function MasterDashboard() {
         <Card className="p-5 md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="font-heading">Organizações recentes</h2>
-            <Link href="/organizations" className="text-sm font-bold text-[var(--green-700)]">
+            <Link href="/backoffice/organizations" className="text-sm font-bold text-[var(--green-700)]">
               Ver todas
             </Link>
           </div>

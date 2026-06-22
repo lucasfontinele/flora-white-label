@@ -6,39 +6,39 @@ import { AppShell } from "@/components/layout/app-shell";
 import { organizationNav } from "@/components/layout/nav";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
-  "/operacional/dashboard": {
+  "/organization/operacional/dashboard": {
     title: "Visão geral",
     subtitle: "Indicadores e filas críticas da associação.",
   },
-  "/operacional/orders": {
+  "/organization/operacional/orders": {
     title: "Pedidos",
     subtitle: "Fila operacional com filtros, documentos e status.",
   },
-  "/operacional/approvals": {
+  "/organization/operacional/approvals": {
     title: "Aprovações",
     subtitle: "Valide cadastros que enviaram documentos para entrar na associação.",
   },
-  "/operacional/members": {
+  "/organization/operacional/members": {
     title: "Associados",
     subtitle: "Cadastro, responsáveis e vínculos de pacientes.",
   },
-  "/operacional/products": {
+  "/organization/operacional/products": {
     title: "Produtos",
     subtitle: "Produtos dispensados, lotes e rastreabilidade.",
   },
-  "/operacional/strains": {
+  "/organization/operacional/strains": {
     title: "Strains",
     subtitle: "Dados técnicos exibidos no catálogo educativo.",
   },
-  "/operacional/inventory": {
+  "/organization/operacional/inventory": {
     title: "Estoque",
     subtitle: "Saldos, alertas de reposição e unidades.",
   },
-  "/operacional/reports": {
+  "/organization/operacional/reports": {
     title: "Relatórios",
     subtitle: "Indicadores para diretoria e governança.",
   },
-  "/operacional/access": {
+  "/organization/operacional/access": {
     title: "Gestão de acessos",
     subtitle: "Perfis, permissões e convite de funcionários.",
   },
@@ -52,12 +52,12 @@ type OrganizationShellProps = {
 
 export function OrganizationShell({ user, context, children }: OrganizationShellProps) {
   const pathname = usePathname();
-  const normalized = pathname.startsWith("/operacional/orders/")
-    ? "/operacional/orders"
-    : pathname.startsWith("/operacional/approvals/")
-      ? "/operacional/approvals"
+  const normalized = pathname.startsWith("/organization/operacional/orders/")
+    ? "/organization/operacional/orders"
+    : pathname.startsWith("/organization/operacional/approvals/")
+      ? "/organization/operacional/approvals"
       : pathname;
-  const current = titles[normalized] ?? titles["/operacional/dashboard"];
+  const current = titles[normalized] ?? titles["/organization/operacional/dashboard"];
   const organizationName = context.organization?.tradeName ?? "Organização";
   const employeeName = context.employee?.fullName ?? user.email;
 

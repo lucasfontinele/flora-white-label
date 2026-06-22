@@ -32,7 +32,7 @@ export default async function ApprovalDetailsPage({ params }: { params: Promise<
     <div className="space-y-5 pb-20 lg:pb-0">
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild size="icon" variant="ghost" aria-label="Voltar">
-          <Link href="/operacional/approvals">
+          <Link href="/organization/operacional/approvals">
             <Icon name="arrow-left" size={20} />
           </Link>
         </Button>
@@ -41,7 +41,7 @@ export default async function ApprovalDetailsPage({ params }: { params: Promise<
         <Badge tone={status.tone} dot>
           {status.label}
         </Badge>
-        <Link className="ml-auto text-sm font-bold text-[var(--green-700)]" href="/operacional/approvals">
+        <Link className="ml-auto text-sm font-bold text-[var(--green-700)]" href="/organization/operacional/approvals">
           Voltar à fila
         </Link>
       </div>

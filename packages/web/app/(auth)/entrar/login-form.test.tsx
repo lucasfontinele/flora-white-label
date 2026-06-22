@@ -41,7 +41,7 @@ describe("LoginForm", () => {
   it("submits normalized credentials and redirects by returned landing path", async () => {
     const user = userEvent.setup();
     mocks.signIn.mockResolvedValue({
-      redirectTo: "/painel",
+      redirectTo: "/backoffice/painel",
       user: {
         email: "master@flora.local",
         id: "user_master",
@@ -75,7 +75,7 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => expect(mocks.signIn).toHaveBeenCalledWith({ email: "master@flora.local", password: "Acesso@123" }));
-    expect(mocks.push).toHaveBeenCalledWith("/painel");
+    expect(mocks.push).toHaveBeenCalledWith("/backoffice/painel");
     expect(mocks.refresh).toHaveBeenCalledOnce();
   });
 

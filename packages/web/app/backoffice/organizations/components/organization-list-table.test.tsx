@@ -64,7 +64,7 @@ describe("OrganizationListTable", () => {
     expect(screen.getByText("Starter")).toBeInTheDocument();
     expect(screen.getByText("10 operadores")).toBeInTheDocument();
     expect(screen.getByText("50 usuários")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute("href", "/organizations/org_1/edit");
+    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute("href", "/backoffice/organizations/org_1/edit");
   });
 
   it("calls onDelete when the delete action is triggered", () => {

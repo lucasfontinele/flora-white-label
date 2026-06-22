@@ -56,7 +56,7 @@ export default function MasterOrganizationsPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/organizations/new">
+          <Link href="/backoffice/organizations/new">
             <Icon name="plus" size={18} />
             Cadastrar organização
           </Link>

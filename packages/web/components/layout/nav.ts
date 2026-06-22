@@ -15,19 +15,19 @@ export const organizationNav: Array<{
   icon: IconName;
   count?: number;
 }> = [
-  { label: "Visão geral", href: "/operacional/dashboard", icon: "layout-dashboard" },
-  { label: "Pedidos", href: "/operacional/orders", icon: "inbox", count: 12 },
-  { label: "Aprovações", href: "/operacional/approvals", icon: "clipboard-check", count: 5 },
-  { label: "Associados", href: "/operacional/members", icon: "users" },
-  { label: "Produtos", href: "/operacional/products", icon: "package" },
-  { label: "Strains", href: "/operacional/strains", icon: "flask" },
-  { label: "Estoque", href: "/operacional/inventory", icon: "boxes" },
-  { label: "Relatórios", href: "/operacional/reports", icon: "bar-chart-3" },
-  { label: "Gestão de acessos", href: "/operacional/access", icon: "shield-check" },
+  { label: "Visão geral", href: "/organization/operacional/dashboard", icon: "layout-dashboard" },
+  { label: "Pedidos", href: "/organization/operacional/orders", icon: "inbox", count: 12 },
+  { label: "Aprovações", href: "/organization/operacional/approvals", icon: "clipboard-check", count: 5 },
+  { label: "Associados", href: "/organization/operacional/members", icon: "users" },
+  { label: "Produtos", href: "/organization/operacional/products", icon: "package" },
+  { label: "Strains", href: "/organization/operacional/strains", icon: "flask" },
+  { label: "Estoque", href: "/organization/operacional/inventory", icon: "boxes" },
+  { label: "Relatórios", href: "/organization/operacional/reports", icon: "bar-chart-3" },
+  { label: "Gestão de acessos", href: "/organization/operacional/access", icon: "shield-check" },
 ];
 
 export const masterNav: Array<{ label: string; href: string; icon: IconName }> = [
-  { label: "Visão geral", href: "/painel", icon: "layout-dashboard" },
-  { label: "Organizações", href: "/organizations", icon: "store" },
-  { label: "Planos", href: "/planos", icon: "credit-card" },
+  { label: "Visão geral", href: "/backoffice/painel", icon: "layout-dashboard" },
+  { label: "Organizações", href: "/backoffice/organizations", icon: "store" },
+  { label: "Planos", href: "/backoffice/planos", icon: "credit-card" },
 ];

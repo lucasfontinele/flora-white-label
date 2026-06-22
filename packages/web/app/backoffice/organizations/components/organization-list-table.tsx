@@ -98,7 +98,7 @@ export function OrganizationListTable({
               <td className="px-5 py-4">
                 <div className="flex justify-end gap-2">
                   <Button asChild size="sm" variant="secondary">
-                    <Link href={`/organizations/${organization.id}/edit`}>Editar</Link>
+                    <Link href={`/backoffice/organizations/${organization.id}/edit`}>Editar</Link>
                   </Button>
                   <Button
                     aria-label={`Excluir organização ${organization.tradeName}`}
