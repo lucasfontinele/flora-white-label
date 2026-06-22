@@ -1,0 +1,464 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Organization Documents API
+  version: 0.1.0
+  description: >
+    Backend-only contracts for organization required documents and patient
+    document approvals. This contract intentionally excludes upload, storage,
+    download, preview, OCR, file validation, auth, and RBAC.
+servers:
+  - url: http://localhost:3333
+tags:
+  - name: Organization Required Documents
+  - name: Patient Document Approvals
+paths:
+  /organizations/{organizationId}/required-documents:
+    post:
+      tags: [Organization Required Documents]
+      summary: Create an organization required document
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequiredDocumentRequest"
+      responses:
+        "201":
+          description: Required document created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequiredDocument"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [Organization Required Documents]
+      summary: List organization required documents
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      responses:
+        "200":
+          description: Required documents for the organization
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RequiredDocument"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/required-documents/{documentId}:
+    put:
+      tags: [Organization Required Documents]
+      summary: Update an organization required document name
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/DocumentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequiredDocumentRequest"
+      responses:
+        "200":
+          description: Required document updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequiredDocument"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [Organization Required Documents]
+      summary: Delete an organization required document when unused
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "204":
+          description: Required document deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/patients/{patientId}/document-approvals:
+    post:
+      tags: [Patient Document Approvals]
+      summary: Create a patient document approval in PENDING status
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatientDocumentApprovalRequest"
+      responses:
+        "201":
+          description: Patient document approval created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [Patient Document Approvals]
+      summary: List patient document approvals
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+      responses:
+        "200":
+          description: Patient document approvals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/patients/{patientId}/document-approvals/{approvalId}/approve:
+    post:
+      tags: [Patient Document Approvals]
+      summary: Approve a patient document approval and append an audit log
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Approval updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/patients/{patientId}/document-approvals/{approvalId}/reject:
+    post:
+      tags: [Patient Document Approvals]
+      summary: Reject a patient document approval and append an audit log
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectApprovalRequest"
+      responses:
+        "200":
+          description: Approval updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/patients/{patientId}/document-approvals/{approvalId}/reset-to-pending:
+    post:
+      tags: [Patient Document Approvals]
+      summary: Reset a patient document approval to PENDING and append an audit log
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Approval updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/patients/{patientId}/document-approvals/{approvalId}/logs:
+    get:
+      tags: [Patient Document Approvals]
+      summary: List append-only audit logs for a patient document approval
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+        - $ref: "#/components/parameters/ApprovalId"
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApprovalLog"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    PatientId:
+      name: patientId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    DocumentApprovalStatus:
+      type: string
+      enum: [PENDING, REJECTED, APPROVED]
+    DocumentApprovalAction:
+      type: string
+      enum:
+        - CREATED_PATIENT_DOCUMENT_APPROVAL
+        - APPROVED_DOCUMENT
+        - REJECTED_DOCUMENT
+        - RESET_DOCUMENT_TO_PENDING
+    CreateRequiredDocumentRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          examples: ["Receita medica"]
+    UpdateRequiredDocumentRequest:
+      $ref: "#/components/schemas/CreateRequiredDocumentRequest"
+    RequiredDocument:
+      type: object
+      additionalProperties: false
+      required: [id, organizationId, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreatePatientDocumentApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [documentId]
+      properties:
+        documentId:
+          type: string
+          minLength: 1
+    PatientDocumentApproval:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - documentId
+        - patientId
+        - status
+        - rejectedReason
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        documentId:
+          type: string
+        patientId:
+          type: string
+        status:
+          $ref: "#/components/schemas/DocumentApprovalStatus"
+        rejectedReason:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ApprovalActionRequest:
+      type: object
+      additionalProperties: false
+      required: [organizationUserId]
+      properties:
+        organizationUserId:
+          type: string
+          minLength: 1
+    RejectApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [organizationUserId, rejectedReason]
+      properties:
+        organizationUserId:
+          type: string
+          minLength: 1
+        rejectedReason:
+          type: string
+          minLength: 1
+    ApprovalLog:
+      type: object
+      additionalProperties: false
+      required: [id, action, patientApprovalId, organizationUserId, createdAt]
+      properties:
+        id:
+          type: string
+        action:
+          $ref: "#/components/schemas/DocumentApprovalAction"
+        patientApprovalId:
+          type: string
+        organizationUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Invalid request params, body, or query
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    DomainValidationError:
+      description: Domain invariant violation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Requested resource not found in the requested organization scope
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ConflictError:
+      description: Duplicate or in-use resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Unexpected failure without internal details
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

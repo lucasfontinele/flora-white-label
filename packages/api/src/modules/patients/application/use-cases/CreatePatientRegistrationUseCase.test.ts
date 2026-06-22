@@ -170,6 +170,14 @@ class InMemoryPatientRepository implements PatientRepository {
 
   constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
 
+  async findByIdInOrganization(organizationId: string, patientId: string): Promise<Patient | null> {
+    return (
+      this.patients.find(
+        (patient) => patient.organizationId === organizationId && patient.id === patientId,
+      ) ?? null
+    );
+  }
+
   async findByDocument(organizationId: string, document: Document): Promise<Patient | null> {
     return (
       this.patients.find(

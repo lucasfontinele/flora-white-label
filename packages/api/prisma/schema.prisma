@@ -64,6 +64,7 @@ model Patient {
   guardian    Guardian?           @relation(fields: [guardianId], references: [id])
   users       User[]              @relation("UserPatient")
   assessments PatientAssessment[]
+  documentApprovals OrganizationDocumentPatientApproval[]
 
   @@unique([organizationId, document])
   @@map("patients")
@@ -133,6 +134,7 @@ model Organization {
   address     Address                @relation(fields: [addressId], references: [id])
   settings    OrganizationSettings?
   employees   OrganizationEmployee[]
+  requiredDocuments OrganizationRequiredDocument[]
 
   @@map("organizations")
 }
@@ -167,6 +169,50 @@ model OrganizationSettings {
   @@map("organization_settings")
 }
 
+model OrganizationRequiredDocument {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  observations   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  approvals    OrganizationDocumentPatientApproval[]
+
+  @@unique([organizationId, name])
+  @@map("organization_required_documents")
+}
+
+model OrganizationDocumentPatientApproval {
+  id             String                 @id @default(uuid())
+  documentId     String
+  patientId      String
+  status         DocumentApprovalStatus @default(PENDING)
+  rejectedReason String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  document OrganizationRequiredDocument       @relation(fields: [documentId], references: [id])
+  patient  Patient                            @relation(fields: [patientId], references: [id])
+  logs     OrganizationDocumentApprovalLog[]
+
+  @@unique([documentId, patientId])
+  @@map("organization_document_patient_approvals")
+}
+
+model OrganizationDocumentApprovalLog {
+  id                 String   @id @default(uuid())
+  action             String
+  patientApprovalId  String
+  organizationUserId String
+  createdAt          DateTime @default(now())
+
+  patientApproval OrganizationDocumentPatientApproval @relation(fields: [patientApprovalId], references: [id])
+
+  @@map("organization_document_approval_logs")
+}
+
 enum UserProfile {
   Master
   Organization
@@ -179,4 +225,10 @@ enum Gender {
   F
   O
   NA @map("N/A")
+}
+
+enum DocumentApprovalStatus {
+  PENDING
+  REJECTED
+  APPROVED
 }

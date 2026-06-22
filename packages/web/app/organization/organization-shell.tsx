@@ -18,6 +18,10 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
     title: "Aprovações",
     subtitle: "Valide cadastros que enviaram documentos para entrar na associação.",
   },
+  "/organization/operacional/required-documents": {
+    title: "Documentos exigidos",
+    subtitle: "Documentos que o paciente precisa enviar para se associar.",
+  },
   "/organization/operacional/members": {
     title: "Associados",
     subtitle: "Cadastro, responsáveis e vínculos de pacientes.",

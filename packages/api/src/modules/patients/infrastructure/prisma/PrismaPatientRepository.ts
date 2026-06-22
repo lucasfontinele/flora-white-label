@@ -7,6 +7,14 @@ import { PatientMapper } from "./PatientMapper.js";
 export class PrismaPatientRepository implements PatientRepository {
   constructor(private readonly prisma: TransactionalPrisma) {}
 
+  async findByIdInOrganization(organizationId: string, patientId: string): Promise<Patient | null> {
+    const record = await this.prisma.getClient().patient.findFirst({
+      where: { id: patientId, organizationId },
+    });
+
+    return record ? PatientMapper.toDomain(record) : null;
+  }
+
   async findByDocument(organizationId: string, document: Document): Promise<Patient | null> {
     const record = await this.prisma.getClient().patient.findFirst({
       where: { organizationId, document: document.value },

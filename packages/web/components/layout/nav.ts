@@ -18,6 +18,7 @@ export const organizationNav: Array<{
   { label: "Visão geral", href: "/organization/operacional/dashboard", icon: "layout-dashboard" },
   { label: "Pedidos", href: "/organization/operacional/orders", icon: "inbox", count: 12 },
   { label: "Aprovações", href: "/organization/operacional/approvals", icon: "clipboard-check", count: 5 },
+  { label: "Documentos exigidos", href: "/organization/operacional/required-documents", icon: "file-check" },
   { label: "Associados", href: "/organization/operacional/members", icon: "users" },
   { label: "Produtos", href: "/organization/operacional/products", icon: "package" },
   { label: "Strains", href: "/organization/operacional/strains", icon: "flask" },
