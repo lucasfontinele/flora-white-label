@@ -192,6 +192,10 @@ model OrganizationDocumentPatientApproval {
   patientId      String
   status         DocumentApprovalStatus @default(PENDING)
   rejectedReason String?
+  fileName       String?
+  mimeType       String?
+  size           Int?
+  storageKey     String?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
 

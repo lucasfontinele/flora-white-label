@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { env } from "../../../../config/env.js";
 import { makeOrganizationDocumentUseCases } from "../../infrastructure/create-organization-document-use-cases.factory.js";
 import { OrganizationDocumentPresenter } from "./organization-document-presenter.js";
 import {
@@ -7,6 +8,7 @@ import {
   approvalLogListResponseSchema,
   createPatientDocumentApprovalBodyJsonSchema,
   createPatientDocumentApprovalBodySchema,
+  createUploadFileMetadataSchema,
   errorResponseSchema,
   organizationRequiredDocumentParamsJsonSchema,
   organizationRequiredDocumentParamsSchema,
@@ -26,11 +28,38 @@ import {
   requiredDocumentResponseSchema,
 } from "./organization-document-schemas.js";
 
-function sendValidationError(reply: FastifyReply, message: string): FastifyReply {
-  return reply.status(400).send({
+function sendValidationError(
+  reply: FastifyReply,
+  message: string,
+  statusCode = 400,
+): FastifyReply {
+  return reply.status(statusCode).send({
     error: "ValidationError",
     message,
   });
+}
+
+function isFileTooLargeError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE"
+  );
+}
+
+function getMultipartStringField(fields: unknown, fieldName: string): string | undefined {
+  if (!fields || typeof fields !== "object") {
+    return undefined;
+  }
+
+  const field = (fields as Record<string, unknown>)[fieldName];
+  if (!field || Array.isArray(field) || typeof field !== "object") {
+    return undefined;
+  }
+
+  const value = (field as { value?: unknown }).value;
+  return typeof value === "string" ? value : undefined;
 }
 
 export async function organizationDocumentRoutes(app: FastifyInstance): Promise<void> {
@@ -205,6 +234,81 @@ export async function organizationDocumentRoutes(app: FastifyInstance): Promise<
       });
 
       return reply.status(201).send(OrganizationDocumentPresenter.approvalToHttp(output));
+    },
+  );
+
+  app.post(
+    "/organizations/:organizationId/patients/:patientId/document-approvals/:approvalId/upload",
+    {
+      schema: {
+        tags: ["Patient Document Approvals"],
+        summary: "Envia arquivo de documento do paciente para approval existente.",
+        consumes: ["multipart/form-data"],
+        params: patientDocumentApprovalActionParamsJsonSchema,
+        response: {
+          200: patientDocumentApprovalResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          413: errorResponseSchema,
+          415: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientDocumentApprovalActionParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const file = await request.file();
+      if (!file) {
+        return sendValidationError(reply, "File is required.");
+      }
+
+      let content: Buffer;
+      try {
+        content = await file.toBuffer();
+      } catch (error) {
+        if (isFileTooLargeError(error)) {
+          return sendValidationError(reply, "File size exceeds the configured limit.", 413);
+        }
+
+        throw error;
+      }
+
+      const metadataSchema = createUploadFileMetadataSchema({
+        allowedMimeTypes: env.DOCUMENT_UPLOAD_ALLOWED_MIME_TYPES,
+        maxSizeBytes: env.MAX_DOCUMENT_UPLOAD_SIZE_BYTES,
+      });
+      const metadata = metadataSchema.safeParse({
+        fileName: file.filename,
+        mimeType: file.mimetype,
+        size: content.byteLength,
+      });
+      if (!metadata.success) {
+        const hasUnsupportedMime = metadata.error.issues.some((issue) =>
+          issue.path.includes("mimeType"),
+        );
+        const hasOversize = metadata.error.issues.some((issue) => issue.path.includes("size"));
+
+        return sendValidationError(
+          reply,
+          "Invalid upload file.",
+          hasOversize ? 413 : hasUnsupportedMime ? 415 : 400,
+        );
+      }
+
+      const output = await useCases.uploadPatientDocumentUseCase.execute({
+        ...params.data,
+        fileName: metadata.data.fileName,
+        mimeType: metadata.data.mimeType,
+        size: metadata.data.size,
+        content,
+        performedByUserId: getMultipartStringField(file.fields, "performedByUserId"),
+      });
+
+      return OrganizationDocumentPresenter.approvalToHttp(output);
     },
   );
 

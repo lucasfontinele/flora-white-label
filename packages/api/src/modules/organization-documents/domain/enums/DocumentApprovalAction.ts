@@ -3,4 +3,5 @@ export enum DocumentApprovalAction {
   ApprovedDocument = "APPROVED_DOCUMENT",
   RejectedDocument = "REJECTED_DOCUMENT",
   ResetDocumentToPending = "RESET_DOCUMENT_TO_PENDING",
+  UploadedDocument = "UPLOADED_DOCUMENT",
 }

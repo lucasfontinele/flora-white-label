@@ -103,4 +103,72 @@ describe("OrganizationDocumentPatientApproval", () => {
     expect(approval.status).toBe(DocumentApprovalStatus.Pending);
     expect(approval.rejectedReason).toBeNull();
   });
+
+  it("attaches uploaded file metadata, resets to pending, and clears rejected reason", () => {
+    const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: "org-1",
+      documentId: "doc-1",
+      patientId: "patient-1",
+      status: DocumentApprovalStatus.Rejected,
+      rejectedReason: "Documento ilegivel.",
+    });
+
+    expect(
+      approval.attachUploadedFile({
+        fileName: " receita.pdf ",
+        mimeType: " application/pdf ",
+        size: 128,
+        storageKey: " organizations/org-1/patients/patient-1/documents/approval-1/1-receita.pdf ",
+      }),
+    ).toBe(DocumentApprovalAction.UploadedDocument);
+    expect(approval.status).toBe(DocumentApprovalStatus.Pending);
+    expect(approval.rejectedReason).toBeNull();
+    expect(approval.fileName).toBe("receita.pdf");
+    expect(approval.mimeType).toBe("application/pdf");
+    expect(approval.size).toBe(128);
+    expect(approval.storageKey).toBe(
+      "organizations/org-1/patients/patient-1/documents/approval-1/1-receita.pdf",
+    );
+  });
+
+  it("rejects invalid uploaded file metadata", () => {
+    const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: "org-1",
+      documentId: "doc-1",
+      patientId: "patient-1",
+    });
+
+    expect(() =>
+      approval.attachUploadedFile({
+        fileName: " ",
+        mimeType: "application/pdf",
+        size: 128,
+        storageKey: "key",
+      }),
+    ).toThrow(DomainValidationError);
+    expect(() =>
+      approval.attachUploadedFile({
+        fileName: "receita.pdf",
+        mimeType: " ",
+        size: 128,
+        storageKey: "key",
+      }),
+    ).toThrow(DomainValidationError);
+    expect(() =>
+      approval.attachUploadedFile({
+        fileName: "receita.pdf",
+        mimeType: "application/pdf",
+        size: 0,
+        storageKey: "key",
+      }),
+    ).toThrow(DomainValidationError);
+    expect(() =>
+      approval.attachUploadedFile({
+        fileName: "receita.pdf",
+        mimeType: "application/pdf",
+        size: 128,
+        storageKey: " ",
+      }),
+    ).toThrow(DomainValidationError);
+  });
 });

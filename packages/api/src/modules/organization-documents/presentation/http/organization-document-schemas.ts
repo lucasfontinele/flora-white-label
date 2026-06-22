@@ -51,6 +51,35 @@ export const rejectApprovalBodySchema = approvalActionBodySchema
   })
   .strict();
 
+export const createUploadFileMetadataSchema = (config: {
+  allowedMimeTypes: string[];
+  maxSizeBytes: number;
+}) =>
+  z
+    .object({
+      fileName: nonBlankString("fileName"),
+      mimeType: nonBlankString("mimeType").transform((value) => value.toLowerCase()),
+      size: z.number().int().positive("size must be greater than zero."),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      if (value.size > config.maxSizeBytes) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["size"],
+          message: `size must be less than or equal to ${config.maxSizeBytes}.`,
+        });
+      }
+
+      if (!config.allowedMimeTypes.includes(value.mimeType)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["mimeType"],
+          message: "mimeType is not allowed.",
+        });
+      }
+    });
+
 const idParamJsonProperty = {
   type: "string",
   minLength: 1,
@@ -188,6 +217,11 @@ export const patientDocumentApprovalResponseSchema = {
     "patientId",
     "status",
     "rejectedReason",
+    "fileName",
+    "mimeType",
+    "size",
+    "storageKey",
+    "fileUrl",
     "createdAt",
     "updatedAt",
   ],
@@ -203,6 +237,11 @@ export const patientDocumentApprovalResponseSchema = {
     rejectedReason: {
       type: ["string", "null"],
     },
+    fileName: { type: ["string", "null"] },
+    mimeType: { type: ["string", "null"] },
+    size: { type: ["integer", "null"], minimum: 1 },
+    storageKey: { type: ["string", "null"] },
+    fileUrl: { type: ["string", "null"] },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
@@ -233,6 +272,7 @@ export const approvalLogResponseSchema = {
         "APPROVED_DOCUMENT",
         "REJECTED_DOCUMENT",
         "RESET_DOCUMENT_TO_PENDING",
+        "UPLOADED_DOCUMENT",
       ],
     },
     patientApprovalId: idParamJsonProperty,
@@ -267,3 +307,4 @@ export type CreatePatientDocumentApprovalBody = z.infer<
 >;
 export type ApprovalActionBody = z.infer<typeof approvalActionBodySchema>;
 export type RejectApprovalBody = z.infer<typeof rejectApprovalBodySchema>;
+export type UploadFileMetadata = z.infer<ReturnType<typeof createUploadFileMetadataSchema>>;

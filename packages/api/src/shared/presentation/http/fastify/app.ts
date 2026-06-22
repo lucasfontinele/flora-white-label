@@ -9,6 +9,7 @@ import { patientRegistrationRoutes } from "../../../../modules/patients/presenta
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
 import { createCorsOriginDelegate } from "./cors-origin.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
+import { multipartPlugin } from "./plugins/multipart.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { swaggerDocsPlugin } from "./plugins/swagger.js";
 import { healthRoute } from "./routes/health.route.js";
@@ -34,6 +35,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(errorHandlerPlugin);
+  await app.register(multipartPlugin);
   await app.register(prismaPlugin);
   await app.register(swaggerDocsPlugin);
 

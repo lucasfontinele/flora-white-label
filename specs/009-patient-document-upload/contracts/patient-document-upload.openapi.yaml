@@ -1,0 +1,190 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Patient Document Upload API
+  version: 0.1.0
+  description: >
+    Backend-only contracts for uploading patient document approval files to
+    object storage and returning read-time file URLs. This contract intentionally
+    excludes frontend, direct browser upload, presigned POST, old-file deletion,
+    OCR, antivirus, new auth, and RBAC.
+servers:
+  - url: http://localhost:3333
+tags:
+  - name: Patient Document Upload
+paths:
+  /organizations/{organizationId}/patients/{patientId}/document-approvals/{approvalId}/upload:
+    post:
+      tags: [Patient Document Upload]
+      summary: Upload or reupload one file for a patient document approval
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                performedByUserId:
+                  type: string
+                  minLength: 1
+                  description: Optional actor identifier if an existing context provides it.
+      responses:
+        "200":
+          description: Approval updated with uploaded file metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "413":
+          $ref: "#/components/responses/ValidationError"
+        "415":
+          $ref: "#/components/responses/ValidationError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/patients/{patientId}/document-approvals:
+    get:
+      tags: [Patient Document Upload]
+      summary: List patient document approvals with generated file URLs
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/PatientId"
+      responses:
+        "200":
+          description: Patient document approvals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PatientDocumentApproval"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    PatientId:
+      name: patientId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    PatientDocumentApproval:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - organizationId
+        - documentId
+        - patientId
+        - status
+        - rejectedReason
+        - fileName
+        - mimeType
+        - size
+        - storageKey
+        - fileUrl
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        documentId:
+          type: string
+        patientId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, REJECTED, APPROVED]
+        rejectedReason:
+          type: [string, "null"]
+        fileName:
+          type: [string, "null"]
+        mimeType:
+          type: [string, "null"]
+        size:
+          type: [integer, "null"]
+          minimum: 1
+        storageKey:
+          type: [string, "null"]
+        fileUrl:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Scoped approval or patient not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    DomainValidationError:
+      description: Domain invariant violation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

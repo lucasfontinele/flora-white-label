@@ -4,6 +4,7 @@ import type {
   OrganizationDocumentPatientApprovalReadModel,
   OrganizationDocumentPatientApprovalRepository,
 } from "../repositories/OrganizationDocumentPatientApprovalRepository.js";
+import type { DocumentStorageService } from "../services/DocumentStorageService.js";
 
 export interface ListPatientDocumentApprovalsInput {
   organizationId: string;
@@ -19,6 +20,7 @@ export class ListPatientDocumentApprovalsUseCase {
     private readonly deps: {
       patientRepository: PatientRepository;
       approvalRepository: OrganizationDocumentPatientApprovalRepository;
+      storageService: DocumentStorageService;
     },
   ) {}
 
@@ -36,6 +38,15 @@ export class ListPatientDocumentApprovalsUseCase {
       input.patientId,
     );
 
-    return { data };
+    return {
+      data: await Promise.all(
+        data.map(async (approval) => ({
+          ...approval,
+          fileUrl: approval.storageKey
+            ? await this.deps.storageService.getDownloadUrl(approval.storageKey)
+            : null,
+        })),
+      ),
+    };
   }
 }

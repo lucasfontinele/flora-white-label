@@ -19,8 +19,8 @@ export class PrismaOrganizationDocumentPatientApprovalRepository
     const record = await this.prisma.getClient().organizationDocumentPatientApproval.findFirst({
       where: {
         id: approvalId,
+        organizationId,
         patientId,
-        document: { organizationId },
       },
     });
 
@@ -35,8 +35,8 @@ export class PrismaOrganizationDocumentPatientApprovalRepository
     const record = await this.prisma.getClient().organizationDocumentPatientApproval.findFirst({
       where: {
         id: approvalId,
+        organizationId,
         patientId,
-        document: { organizationId },
       },
     });
 
@@ -60,8 +60,8 @@ export class PrismaOrganizationDocumentPatientApprovalRepository
   ): Promise<OrganizationDocumentPatientApprovalReadModel[]> {
     const records = await this.prisma.getClient().organizationDocumentPatientApproval.findMany({
       where: {
+        organizationId,
         patientId,
-        document: { organizationId },
       },
       orderBy: { createdAt: "asc" },
     });

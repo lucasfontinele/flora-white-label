@@ -20,6 +20,11 @@ export interface PatientDocumentApprovalResponse {
   patientId: string;
   status: DocumentApprovalStatus;
   rejectedReason: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  storageKey: string | null;
+  fileUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +61,11 @@ export class OrganizationDocumentPresenter {
       patientId: approval.patientId,
       status: approval.status,
       rejectedReason: approval.rejectedReason,
+      fileName: approval.fileName,
+      mimeType: approval.mimeType,
+      size: approval.size,
+      storageKey: approval.storageKey,
+      fileUrl: approval.fileUrl ?? null,
       createdAt: approval.createdAt.toISOString(),
       updatedAt: approval.updatedAt.toISOString(),
     };

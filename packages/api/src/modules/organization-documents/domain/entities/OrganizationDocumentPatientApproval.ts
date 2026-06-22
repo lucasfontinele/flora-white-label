@@ -9,10 +9,33 @@ export interface OrganizationDocumentPatientApprovalProps {
   patientId: string;
   status?: DocumentApprovalStatus;
   rejectedReason?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  size?: number | null;
+  storageKey?: string | null;
 }
 
-export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<OrganizationDocumentPatientApprovalProps>> {
-  private constructor(props: Required<OrganizationDocumentPatientApprovalProps>, id?: string) {
+interface OrganizationDocumentPatientApprovalInternalProps {
+  organizationId: string;
+  documentId: string;
+  patientId: string;
+  status: DocumentApprovalStatus;
+  rejectedReason: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  storageKey: string | null;
+}
+
+export interface UploadedDocumentMetadata {
+  fileName: string;
+  mimeType: string;
+  size: number;
+  storageKey: string;
+}
+
+export class OrganizationDocumentPatientApproval extends AggregateRoot<OrganizationDocumentPatientApprovalInternalProps> {
+  private constructor(props: OrganizationDocumentPatientApprovalInternalProps, id?: string) {
     super(props, id);
   }
 
@@ -38,9 +61,25 @@ export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<
     const status = props.status ?? DocumentApprovalStatus.Pending;
     const rejectedReason = normalizeRejectedReason(props.rejectedReason ?? null);
     validateStatusReason(status, rejectedReason);
+    const fileMetadata = normalizeFileMetadata({
+      fileName: props.fileName ?? null,
+      mimeType: props.mimeType ?? null,
+      size: props.size ?? null,
+      storageKey: props.storageKey ?? null,
+    });
 
     return new OrganizationDocumentPatientApproval(
-      { organizationId, documentId, patientId, status, rejectedReason },
+      {
+        organizationId,
+        documentId,
+        patientId,
+        status,
+        rejectedReason,
+        fileName: fileMetadata.fileName,
+        mimeType: fileMetadata.mimeType,
+        size: fileMetadata.size,
+        storageKey: fileMetadata.storageKey,
+      },
       id,
     );
   }
@@ -72,6 +111,19 @@ export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<
     return DocumentApprovalAction.ResetDocumentToPending;
   }
 
+  attachUploadedFile(input: UploadedDocumentMetadata): DocumentApprovalAction {
+    const metadata = validateUploadedDocumentMetadata(input);
+
+    this.props.fileName = metadata.fileName;
+    this.props.mimeType = metadata.mimeType;
+    this.props.size = metadata.size;
+    this.props.storageKey = metadata.storageKey;
+    this.props.status = DocumentApprovalStatus.Pending;
+    this.props.rejectedReason = null;
+
+    return DocumentApprovalAction.UploadedDocument;
+  }
+
   get organizationId(): string {
     return this.props.organizationId;
   }
@@ -90,6 +142,22 @@ export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<
 
   get rejectedReason(): string | null {
     return this.props.rejectedReason;
+  }
+
+  get fileName(): string | null {
+    return this.props.fileName;
+  }
+
+  get mimeType(): string | null {
+    return this.props.mimeType;
+  }
+
+  get size(): number | null {
+    return this.props.size;
+  }
+
+  get storageKey(): string | null {
+    return this.props.storageKey;
   }
 }
 
@@ -114,4 +182,70 @@ function validateStatusReason(status: DocumentApprovalStatus, rejectedReason: st
   if (status !== DocumentApprovalStatus.Rejected && rejectedReason !== null) {
     throw new DomainValidationError("rejectedReason must be null unless approval is rejected.");
   }
+}
+
+function normalizeFileMetadata(input: {
+  fileName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  storageKey: string | null;
+}): UploadedDocumentMetadata | { fileName: null; mimeType: null; size: null; storageKey: null } {
+  const hasAnyMetadata =
+    input.fileName !== null ||
+    input.mimeType !== null ||
+    input.size !== null ||
+    input.storageKey !== null;
+
+  if (!hasAnyMetadata) {
+    return {
+      fileName: null,
+      mimeType: null,
+      size: null,
+      storageKey: null,
+    };
+  }
+
+  if (
+    input.fileName === null ||
+    input.mimeType === null ||
+    input.size === null ||
+    input.storageKey === null
+  ) {
+    throw new DomainValidationError("Uploaded document metadata must be complete.");
+  }
+
+  return validateUploadedDocumentMetadata({
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    size: input.size,
+    storageKey: input.storageKey,
+  });
+}
+
+function validateUploadedDocumentMetadata(input: UploadedDocumentMetadata): UploadedDocumentMetadata {
+  const fileName = input.fileName.trim();
+  if (fileName.length === 0) {
+    throw new DomainValidationError("Uploaded document fileName is required.");
+  }
+
+  const mimeType = input.mimeType.trim();
+  if (mimeType.length === 0) {
+    throw new DomainValidationError("Uploaded document mimeType is required.");
+  }
+
+  if (!Number.isInteger(input.size) || input.size <= 0) {
+    throw new DomainValidationError("Uploaded document size must be greater than zero.");
+  }
+
+  const storageKey = input.storageKey.trim();
+  if (storageKey.length === 0) {
+    throw new DomainValidationError("Uploaded document storageKey is required.");
+  }
+
+  return {
+    fileName,
+    mimeType,
+    size: input.size,
+    storageKey,
+  };
 }

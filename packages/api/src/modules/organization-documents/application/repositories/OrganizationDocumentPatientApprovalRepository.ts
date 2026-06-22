@@ -8,6 +8,11 @@ export interface OrganizationDocumentPatientApprovalReadModel {
   patientId: string;
   status: DocumentApprovalStatus;
   rejectedReason: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  storageKey: string | null;
+  fileUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

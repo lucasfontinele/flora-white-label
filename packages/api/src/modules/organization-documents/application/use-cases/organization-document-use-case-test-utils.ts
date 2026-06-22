@@ -210,6 +210,10 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
     organizationId: string;
     status?: OrganizationDocumentPatientApprovalReadModel["status"];
     rejectedReason?: string | null;
+    fileName?: string | null;
+    mimeType?: string | null;
+    size?: number | null;
+    storageKey?: string | null;
   }): void {
     this.documentOrganizations.set(input.documentId, input.organizationId);
     this.approvals.set(input.id, {
@@ -219,6 +223,10 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
       patientId: input.patientId,
       status: input.status ?? OrganizationDocumentPatientApproval.create(input).status,
       rejectedReason: input.rejectedReason ?? null,
+      fileName: input.fileName ?? null,
+      mimeType: input.mimeType ?? null,
+      size: input.size ?? null,
+      storageKey: input.storageKey ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -291,6 +299,10 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
       patientId: approval.patientId,
       status: approval.status,
       rejectedReason: approval.rejectedReason,
+      fileName: approval.fileName,
+      mimeType: approval.mimeType,
+      size: approval.size,
+      storageKey: approval.storageKey,
       createdAt: now,
       updatedAt: now,
     };
@@ -309,6 +321,10 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
       patientId: approval.patientId,
       status: approval.status,
       rejectedReason: approval.rejectedReason,
+      fileName: approval.fileName,
+      mimeType: approval.mimeType,
+      size: approval.size,
+      storageKey: approval.storageKey,
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
     };

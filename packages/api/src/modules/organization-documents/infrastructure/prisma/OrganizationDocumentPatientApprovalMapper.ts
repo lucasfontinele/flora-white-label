@@ -17,6 +17,10 @@ export class OrganizationDocumentPatientApprovalMapper {
         patientId: record.patientId,
         status: record.status as DocumentApprovalStatus,
         rejectedReason: record.rejectedReason,
+        fileName: record.fileName,
+        mimeType: record.mimeType,
+        size: record.size,
+        storageKey: record.storageKey,
       },
       record.id,
     );
@@ -32,6 +36,10 @@ export class OrganizationDocumentPatientApprovalMapper {
       patientId: record.patientId,
       status: record.status as DocumentApprovalStatus,
       rejectedReason: record.rejectedReason,
+      fileName: record.fileName,
+      mimeType: record.mimeType,
+      size: record.size,
+      storageKey: record.storageKey,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
@@ -47,6 +55,10 @@ export class OrganizationDocumentPatientApprovalMapper {
       patientId: approval.patientId,
       status: approval.status,
       rejectedReason: approval.rejectedReason,
+      fileName: approval.fileName,
+      mimeType: approval.mimeType,
+      size: approval.size,
+      storageKey: approval.storageKey,
     };
   }
 
@@ -56,6 +68,10 @@ export class OrganizationDocumentPatientApprovalMapper {
     return {
       status: approval.status,
       rejectedReason: approval.rejectedReason,
+      fileName: approval.fileName,
+      mimeType: approval.mimeType,
+      size: approval.size,
+      storageKey: approval.storageKey,
     };
   }
 }

@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+const isProduction = process.env.NODE_ENV === "production";
+const requiredInProduction = (name: string, fallback: string) =>
+  isProduction ? z.string().min(1, `${name} is required`) : z.string().min(1).default(fallback);
+
 /**
  * Validated, typed view of the process environment.
  *
@@ -45,6 +49,22 @@ const envSchema = z.object({
   // Defaults to Cloudflare's "always passes" test secret, so local dev works
   // out of the box. Use the real secret key in production.
   TURNSTILE_SECRET_KEY: z.string().min(1).default("1x0000000000000000000000000000000AA"),
+  R2_ACCOUNT_ID: requiredInProduction("R2_ACCOUNT_ID", "local-r2-account"),
+  R2_ACCESS_KEY_ID: requiredInProduction("R2_ACCESS_KEY_ID", "local-r2-access-key"),
+  R2_SECRET_ACCESS_KEY: requiredInProduction("R2_SECRET_ACCESS_KEY", "local-r2-secret-key"),
+  R2_BUCKET_NAME: requiredInProduction("R2_BUCKET_NAME", "local-document-uploads"),
+  R2_PRESIGNED_URL_EXPIRES_IN: z.coerce.number().int().positive().default(900),
+  MAX_DOCUMENT_UPLOAD_SIZE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+  DOCUMENT_UPLOAD_ALLOWED_MIME_TYPES: z
+    .string()
+    .default("application/pdf,image/jpeg,image/png")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((mimeType) => mimeType.trim().toLowerCase())
+        .filter((mimeType) => mimeType.length > 0),
+    )
+    .refine((value) => value.length > 0, "At least one document upload MIME type is required."),
 });
 
 const parsed = envSchema.safeParse(process.env);

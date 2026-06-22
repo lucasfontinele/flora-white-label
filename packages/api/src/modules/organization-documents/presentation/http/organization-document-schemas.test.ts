@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   approvalActionBodySchema,
   createPatientDocumentApprovalBodySchema,
+  createUploadFileMetadataSchema,
   organizationRequiredDocumentParamsSchema,
+  patientDocumentApprovalResponseSchema,
   patientDocumentApprovalActionParamsSchema,
   patientDocumentApprovalsParamsSchema,
   rejectApprovalBodySchema,
@@ -101,5 +103,53 @@ describe("organization document schemas", () => {
         rejectedReason: " ",
       }).success,
     ).toBe(false);
+  });
+
+  it("validates upload params and file metadata", () => {
+    const metadataSchema = createUploadFileMetadataSchema({
+      allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png"],
+      maxSizeBytes: 1024,
+    });
+
+    const valid = metadataSchema.safeParse({
+      fileName: " Receita.pdf ",
+      mimeType: "APPLICATION/PDF",
+      size: 1024,
+    });
+
+    expect(valid.success).toBe(true);
+    if (valid.success) {
+      expect(valid.data).toEqual({
+        fileName: "Receita.pdf",
+        mimeType: "application/pdf",
+        size: 1024,
+      });
+    }
+
+    expect(metadataSchema.safeParse({ fileName: " ", mimeType: "application/pdf", size: 1 }).success).toBe(
+      false,
+    );
+    expect(metadataSchema.safeParse({ fileName: "x.pdf", mimeType: " ", size: 1 }).success).toBe(
+      false,
+    );
+    expect(
+      metadataSchema.safeParse({ fileName: "x.pdf", mimeType: "application/pdf", size: 0 }).success,
+    ).toBe(false);
+    expect(
+      metadataSchema.safeParse({ fileName: "x.pdf", mimeType: "application/pdf", size: 1025 })
+        .success,
+    ).toBe(false);
+    expect(
+      metadataSchema.safeParse({ fileName: "x.txt", mimeType: "text/plain", size: 1 }).success,
+    ).toBe(false);
+  });
+
+  it("requires upload fields in the approval response schema", () => {
+    expect(patientDocumentApprovalResponseSchema.required).toEqual(
+      expect.arrayContaining(["fileName", "mimeType", "size", "storageKey", "fileUrl"]),
+    );
+    expect(patientDocumentApprovalResponseSchema.properties).not.toHaveProperty("bucketName");
+    expect(patientDocumentApprovalResponseSchema.properties).not.toHaveProperty("accessKeyId");
+    expect(patientDocumentApprovalResponseSchema.properties).not.toHaveProperty("secretAccessKey");
   });
 });
