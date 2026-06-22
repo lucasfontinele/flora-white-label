@@ -5,29 +5,47 @@ import { DocumentApprovalStatus } from "../enums/DocumentApprovalStatus.js";
 import { OrganizationDocumentPatientApproval } from "./OrganizationDocumentPatientApproval.js";
 
 describe("OrganizationDocumentPatientApproval", () => {
-  it("creates a pending approval with null rejected reason", () => {
+  it("creates a pending approval linked to the organization with null rejected reason", () => {
     const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: "org-1",
       documentId: "doc-1",
       patientId: "patient-1",
     });
 
     expect(approval.id).toEqual(expect.any(String));
+    expect(approval.organizationId).toBe("org-1");
     expect(approval.status).toBe(DocumentApprovalStatus.Pending);
     expect(approval.rejectedReason).toBeNull();
   });
 
   it("rejects empty identifiers", () => {
     expect(() =>
-      OrganizationDocumentPatientApproval.create({ documentId: " ", patientId: "patient-1" }),
+      OrganizationDocumentPatientApproval.create({
+        organizationId: " ",
+        documentId: "doc-1",
+        patientId: "patient-1",
+      }),
     ).toThrow(DomainValidationError);
     expect(() =>
-      OrganizationDocumentPatientApproval.create({ documentId: "doc-1", patientId: " " }),
+      OrganizationDocumentPatientApproval.create({
+        organizationId: "org-1",
+        documentId: " ",
+        patientId: "patient-1",
+      }),
+    ).toThrow(DomainValidationError);
+    expect(() =>
+      OrganizationDocumentPatientApproval.create({
+        organizationId: "org-1",
+        documentId: "doc-1",
+        patientId: " ",
+      }),
     ).toThrow(DomainValidationError);
   });
 
   it("enforces status and rejected reason invariants on creation", () => {
     expect(() =>
       OrganizationDocumentPatientApproval.create({
+        organizationId: "org-1",
         documentId: "doc-1",
         patientId: "patient-1",
         status: DocumentApprovalStatus.Rejected,
@@ -36,6 +54,7 @@ describe("OrganizationDocumentPatientApproval", () => {
 
     expect(() =>
       OrganizationDocumentPatientApproval.create({
+        organizationId: "org-1",
         documentId: "doc-1",
         patientId: "patient-1",
         status: DocumentApprovalStatus.Approved,
@@ -46,6 +65,7 @@ describe("OrganizationDocumentPatientApproval", () => {
 
   it("approves and clears rejected reason", () => {
     const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: "org-1",
       documentId: "doc-1",
       patientId: "patient-1",
       status: DocumentApprovalStatus.Rejected,
@@ -59,6 +79,7 @@ describe("OrganizationDocumentPatientApproval", () => {
 
   it("rejects with a required trimmed reason", () => {
     const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: "org-1",
       documentId: "doc-1",
       patientId: "patient-1",
     });
@@ -71,6 +92,7 @@ describe("OrganizationDocumentPatientApproval", () => {
 
   it("resets to pending and clears rejected reason", () => {
     const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: "org-1",
       documentId: "doc-1",
       patientId: "patient-1",
       status: DocumentApprovalStatus.Rejected,

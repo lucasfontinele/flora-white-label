@@ -15,6 +15,7 @@ export interface RequiredDocumentResponse {
 
 export interface PatientDocumentApprovalResponse {
   id: string;
+  organizationId: string;
   documentId: string;
   patientId: string;
   status: DocumentApprovalStatus;
@@ -50,6 +51,7 @@ export class OrganizationDocumentPresenter {
   ): PatientDocumentApprovalResponse {
     return {
       id: approval.id,
+      organizationId: approval.organizationId,
       documentId: approval.documentId,
       patientId: approval.patientId,
       status: approval.status,

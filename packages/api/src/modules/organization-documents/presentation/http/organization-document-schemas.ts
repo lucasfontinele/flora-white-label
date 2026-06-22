@@ -181,9 +181,19 @@ export const requiredDocumentListResponseSchema = {
 export const patientDocumentApprovalResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "documentId", "patientId", "status", "rejectedReason", "createdAt", "updatedAt"],
+  required: [
+    "id",
+    "organizationId",
+    "documentId",
+    "patientId",
+    "status",
+    "rejectedReason",
+    "createdAt",
+    "updatedAt",
+  ],
   properties: {
     id: idParamJsonProperty,
+    organizationId: idParamJsonProperty,
     documentId: idParamJsonProperty,
     patientId: idParamJsonProperty,
     status: {

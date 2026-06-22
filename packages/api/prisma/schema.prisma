@@ -61,9 +61,9 @@ model Patient {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  guardian    Guardian?           @relation(fields: [guardianId], references: [id])
-  users       User[]              @relation("UserPatient")
-  assessments PatientAssessment[]
+  guardian          Guardian?                             @relation(fields: [guardianId], references: [id])
+  users             User[]                                @relation("UserPatient")
+  assessments       PatientAssessment[]
   documentApprovals OrganizationDocumentPatientApproval[]
 
   @@unique([organizationId, document])
@@ -130,11 +130,12 @@ model Organization {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  currentPlan SubscriptionPlan       @relation(fields: [currentPlanId], references: [id])
-  address     Address                @relation(fields: [addressId], references: [id])
-  settings    OrganizationSettings?
-  employees   OrganizationEmployee[]
+  currentPlan       SubscriptionPlan                      @relation(fields: [currentPlanId], references: [id])
+  address           Address                               @relation(fields: [addressId], references: [id])
+  settings          OrganizationSettings?
+  employees         OrganizationEmployee[]
   requiredDocuments OrganizationRequiredDocument[]
+  documentApprovals OrganizationDocumentPatientApproval[]
 
   @@map("organizations")
 }
@@ -177,7 +178,7 @@ model OrganizationRequiredDocument {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization                          @relation(fields: [organizationId], references: [id])
   approvals    OrganizationDocumentPatientApproval[]
 
   @@unique([organizationId, name])
@@ -186,6 +187,7 @@ model OrganizationRequiredDocument {
 
 model OrganizationDocumentPatientApproval {
   id             String                 @id @default(uuid())
+  organizationId String
   documentId     String
   patientId      String
   status         DocumentApprovalStatus @default(PENDING)
@@ -193,9 +195,10 @@ model OrganizationDocumentPatientApproval {
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
 
-  document OrganizationRequiredDocument       @relation(fields: [documentId], references: [id])
-  patient  Patient                            @relation(fields: [patientId], references: [id])
-  logs     OrganizationDocumentApprovalLog[]
+  organization Organization                      @relation(fields: [organizationId], references: [id])
+  document     OrganizationRequiredDocument      @relation(fields: [documentId], references: [id])
+  patient      Patient                           @relation(fields: [patientId], references: [id])
+  logs         OrganizationDocumentApprovalLog[]
 
   @@unique([documentId, patientId])
   @@map("organization_document_patient_approvals")

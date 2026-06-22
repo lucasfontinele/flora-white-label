@@ -58,6 +58,7 @@ export class CreatePatientDocumentApprovalUseCase {
     }
 
     const approval = OrganizationDocumentPatientApproval.create({
+      organizationId: input.organizationId,
       documentId: input.documentId,
       patientId: input.patientId,
     });

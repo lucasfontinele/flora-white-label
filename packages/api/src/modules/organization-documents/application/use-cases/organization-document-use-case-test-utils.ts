@@ -214,6 +214,7 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
     this.documentOrganizations.set(input.documentId, input.organizationId);
     this.approvals.set(input.id, {
       id: input.id,
+      organizationId: input.organizationId,
       documentId: input.documentId,
       patientId: input.patientId,
       status: input.status ?? OrganizationDocumentPatientApproval.create(input).status,
@@ -282,12 +283,10 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
   async create(
     approval: OrganizationDocumentPatientApproval,
   ): Promise<OrganizationDocumentPatientApprovalReadModel> {
-    this.documentOrganizations.set(
-      approval.documentId,
-      this.documentOrganizations.get(approval.documentId) ?? "org-1",
-    );
+    this.documentOrganizations.set(approval.documentId, approval.organizationId);
     const record = {
       id: approval.id,
+      organizationId: approval.organizationId,
       documentId: approval.documentId,
       patientId: approval.patientId,
       status: approval.status,
@@ -305,6 +304,7 @@ export class InMemoryApprovalRepository implements OrganizationDocumentPatientAp
     const previous = this.approvals.get(approval.id);
     const record = {
       id: approval.id,
+      organizationId: approval.organizationId,
       documentId: approval.documentId,
       patientId: approval.patientId,
       status: approval.status,

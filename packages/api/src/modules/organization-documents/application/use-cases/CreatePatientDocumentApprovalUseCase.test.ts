@@ -45,6 +45,7 @@ describe("CreatePatientDocumentApprovalUseCase", () => {
       documentId: "doc-1",
     });
 
+    expect(output.organizationId).toBe("org-1");
     expect(output.status).toBe(DocumentApprovalStatus.Pending);
     expect(output.rejectedReason).toBeNull();
   });

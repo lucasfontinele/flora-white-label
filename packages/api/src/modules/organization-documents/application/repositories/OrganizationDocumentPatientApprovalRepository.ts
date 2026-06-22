@@ -3,6 +3,7 @@ import type { DocumentApprovalStatus } from "../../domain/enums/DocumentApproval
 
 export interface OrganizationDocumentPatientApprovalReadModel {
   id: string;
+  organizationId: string;
   documentId: string;
   patientId: string;
   status: DocumentApprovalStatus;

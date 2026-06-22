@@ -12,6 +12,7 @@ export class OrganizationDocumentPatientApprovalMapper {
   ): OrganizationDocumentPatientApproval {
     return OrganizationDocumentPatientApproval.create(
       {
+        organizationId: record.organizationId,
         documentId: record.documentId,
         patientId: record.patientId,
         status: record.status as DocumentApprovalStatus,
@@ -26,6 +27,7 @@ export class OrganizationDocumentPatientApprovalMapper {
   ): OrganizationDocumentPatientApprovalReadModel {
     return {
       id: record.id,
+      organizationId: record.organizationId,
       documentId: record.documentId,
       patientId: record.patientId,
       status: record.status as DocumentApprovalStatus,
@@ -40,6 +42,7 @@ export class OrganizationDocumentPatientApprovalMapper {
   ): Prisma.OrganizationDocumentPatientApprovalUncheckedCreateInput {
     return {
       id: approval.id,
+      organizationId: approval.organizationId,
       documentId: approval.documentId,
       patientId: approval.patientId,
       status: approval.status,

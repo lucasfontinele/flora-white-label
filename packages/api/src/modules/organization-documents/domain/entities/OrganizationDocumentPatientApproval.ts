@@ -4,6 +4,7 @@ import { DocumentApprovalAction } from "../enums/DocumentApprovalAction.js";
 import { DocumentApprovalStatus } from "../enums/DocumentApprovalStatus.js";
 
 export interface OrganizationDocumentPatientApprovalProps {
+  organizationId: string;
   documentId: string;
   patientId: string;
   status?: DocumentApprovalStatus;
@@ -19,6 +20,11 @@ export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<
     props: OrganizationDocumentPatientApprovalProps,
     id?: string,
   ): OrganizationDocumentPatientApproval {
+    const organizationId = props.organizationId.trim();
+    if (organizationId.length === 0) {
+      throw new DomainValidationError("Patient document approval requires an organizationId.");
+    }
+
     const documentId = props.documentId.trim();
     if (documentId.length === 0) {
       throw new DomainValidationError("Patient document approval requires a documentId.");
@@ -33,7 +39,10 @@ export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<
     const rejectedReason = normalizeRejectedReason(props.rejectedReason ?? null);
     validateStatusReason(status, rejectedReason);
 
-    return new OrganizationDocumentPatientApproval({ documentId, patientId, status, rejectedReason }, id);
+    return new OrganizationDocumentPatientApproval(
+      { organizationId, documentId, patientId, status, rejectedReason },
+      id,
+    );
   }
 
   approve(): DocumentApprovalAction {
@@ -61,6 +70,10 @@ export class OrganizationDocumentPatientApproval extends AggregateRoot<Required<
     this.props.rejectedReason = null;
 
     return DocumentApprovalAction.ResetDocumentToPending;
+  }
+
+  get organizationId(): string {
+    return this.props.organizationId;
   }
 
   get documentId(): string {
