@@ -192,6 +192,18 @@ class InMemoryPatientRepository implements PatientRepository {
     expect(this.unitOfWork.inTransaction).toBe(true);
     this.patients.push(patient);
   }
+
+  async findDetailsByIdInOrganization(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async findManyByOrganization(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async save(): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
 }
 
 class FakeHashService implements HashService {

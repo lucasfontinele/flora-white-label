@@ -6,33 +6,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import {
-  applicants,
-  statusBadge,
-  typeIcon,
-  typeTone,
-  type Applicant,
-  type ApplicantDocument,
-  type ApplicantStatus,
-} from "../data";
+import { formatCpf } from "@/lib/masks";
+import { usePatients } from "../queries/use-patients";
+import { patientStatusMeta } from "../status-meta";
+import type { Patient, PatientStatus } from "../types";
 
-const filters: Array<{ value: ApplicantStatus; label: string }> = [
-  { value: "pending", label: "Aguardando" },
-  { value: "approved", label: "Aprovados" },
-  { value: "rejected", label: "Recusados" },
+const tabs: Array<{ value: PatientStatus; label: string }> = [
+  { value: "WAITING_APPROVAL", label: "Aguardando validação" },
+  { value: "WAITING_DOCUMENTS", label: "Aguardando documentos" },
+  { value: "APPROVAL", label: "Aprovados" },
+  { value: "REJECTED", label: "Recusados" },
 ];
 
-const counts = {
-  pending: applicants.filter((item) => item.status === "pending").length,
-  approved: applicants.filter((item) => item.status === "approved").length,
-  rejected: applicants.filter((item) => item.status === "rejected").length,
-};
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
-export function ApprovalsList() {
-  const [filter, setFilter] = useState<ApplicantStatus>("pending");
-  const visible = applicants.filter((item) => item.status === filter);
+export function ApprovalsList({ organizationId }: { organizationId: string }) {
+  const [status, setStatus] = useState<PatientStatus>("WAITING_APPROVAL");
+  const query = usePatients(organizationId, status);
+  const patients = query.data?.data ?? [];
 
   return (
     <div className="space-y-5 pb-20 lg:pb-0">
@@ -40,31 +39,54 @@ export function ApprovalsList() {
         <p className="text-sm font-bold text-[var(--green-700)]">Validação</p>
         <h2 className="mt-2 text-2xl font-extrabold">Aprovações de cadastro</h2>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Cadastros que enviaram a documentação e aguardam validação para fazer parte da associação.
+          Pacientes que enviaram a documentação e aguardam validação para fazer parte da associação.
         </p>
       </section>
 
-      <Tabs
-        value={filter}
-        onChange={setFilter}
-        tabs={filters.map((item) => ({ ...item, count: counts[item.value] }))}
-      />
+      <Tabs value={status} onChange={setStatus} tabs={tabs} />
 
-      {visible.length === 0 ? (
+      {query.isLoading ? (
+        <Card className="overflow-hidden">
+          <div className="divide-y divide-border">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 p-4 md:p-5" aria-busy="true">
+                <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-8 w-32" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : query.error ? (
+        <Card className="flex flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-heading text-lg">Não foi possível carregar a fila</h3>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              {query.error instanceof Error ? query.error.message : "Tente novamente."}
+            </p>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => void query.refetch()}>
+            Tentar novamente
+          </Button>
+        </Card>
+      ) : patients.length === 0 ? (
         <Card className="p-10 text-center">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-md bg-muted text-[var(--text-secondary)]">
             <Icon name="clipboard-check" size={24} />
           </span>
           <h3 className="mt-4 font-heading text-lg">Nada por aqui</h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Não há cadastros {filter === "pending" ? "aguardando validação" : statusBadge[filter].label.toLowerCase()} no momento.
+            Nenhum paciente {patientStatusMeta[status].label.toLowerCase()} no momento.
           </p>
         </Card>
       ) : (
         <Card className="overflow-hidden">
           <div className="divide-y divide-border">
-            {visible.map((applicant) => (
-              <ApplicantRow key={applicant.id} applicant={applicant} />
+            {patients.map((patient) => (
+              <PatientRow key={patient.id} patient={patient} />
             ))}
           </div>
         </Card>
@@ -73,68 +95,31 @@ export function ApprovalsList() {
   );
 }
 
-function ApplicantRow({ applicant }: { applicant: Applicant }) {
-  const badge = statusBadge[applicant.status];
-  const submittedDocs = applicant.documents.filter((document) => document.ok).length;
+function PatientRow({ patient }: { patient: Patient }) {
+  const badge = patientStatusMeta[patient.patientStatus];
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[var(--green-700)]">
-            <Icon name={typeIcon[applicant.type]} size={20} />
-          </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate font-bold">{applicant.name}</p>
-              <Badge tone={typeTone[applicant.type]} size="sm">
-                {applicant.type}
-              </Badge>
-            </div>
-            <p className="mt-0.5 truncate text-sm text-[var(--text-secondary)]">
-              {applicant.detail} · Enviado em {applicant.submittedAt}
-            </p>
-          </div>
-        </div>
-        <Badge tone={badge.tone} dot>
-          {badge.label}
-        </Badge>
+    <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:p-5">
+      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[var(--green-700)]">
+        <Icon name="user" size={20} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-bold">{patient.name}</p>
+        <p className="mt-0.5 truncate text-sm text-[var(--text-secondary)]">
+          CPF {formatCpf(patient.document)}
+          {patient.guardianName ? ` · Responsável: ${patient.guardianName}` : ""} · Cadastrado em{" "}
+          {formatDate(patient.createdAt)}
+        </p>
       </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-[var(--text-tertiary)]">
-          {submittedDocs}/{applicant.documents.length} documentos
-        </span>
-        {applicant.documents.map((document) => (
-          <DocChip key={document.label} document={document} />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {applicant.status !== "pending" ? (
-          <p className="text-sm text-[var(--text-secondary)]">{applicant.resolution}</p>
-        ) : null}
-        <Button asChild variant="secondary" size="sm" className="ml-auto">
-          <Link href={`/organization/operacional/approvals/${applicant.id}/details`}>
-            <Icon name="file-text" size={16} />
-            Ver documentos
-          </Link>
-        </Button>
-      </div>
+      <Badge tone={badge.tone} dot>
+        {badge.label}
+      </Badge>
+      <Button asChild variant="secondary" size="sm" className="md:ml-2">
+        <Link href={`/organization/operacional/approvals/${patient.id}/details`}>
+          <Icon name="file-text" size={16} />
+          Ver documentos
+        </Link>
+      </Button>
     </div>
-  );
-}
-
-function DocChip({ document }: { document: ApplicantDocument }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-semibold",
-        document.ok ? "bg-success-subtle text-[var(--success-600)]" : "bg-warning-subtle text-[var(--warning-600)]",
-      )}
-    >
-      <Icon name={document.ok ? "check" : "alert-triangle"} size={13} />
-      {document.label}
-    </span>
   );
 }

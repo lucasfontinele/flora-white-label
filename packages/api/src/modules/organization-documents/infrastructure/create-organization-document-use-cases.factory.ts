@@ -14,6 +14,11 @@ import { RejectPatientDocumentUseCase } from "../application/use-cases/RejectPat
 import { ResetPatientDocumentToPendingUseCase } from "../application/use-cases/ResetPatientDocumentToPendingUseCase.js";
 import { UpdateOrganizationRequiredDocumentUseCase } from "../application/use-cases/UpdateOrganizationRequiredDocumentUseCase.js";
 import { UploadPatientDocumentUseCase } from "../application/use-cases/UploadPatientDocumentUseCase.js";
+import { UploadPatientRequiredDocumentUseCase } from "../application/use-cases/UploadPatientRequiredDocumentUseCase.js";
+import { ListOrganizationPatientsUseCase } from "../application/use-cases/ListOrganizationPatientsUseCase.js";
+import { GetPatientApprovalDetailsUseCase } from "../application/use-cases/GetPatientApprovalDetailsUseCase.js";
+import { ApprovePatientRegistrationUseCase } from "../application/use-cases/ApprovePatientRegistrationUseCase.js";
+import { RejectPatientRegistrationUseCase } from "../application/use-cases/RejectPatientRegistrationUseCase.js";
 import { PrismaOrganizationDocumentApprovalLogRepository } from "./prisma/PrismaOrganizationDocumentApprovalLogRepository.js";
 import { PrismaOrganizationDocumentPatientApprovalRepository } from "./prisma/PrismaOrganizationDocumentPatientApprovalRepository.js";
 import { PrismaOrganizationRequiredDocumentRepository } from "./prisma/PrismaOrganizationRequiredDocumentRepository.js";
@@ -30,7 +35,12 @@ export interface OrganizationDocumentUseCases {
   rejectPatientDocumentUseCase: RejectPatientDocumentUseCase;
   resetPatientDocumentToPendingUseCase: ResetPatientDocumentToPendingUseCase;
   uploadPatientDocumentUseCase: UploadPatientDocumentUseCase;
+  uploadPatientRequiredDocumentUseCase: UploadPatientRequiredDocumentUseCase;
   listPatientDocumentApprovalLogsUseCase: ListPatientDocumentApprovalLogsUseCase;
+  listOrganizationPatientsUseCase: ListOrganizationPatientsUseCase;
+  getPatientApprovalDetailsUseCase: GetPatientApprovalDetailsUseCase;
+  approvePatientRegistrationUseCase: ApprovePatientRegistrationUseCase;
+  rejectPatientRegistrationUseCase: RejectPatientRegistrationUseCase;
 }
 
 export function makeOrganizationDocumentUseCases(
@@ -103,9 +113,35 @@ export function makeOrganizationDocumentUseCases(
       storageService,
       unitOfWork: transactionManager,
     }),
+    uploadPatientRequiredDocumentUseCase: new UploadPatientRequiredDocumentUseCase({
+      organizationRepository,
+      patientRepository,
+      requiredDocumentRepository,
+      approvalRepository,
+      logRepository,
+      storageService,
+      unitOfWork: transactionManager,
+    }),
     listPatientDocumentApprovalLogsUseCase: new ListPatientDocumentApprovalLogsUseCase({
       approvalRepository,
       logRepository,
+    }),
+    listOrganizationPatientsUseCase: new ListOrganizationPatientsUseCase({ patientRepository }),
+    getPatientApprovalDetailsUseCase: new GetPatientApprovalDetailsUseCase({
+      patientRepository,
+      requiredDocumentRepository,
+      approvalRepository,
+      storageService,
+    }),
+    approvePatientRegistrationUseCase: new ApprovePatientRegistrationUseCase({
+      patientRepository,
+      requiredDocumentRepository,
+      approvalRepository,
+      unitOfWork: transactionManager,
+    }),
+    rejectPatientRegistrationUseCase: new RejectPatientRegistrationUseCase({
+      patientRepository,
+      unitOfWork: transactionManager,
     }),
   };
 }

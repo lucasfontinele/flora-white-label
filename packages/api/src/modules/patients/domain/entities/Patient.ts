@@ -2,6 +2,7 @@ import { AggregateRoot } from "../../../../shared/domain/entities/AggregateRoot.
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
 import type { Document } from "../../../../shared/domain/value-objects/Document.js";
 import type { Gender } from "../../../../shared/domain/enums/Gender.js";
+import { PatientStatus } from "../enums/PatientStatus.js";
 
 export interface PatientProps {
   organizationId: string;
@@ -11,6 +12,8 @@ export interface PatientProps {
   birthdate: Date;
   gender: Gender;
   underPrivileged: boolean;
+  patientStatus?: PatientStatus;
+  rejectionReason?: string | null;
 }
 
 /**
@@ -43,7 +46,19 @@ export class Patient extends AggregateRoot<PatientProps> {
       throw new DomainValidationError("Patient birthdate is required and must be a valid date.");
     }
 
-    return new Patient({ ...props, organizationId, guardianId, name }, id);
+    const patientStatus = props.patientStatus ?? PatientStatus.WaitingDocuments;
+    const rejectionReason = props.rejectionReason?.trim() ? props.rejectionReason.trim() : null;
+    if (patientStatus !== PatientStatus.Rejected && rejectionReason !== null) {
+      throw new DomainValidationError("rejectionReason must be null unless the registration is rejected.");
+    }
+    if (patientStatus === PatientStatus.Rejected && rejectionReason === null) {
+      throw new DomainValidationError("rejectionReason is required for a rejected registration.");
+    }
+
+    return new Patient(
+      { ...props, organizationId, guardianId, name, patientStatus, rejectionReason },
+      id,
+    );
   }
 
   get organizationId(): string {
@@ -72,5 +87,35 @@ export class Patient extends AggregateRoot<PatientProps> {
 
   get underPrivileged(): boolean {
     return this.props.underPrivileged;
+  }
+
+  get patientStatus(): PatientStatus {
+    return this.props.patientStatus ?? PatientStatus.WaitingDocuments;
+  }
+
+  get rejectionReason(): string | null {
+    return this.props.rejectionReason ?? null;
+  }
+
+  /** Moves a fully-documented patient into the organization's review queue. */
+  submitForApproval(): void {
+    if (this.props.patientStatus === PatientStatus.WaitingDocuments) {
+      this.props.patientStatus = PatientStatus.WaitingApproval;
+    }
+  }
+
+  approveRegistration(): void {
+    this.props.patientStatus = PatientStatus.Approval;
+    this.props.rejectionReason = null;
+  }
+
+  rejectRegistration(reason: string): void {
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+      throw new DomainValidationError("rejectionReason is required when rejecting a registration.");
+    }
+
+    this.props.patientStatus = PatientStatus.Rejected;
+    this.props.rejectionReason = trimmed;
   }
 }

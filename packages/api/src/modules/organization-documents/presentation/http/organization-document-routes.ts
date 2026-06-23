@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { env } from "../../../../config/env.js";
+import { PatientStatus } from "../../../patients/domain/enums/PatientStatus.js";
 import { makeOrganizationDocumentUseCases } from "../../infrastructure/create-organization-document-use-cases.factory.js";
 import { OrganizationDocumentPresenter } from "./organization-document-presenter.js";
 import {
@@ -18,6 +19,8 @@ import {
   patientDocumentApprovalResponseSchema,
   patientDocumentApprovalsParamsJsonSchema,
   patientDocumentApprovalsParamsSchema,
+  patientRequiredDocumentUploadParamsJsonSchema,
+  patientRequiredDocumentUploadParamsSchema,
   rejectApprovalBodyJsonSchema,
   rejectApprovalBodySchema,
   requiredDocumentBodyJsonSchema,
@@ -26,6 +29,14 @@ import {
   requiredDocumentParamsJsonSchema,
   requiredDocumentParamsSchema,
   requiredDocumentResponseSchema,
+  uploadDocumentBodyJsonSchema,
+  listPatientsQueryJsonSchema,
+  listPatientsQuerySchema,
+  patientApprovalDetailsResponseSchema,
+  patientListResponseSchema,
+  patientResponseSchema,
+  rejectPatientRegistrationBodyJsonSchema,
+  rejectPatientRegistrationBodySchema,
 } from "./organization-document-schemas.js";
 
 function sendValidationError(
@@ -61,6 +72,16 @@ function getMultipartStringField(fields: unknown, fieldName: string): string | u
   const value = (field as { value?: unknown }).value;
   return typeof value === "string" ? value : undefined;
 }
+
+/**
+ * Upload routes consume multipart/form-data and read the file via
+ * `request.file()`, so `request.body` stays undefined and JSON-schema body
+ * validation would always fail with "Invalid request body". The body schema on
+ * those routes is documentation-only (it makes Swagger render a file field);
+ * we skip Fastify schema validation here and re-validate params with zod inside
+ * each handler.
+ */
+const skipSchemaValidationForMultipart = () => () => true;
 
 export async function organizationDocumentRoutes(app: FastifyInstance): Promise<void> {
   const useCases = makeOrganizationDocumentUseCases(app.prisma);
@@ -245,6 +266,7 @@ export async function organizationDocumentRoutes(app: FastifyInstance): Promise<
         summary: "Envia arquivo de documento do paciente para approval existente.",
         consumes: ["multipart/form-data"],
         params: patientDocumentApprovalActionParamsJsonSchema,
+        body: uploadDocumentBodyJsonSchema,
         response: {
           200: patientDocumentApprovalResponseSchema,
           400: errorResponseSchema,
@@ -254,6 +276,7 @@ export async function organizationDocumentRoutes(app: FastifyInstance): Promise<
           500: errorResponseSchema,
         },
       },
+      validatorCompiler: skipSchemaValidationForMultipart,
     },
     async (request, reply) => {
       const params = patientDocumentApprovalActionParamsSchema.safeParse(request.params);
@@ -300,6 +323,83 @@ export async function organizationDocumentRoutes(app: FastifyInstance): Promise<
       }
 
       const output = await useCases.uploadPatientDocumentUseCase.execute({
+        ...params.data,
+        fileName: metadata.data.fileName,
+        mimeType: metadata.data.mimeType,
+        size: metadata.data.size,
+        content,
+        performedByUserId: getMultipartStringField(file.fields, "performedByUserId"),
+      });
+
+      return OrganizationDocumentPresenter.approvalToHttp(output);
+    },
+  );
+
+  app.post(
+    "/organizations/:organizationId/patients/:patientId/required-documents/:documentId/upload",
+    {
+      schema: {
+        tags: ["Patient Document Approvals"],
+        summary: "Paciente envia o arquivo de um documento exigido (cria ou atualiza a approval).",
+        consumes: ["multipart/form-data"],
+        params: patientRequiredDocumentUploadParamsJsonSchema,
+        body: uploadDocumentBodyJsonSchema,
+        response: {
+          200: patientDocumentApprovalResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          413: errorResponseSchema,
+          415: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+      validatorCompiler: skipSchemaValidationForMultipart,
+    },
+    async (request, reply) => {
+      const params = patientRequiredDocumentUploadParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const file = await request.file();
+      if (!file) {
+        return sendValidationError(reply, "File is required.");
+      }
+
+      let content: Buffer;
+      try {
+        content = await file.toBuffer();
+      } catch (error) {
+        if (isFileTooLargeError(error)) {
+          return sendValidationError(reply, "File size exceeds the configured limit.", 413);
+        }
+
+        throw error;
+      }
+
+      const metadataSchema = createUploadFileMetadataSchema({
+        allowedMimeTypes: env.DOCUMENT_UPLOAD_ALLOWED_MIME_TYPES,
+        maxSizeBytes: env.MAX_DOCUMENT_UPLOAD_SIZE_BYTES,
+      });
+      const metadata = metadataSchema.safeParse({
+        fileName: file.filename,
+        mimeType: file.mimetype,
+        size: content.byteLength,
+      });
+      if (!metadata.success) {
+        const hasUnsupportedMime = metadata.error.issues.some((issue) =>
+          issue.path.includes("mimeType"),
+        );
+        const hasOversize = metadata.error.issues.some((issue) => issue.path.includes("size"));
+
+        return sendValidationError(
+          reply,
+          "Invalid upload file.",
+          hasOversize ? 413 : hasUnsupportedMime ? 415 : 400,
+        );
+      }
+
+      const output = await useCases.uploadPatientRequiredDocumentUseCase.execute({
         ...params.data,
         fileName: metadata.data.fileName,
         mimeType: metadata.data.mimeType,
@@ -479,6 +579,135 @@ export async function organizationDocumentRoutes(app: FastifyInstance): Promise<
       return {
         data: output.data.map((log) => OrganizationDocumentPresenter.logToHttp(log)),
       };
+    },
+  );
+
+  app.get(
+    "/organizations/:organizationId/patients",
+    {
+      schema: {
+        tags: ["Patient Registration Approvals"],
+        summary: "Lista pacientes da organização, opcionalmente filtrando por status.",
+        params: organizationRequiredDocumentParamsJsonSchema,
+        querystring: listPatientsQueryJsonSchema,
+        response: {
+          200: patientListResponseSchema,
+          400: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = organizationRequiredDocumentParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const query = listPatientsQuerySchema.safeParse(request.query);
+      if (!query.success) {
+        return sendValidationError(reply, "Invalid request query.");
+      }
+
+      const output = await useCases.listOrganizationPatientsUseCase.execute({
+        organizationId: params.data.organizationId,
+        status: query.data.status as PatientStatus | undefined,
+      });
+
+      return {
+        data: output.data.map((patient) => OrganizationDocumentPresenter.patientToHttp(patient)),
+      };
+    },
+  );
+
+  app.get(
+    "/organizations/:organizationId/patients/:patientId",
+    {
+      schema: {
+        tags: ["Patient Registration Approvals"],
+        summary: "Detalhes do paciente com documentos exigidos e approvals enviados.",
+        params: patientDocumentApprovalsParamsJsonSchema,
+        response: {
+          200: patientApprovalDetailsResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientDocumentApprovalsParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.getPatientApprovalDetailsUseCase.execute(params.data);
+
+      return OrganizationDocumentPresenter.patientApprovalDetailsToHttp(output);
+    },
+  );
+
+  app.post(
+    "/organizations/:organizationId/patients/:patientId/approve-registration",
+    {
+      schema: {
+        tags: ["Patient Registration Approvals"],
+        summary: "Aprova o cadastro do paciente (exige todos os documentos aprovados).",
+        params: patientDocumentApprovalsParamsJsonSchema,
+        response: {
+          200: patientResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientDocumentApprovalsParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.approvePatientRegistrationUseCase.execute(params.data);
+
+      return OrganizationDocumentPresenter.patientToHttp(output);
+    },
+  );
+
+  app.post(
+    "/organizations/:organizationId/patients/:patientId/reject-registration",
+    {
+      schema: {
+        tags: ["Patient Registration Approvals"],
+        summary: "Recusa o cadastro do paciente com um motivo.",
+        params: patientDocumentApprovalsParamsJsonSchema,
+        body: rejectPatientRegistrationBodyJsonSchema,
+        response: {
+          200: patientResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientDocumentApprovalsParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const body = rejectPatientRegistrationBodySchema.safeParse(request.body);
+      if (!body.success) {
+        return sendValidationError(reply, "Invalid request body.");
+      }
+
+      const output = await useCases.rejectPatientRegistrationUseCase.execute({
+        ...params.data,
+        reason: body.data.reason,
+      });
+
+      return OrganizationDocumentPresenter.patientToHttp(output);
     },
   );
 }

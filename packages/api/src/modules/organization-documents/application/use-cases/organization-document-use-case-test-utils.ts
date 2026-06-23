@@ -1,8 +1,14 @@
 import type { UnitOfWork } from "../../../../shared/application/transaction/UnitOfWork.js";
 import type { OrganizationRepository } from "../../../organizations/application/repositories/OrganizationRepository.js";
 import type { Organization } from "../../../organizations/domain/entities/Organization.js";
-import type { PatientRepository } from "../../../patients/application/repositories/PatientRepository.js";
-import type { Patient } from "../../../patients/domain/entities/Patient.js";
+import type {
+  PatientReadModel,
+  PatientRepository,
+} from "../../../patients/application/repositories/PatientRepository.js";
+import { Patient } from "../../../patients/domain/entities/Patient.js";
+import type { PatientStatus } from "../../../patients/domain/enums/PatientStatus.js";
+import { Gender } from "../../../../shared/domain/enums/Gender.js";
+import { Document } from "../../../../shared/domain/value-objects/Document.js";
 import { OrganizationDocumentApprovalLog } from "../../domain/entities/OrganizationDocumentApprovalLog.js";
 import { OrganizationDocumentPatientApproval } from "../../domain/entities/OrganizationDocumentPatientApproval.js";
 import { OrganizationRequiredDocument } from "../../domain/entities/OrganizationRequiredDocument.js";
@@ -78,23 +84,88 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 }
 
+// A check-digit-valid CPF, reused for all in-memory test patients (uniqueness
+// is not enforced in memory).
+const TEST_CPF = "52998224725";
+
+export function makeTestPatient(organizationId: string, patientId: string): Patient {
+  return Patient.create(
+    {
+      organizationId,
+      name: "Paciente Teste",
+      document: Document.create(TEST_CPF),
+      birthdate: new Date("2000-01-01T00:00:00.000Z"),
+      gender: Gender.Male,
+      underPrivileged: false,
+    },
+    patientId,
+  );
+}
+
 export class InMemoryPatientRepository implements PatientRepository {
   readonly patients = new Map<string, Patient>();
 
   add(organizationId: string, patientId: string): void {
-    this.patients.set(`${organizationId}:${patientId}`, {} as Patient);
+    this.patients.set(patientId, makeTestPatient(organizationId, patientId));
+  }
+
+  seed(patient: Patient): void {
+    this.patients.set(patient.id, patient);
+  }
+
+  private toReadModel(patient: Patient): PatientReadModel {
+    return {
+      id: patient.id,
+      organizationId: patient.organizationId,
+      guardianId: patient.guardianId ?? null,
+      guardianName: null,
+      name: patient.name,
+      document: patient.document.value,
+      birthdate: patient.birthdate,
+      gender: patient.gender,
+      underPrivileged: patient.underPrivileged,
+      patientStatus: patient.patientStatus,
+      rejectionReason: patient.rejectionReason,
+      createdAt: now,
+    };
   }
 
   async findByIdInOrganization(organizationId: string, patientId: string): Promise<Patient | null> {
-    return this.patients.get(`${organizationId}:${patientId}`) ?? null;
+    const patient = this.patients.get(patientId);
+    return patient && patient.organizationId === organizationId ? patient : null;
+  }
+
+  async findDetailsByIdInOrganization(
+    organizationId: string,
+    patientId: string,
+  ): Promise<PatientReadModel | null> {
+    const patient = this.patients.get(patientId);
+    return patient && patient.organizationId === organizationId ? this.toReadModel(patient) : null;
+  }
+
+  async findManyByOrganization(
+    organizationId: string,
+    status?: PatientStatus,
+  ): Promise<PatientReadModel[]> {
+    return [...this.patients.values()]
+      .filter(
+        (patient) =>
+          patient.organizationId === organizationId &&
+          (status === undefined || patient.patientStatus === status),
+      )
+      .map((patient) => this.toReadModel(patient));
   }
 
   async findByDocument(): Promise<Patient | null> {
     throw new Error("Method not implemented.");
   }
 
-  async create(): Promise<void> {
-    throw new Error("Method not implemented.");
+  async create(patient: Patient): Promise<void> {
+    this.patients.set(patient.id, patient);
+  }
+
+  async save(patient: Patient): Promise<void> {
+    this.patients.set(patient.id, patient);
   }
 }
 

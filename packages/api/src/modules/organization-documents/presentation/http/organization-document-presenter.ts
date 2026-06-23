@@ -1,6 +1,10 @@
+import type { PatientReadModel } from "../../../patients/application/repositories/PatientRepository.js";
+import type { PatientStatus } from "../../../patients/domain/enums/PatientStatus.js";
+import type { Gender } from "../../../../shared/domain/enums/Gender.js";
 import type { OrganizationDocumentApprovalLogReadModel } from "../../application/repositories/OrganizationDocumentApprovalLogRepository.js";
 import type { OrganizationDocumentPatientApprovalReadModel } from "../../application/repositories/OrganizationDocumentPatientApprovalRepository.js";
 import type { OrganizationRequiredDocumentReadModel } from "../../application/repositories/OrganizationRequiredDocumentRepository.js";
+import type { GetPatientApprovalDetailsOutput } from "../../application/use-cases/GetPatientApprovalDetailsUseCase.js";
 import type { DocumentApprovalAction } from "../../domain/enums/DocumentApprovalAction.js";
 import type { DocumentApprovalStatus } from "../../domain/enums/DocumentApprovalStatus.js";
 
@@ -37,6 +41,25 @@ export interface ApprovalLogResponse {
   createdAt: string;
 }
 
+export interface PatientResponse {
+  id: string;
+  name: string;
+  document: string;
+  birthdate: string;
+  gender: Gender;
+  underPrivileged: boolean;
+  patientStatus: PatientStatus;
+  rejectionReason: string | null;
+  guardianName: string | null;
+  createdAt: string;
+}
+
+export interface PatientApprovalDetailsResponse {
+  patient: PatientResponse;
+  requiredDocuments: RequiredDocumentResponse[];
+  approvals: PatientDocumentApprovalResponse[];
+}
+
 export class OrganizationDocumentPresenter {
   static requiredDocumentToHttp(
     document: OrganizationRequiredDocumentReadModel,
@@ -68,6 +91,35 @@ export class OrganizationDocumentPresenter {
       fileUrl: approval.fileUrl ?? null,
       createdAt: approval.createdAt.toISOString(),
       updatedAt: approval.updatedAt.toISOString(),
+    };
+  }
+
+  static patientToHttp(patient: PatientReadModel): PatientResponse {
+    return {
+      id: patient.id,
+      name: patient.name,
+      document: patient.document,
+      birthdate: patient.birthdate.toISOString(),
+      gender: patient.gender,
+      underPrivileged: patient.underPrivileged,
+      patientStatus: patient.patientStatus,
+      rejectionReason: patient.rejectionReason,
+      guardianName: patient.guardianName,
+      createdAt: patient.createdAt.toISOString(),
+    };
+  }
+
+  static patientApprovalDetailsToHttp(
+    output: GetPatientApprovalDetailsOutput,
+  ): PatientApprovalDetailsResponse {
+    return {
+      patient: OrganizationDocumentPresenter.patientToHttp(output.patient),
+      requiredDocuments: output.requiredDocuments.map((document) =>
+        OrganizationDocumentPresenter.requiredDocumentToHttp(document),
+      ),
+      approvals: output.approvals.map((approval) =>
+        OrganizationDocumentPresenter.approvalToHttp(approval),
+      ),
     };
   }
 

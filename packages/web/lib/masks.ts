@@ -2,6 +2,13 @@ export function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+export function formatCpf(value: string) {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length !== 11) return value;
+
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+}
+
 export function formatCnpj(value: string) {
   const digits = onlyDigits(value).slice(0, 14);
 

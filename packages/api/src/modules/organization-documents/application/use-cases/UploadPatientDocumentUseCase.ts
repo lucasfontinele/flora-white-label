@@ -7,6 +7,10 @@ import type {
   OrganizationDocumentPatientApprovalRepository,
 } from "../repositories/OrganizationDocumentPatientApprovalRepository.js";
 import type { DocumentStorageService } from "../services/DocumentStorageService.js";
+import {
+  buildPatientDocumentStorageKey,
+  normalizeUploadActorId,
+} from "./patient-document-upload.helpers.js";
 
 export interface UploadPatientDocumentInput {
   organizationId: string;
@@ -42,7 +46,7 @@ export class UploadPatientDocumentUseCase {
       throw new NotFoundError("Patient document approval not found.");
     }
 
-    const storageKey = buildStorageKey({
+    const storageKey = buildPatientDocumentStorageKey({
       organizationId: input.organizationId,
       patientId: input.patientId,
       approvalId: input.approvalId,
@@ -69,7 +73,7 @@ export class UploadPatientDocumentUseCase {
       const log = OrganizationDocumentApprovalLog.create({
         action,
         patientApprovalId: approval.id,
-        organizationUserId: normalizeActorId(input.performedByUserId, input.patientId),
+        organizationUserId: normalizeUploadActorId(input.performedByUserId, input.patientId),
       });
       await this.deps.logRepository.create(log);
 
@@ -78,37 +82,4 @@ export class UploadPatientDocumentUseCase {
   }
 }
 
-function buildStorageKey(input: {
-  organizationId: string;
-  patientId: string;
-  approvalId: string;
-  fileName: string;
-  timestamp: number;
-}): string {
-  return [
-    "organizations",
-    input.organizationId,
-    "patients",
-    input.patientId,
-    "documents",
-    input.approvalId,
-    `${input.timestamp}-${safeFileName(input.fileName)}`,
-  ].join("/");
-}
-
-function safeFileName(fileName: string): string {
-  const normalized = fileName
-    .trim()
-    .replace(/[/\\]/g, "-")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "");
-
-  return normalized.length > 0 ? normalized : "document";
-}
-
-function normalizeActorId(performedByUserId: string | undefined, patientId: string): string {
-  const trimmed = performedByUserId?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : patientId;
-}
 

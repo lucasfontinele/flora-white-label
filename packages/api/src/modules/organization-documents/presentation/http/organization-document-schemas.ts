@@ -26,6 +26,12 @@ export const patientDocumentApprovalActionParamsSchema = patientDocumentApproval
   })
   .strict();
 
+export const patientRequiredDocumentUploadParamsSchema = patientDocumentApprovalsParamsSchema
+  .extend({
+    documentId: nonBlankString("documentId"),
+  })
+  .strict();
+
 export const requiredDocumentBodySchema = z
   .object({
     name: nonBlankString("name"),
@@ -125,6 +131,17 @@ export const patientDocumentApprovalActionParamsJsonSchema = {
   },
 } as const;
 
+export const patientRequiredDocumentUploadParamsJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["organizationId", "patientId", "documentId"],
+  properties: {
+    organizationId: idParamJsonProperty,
+    patientId: idParamJsonProperty,
+    documentId: idParamJsonProperty,
+  },
+} as const;
+
 export const requiredDocumentBodyJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -146,6 +163,26 @@ export const createPatientDocumentApprovalBodyJsonSchema = {
   required: ["documentId"],
   properties: {
     documentId: idParamJsonProperty,
+  },
+} as const;
+
+// Documents the multipart/form-data body so OpenAPI/Swagger renders a file
+// picker. The body itself is consumed manually via `request.file()` (the
+// multipart plugin runs in manual mode), so this schema is documentation-only
+// and route body validation is skipped for upload routes.
+export const uploadDocumentBodyJsonSchema = {
+  type: "object",
+  required: ["file"],
+  properties: {
+    file: {
+      type: "string",
+      format: "binary",
+      description: "Arquivo do documento a ser enviado.",
+    },
+    performedByUserId: {
+      type: "string",
+      description: "Opcional: id do usuário que está enviando o arquivo (auditoria).",
+    },
   },
 } as const;
 
@@ -293,6 +330,89 @@ export const approvalLogListResponseSchema = {
   },
 } as const;
 
+const patientStatusValues = ["WAITING_DOCUMENTS", "WAITING_APPROVAL", "APPROVAL", "REJECTED"] as const;
+
+export const listPatientsQuerySchema = z
+  .object({
+    status: z.enum(patientStatusValues).optional(),
+  })
+  .strict();
+
+export const listPatientsQueryJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    status: { type: "string", enum: patientStatusValues },
+  },
+} as const;
+
+export const rejectPatientRegistrationBodySchema = z
+  .object({
+    reason: nonBlankString("reason"),
+  })
+  .strict();
+
+export const rejectPatientRegistrationBodyJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reason"],
+  properties: {
+    reason: { type: "string", minLength: 1 },
+  },
+} as const;
+
+export const patientResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "id",
+    "name",
+    "document",
+    "birthdate",
+    "gender",
+    "underPrivileged",
+    "patientStatus",
+    "rejectionReason",
+    "guardianName",
+    "createdAt",
+  ],
+  properties: {
+    id: idParamJsonProperty,
+    name: { type: "string" },
+    document: { type: "string" },
+    birthdate: { type: "string", format: "date-time" },
+    gender: { type: "string" },
+    underPrivileged: { type: "boolean" },
+    patientStatus: { type: "string", enum: patientStatusValues },
+    rejectionReason: { type: ["string", "null"] },
+    guardianName: { type: ["string", "null"] },
+    createdAt: { type: "string", format: "date-time" },
+  },
+} as const;
+
+export const patientListResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["data"],
+  properties: {
+    data: { type: "array", items: patientResponseSchema },
+  },
+} as const;
+
+export const patientApprovalDetailsResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["patient", "requiredDocuments", "approvals"],
+  properties: {
+    patient: patientResponseSchema,
+    requiredDocuments: { type: "array", items: requiredDocumentResponseSchema },
+    approvals: { type: "array", items: patientDocumentApprovalResponseSchema },
+  },
+} as const;
+
+export type ListPatientsQuery = z.infer<typeof listPatientsQuerySchema>;
+export type RejectPatientRegistrationBody = z.infer<typeof rejectPatientRegistrationBodySchema>;
+
 export type OrganizationRequiredDocumentParams = z.infer<
   typeof organizationRequiredDocumentParamsSchema
 >;
@@ -300,6 +420,9 @@ export type RequiredDocumentParams = z.infer<typeof requiredDocumentParamsSchema
 export type PatientDocumentApprovalsParams = z.infer<typeof patientDocumentApprovalsParamsSchema>;
 export type PatientDocumentApprovalActionParams = z.infer<
   typeof patientDocumentApprovalActionParamsSchema
+>;
+export type PatientRequiredDocumentUploadParams = z.infer<
+  typeof patientRequiredDocumentUploadParamsSchema
 >;
 export type RequiredDocumentBody = z.infer<typeof requiredDocumentBodySchema>;
 export type CreatePatientDocumentApprovalBody = z.infer<

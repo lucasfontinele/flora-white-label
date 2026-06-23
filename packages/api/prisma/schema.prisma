@@ -50,16 +50,18 @@ model Guardian {
 }
 
 model Patient {
-  id              String   @id @default(uuid())
+  id              String        @id @default(uuid())
   organizationId  String
   guardianId      String?
   name            String
   document        String
   birthdate       DateTime
   gender          Gender
-  underPrivileged Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  underPrivileged Boolean       @default(false)
+  patientStatus   PatientStatus @default(WAITING_DOCUMENTS)
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   guardian          Guardian?                             @relation(fields: [guardianId], references: [id])
   users             User[]                                @relation("UserPatient")
@@ -238,4 +240,11 @@ enum DocumentApprovalStatus {
   PENDING
   REJECTED
   APPROVED
+}
+
+enum PatientStatus {
+  WAITING_DOCUMENTS
+  WAITING_APPROVAL
+  APPROVAL
+  REJECTED
 }

@@ -47,7 +47,11 @@ export async function apiFetch<T>(input: RequestInfo | URL, init?: ApiFetchInit)
   const { skipMasterHeaders, ...requestInit } = init ?? {};
 
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
-  if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // Let the browser set the multipart boundary for FormData; only default to
+  // JSON for other body types.
+  if (init?.body && !headers.has("Content-Type") && !(init.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   if (!skipMasterHeaders && !headers.has("x-master-user-id")) headers.set("x-master-user-id", masterUserId);
   if (!skipMasterHeaders && !headers.has("x-master-role")) headers.set("x-master-role", "master");
 
