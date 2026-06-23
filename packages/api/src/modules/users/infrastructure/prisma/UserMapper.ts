@@ -29,6 +29,7 @@ export class UserMapper {
         guardianId: record.guardianId ?? undefined,
         patientId: record.patientId ?? undefined,
         organizationEmployeeId: record.organizationEmployeeId ?? undefined,
+        isActive: record.isActive,
       },
       record.id,
     );
@@ -44,6 +45,7 @@ export class UserMapper {
       guardianId: user.guardianId ?? null,
       patientId: user.patientId ?? null,
       organizationEmployeeId: user.organizationEmployeeId ?? null,
+      isActive: user.isActive,
     };
   }
 
@@ -56,6 +58,7 @@ export class UserMapper {
       guardianId: user.guardianId ?? null,
       patientId: user.patientId ?? null,
       organizationEmployeeId: user.organizationEmployeeId ?? null,
+      isActive: user.isActive,
     };
   }
 }

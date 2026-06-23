@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AuthenticationError } from "../../../../shared/application/errors/AuthenticationError.js";
+import { ForbiddenError } from "../../../../shared/application/errors/ForbiddenError.js";
 import type { HashService } from "../../../../shared/application/cryptography/HashService.js";
 import type { JwtPayload, JwtService } from "../../../../shared/application/tokens/JwtService.js";
 import type {
@@ -200,6 +201,16 @@ describe("AuthenticateUserUseCase", () => {
       },
     });
     expect(JSON.stringify(output)).not.toContain("passwordHash");
+  });
+
+  it("blocks a disabled user from signing in", async () => {
+    const user = makeUser(UserProfile.Patient);
+    user.setAccessEnabled(false);
+    const sut = makeSut({ users: [user] });
+
+    await expect(
+      sut.useCase.execute({ email: user.email.value, password: "secret" }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it("returns guardian data and managed patients when the authenticated user is a Guardian", async () => {

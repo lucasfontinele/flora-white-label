@@ -1,4 +1,5 @@
 import { AuthenticationError } from "../../../../shared/application/errors/AuthenticationError.js";
+import { ForbiddenError } from "../../../../shared/application/errors/ForbiddenError.js";
 import type { HashService } from "../../../../shared/application/cryptography/HashService.js";
 import type { JwtPayload, JwtService } from "../../../../shared/application/tokens/JwtService.js";
 import type {
@@ -109,6 +110,10 @@ export class AuthenticateUserUseCase {
 
     if (!passwordMatches) {
       throw new AuthenticationError();
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError("Seu acesso foi desabilitado. Procure a associação.");
     }
 
     const publicUser = {

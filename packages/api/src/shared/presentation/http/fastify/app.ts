@@ -7,6 +7,7 @@ import { organizationRoutes } from "../../../../modules/organizations/presentati
 import { organizationDocumentRoutes } from "../../../../modules/organization-documents/presentation/http/organization-document-routes.js";
 import { patientRegistrationRoutes } from "../../../../modules/patients/presentation/http/patient-registration-routes.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
+import { userRoutes } from "../../../../modules/users/presentation/http/user-routes.js";
 import { createCorsOriginDelegate } from "./cors-origin.js";
 import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { multipartPlugin } from "./plugins/multipart.js";
@@ -46,6 +47,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(organizationRoutes);
   await app.register(organizationDocumentRoutes);
   await app.register(subscriptionPlanRoutes);
+  await app.register(userRoutes);
 
   await app.register(swaggerUi, {
     routePrefix: "/docs",

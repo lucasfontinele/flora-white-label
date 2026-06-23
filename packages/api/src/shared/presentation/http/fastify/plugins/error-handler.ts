@@ -2,6 +2,7 @@ import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from
 import fp from "fastify-plugin";
 import { AuthenticationError } from "../../../../application/errors/AuthenticationError.js";
 import { ConflictError } from "../../../../application/errors/ConflictError.js";
+import { ForbiddenError } from "../../../../application/errors/ForbiddenError.js";
 import { NotFoundError } from "../../../../application/errors/NotFoundError.js";
 import { DomainError } from "../../../../domain/errors/DomainError.js";
 import { DomainValidationError } from "../../../../domain/errors/DomainValidationError.js";
@@ -55,6 +56,13 @@ async function errorHandler(app: FastifyInstance): Promise<void> {
 
       if (error instanceof ConflictError) {
         return reply.status(409).send({
+          error: error.name,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof ForbiddenError) {
+        return reply.status(403).send({
           error: error.name,
           message: error.message,
         });

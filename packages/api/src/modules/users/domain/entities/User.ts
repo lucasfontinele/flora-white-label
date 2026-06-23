@@ -12,6 +12,7 @@ export interface UserProps {
   guardianId?: string;
   patientId?: string;
   organizationEmployeeId?: string;
+  isActive?: boolean;
 }
 
 /**
@@ -59,6 +60,15 @@ export class User extends Entity<UserProps> {
     return this.props.organizationEmployeeId;
   }
 
+  get isActive(): boolean {
+    return this.props.isActive ?? true;
+  }
+
+  /** Enables or disables the user's ability to sign in. */
+  setAccessEnabled(enabled: boolean): void {
+    this.props.isActive = enabled;
+  }
+
   linkOrganizationEmployee(organizationEmployeeId: string): void {
     const normalizedId = User.normalizeId(organizationEmployeeId, "organizationEmployeeId");
     const nextProps = { ...this.props, organizationEmployeeId: normalizedId };
@@ -99,6 +109,7 @@ export class User extends Entity<UserProps> {
   private static normalizeProps(props: UserProps): UserProps {
     return {
       ...props,
+      isActive: props.isActive ?? true,
       organizationId: props.organizationId.trim(),
       guardianId:
         props.guardianId === undefined ? undefined : User.normalizeId(props.guardianId, "guardianId"),
