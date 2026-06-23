@@ -139,6 +139,7 @@ model Organization {
   employees         OrganizationEmployee[]
   requiredDocuments OrganizationRequiredDocument[]
   documentApprovals OrganizationDocumentPatientApproval[]
+  products          Product[]
 
   @@map("organizations")
 }
@@ -223,6 +224,29 @@ model OrganizationDocumentApprovalLog {
   @@map("organization_document_approval_logs")
 }
 
+model Product {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  category       ProductCategory
+  type           ProductType
+  strainType     StrainType?
+  thcPercentage  Float?
+  cbdPercentage  Float?
+  unit           ProductUnit
+  priceInCents   Int
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@map("products")
+}
+
 enum UserProfile {
   Master
   Organization
@@ -248,4 +272,37 @@ enum PatientStatus {
   WAITING_APPROVAL
   APPROVAL
   REJECTED
+}
+
+enum ProductCategory {
+  FLOWER
+  OIL
+  EXTRACT
+  CAPSULE
+  EDIBLE
+  TOPICAL
+  VAPORIZER
+  ACCESSORY
+  OTHER
+}
+
+enum ProductType {
+  CBD
+  THC
+  BALANCED
+  FULL_SPECTRUM
+  BROAD_SPECTRUM
+  ISOLATE
+}
+
+enum StrainType {
+  INDICA
+  SATIVA
+  HYBRID
+}
+
+enum ProductUnit {
+  GRAM
+  MILLILITER
+  UNIT
 }

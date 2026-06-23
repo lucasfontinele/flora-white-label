@@ -1,0 +1,313 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Organization Products API
+  version: 0.1.0
+  description: Backend-only organization product catalog CRUD. Inventory, orders, prescriptions, uploads, images, and payments are out of scope.
+servers:
+  - url: http://localhost:3333
+tags:
+  - name: Organization Products
+paths:
+  /organizations/{organizationId}/products:
+    post:
+      tags: [Organization Products]
+      summary: Create an organization product
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductWriteBody"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [Organization Products]
+      summary: List organization products
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      responses:
+        "200":
+          description: Organization products
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}:
+    get:
+      tags: [Organization Products]
+      summary: Get an organization product by id
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags: [Organization Products]
+      summary: Replace organization product catalog data
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductWriteBody"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [Organization Products]
+      summary: Soft delete an organization product
+      description: Performs logical removal by setting `isActive` to `false`.
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/activate:
+    patch:
+      tags: [Organization Products]
+      summary: Activate an organization product
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/deactivate:
+    patch:
+      tags: [Organization Products]
+      summary: Deactivate an organization product
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    ProductCategory:
+      type: string
+      enum: [FLOWER, OIL, EXTRACT, CAPSULE, EDIBLE, TOPICAL, VAPORIZER, ACCESSORY, OTHER]
+    ProductType:
+      type: string
+      enum: [CBD, THC, BALANCED, FULL_SPECTRUM, BROAD_SPECTRUM, ISOLATE]
+    StrainType:
+      type: string
+      enum: [INDICA, SATIVA, HYBRID]
+    ProductUnit:
+      type: string
+      enum: [GRAM, MILLILITER, UNIT]
+    ProductWriteBody:
+      type: object
+      additionalProperties: false
+      required: [name, category, type, unit, priceInCents]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: [string, "null"]
+        category:
+          $ref: "#/components/schemas/ProductCategory"
+        type:
+          $ref: "#/components/schemas/ProductType"
+        strainType:
+          anyOf:
+            - $ref: "#/components/schemas/StrainType"
+            - type: "null"
+        thcPercentage:
+          type: [number, "null"]
+          minimum: 0
+        cbdPercentage:
+          type: [number, "null"]
+          minimum: 0
+        unit:
+          $ref: "#/components/schemas/ProductUnit"
+        priceInCents:
+          type: integer
+          minimum: 0
+    Product:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - organizationId
+        - name
+        - description
+        - category
+        - type
+        - strainType
+        - thcPercentage
+        - cbdPercentage
+        - unit
+        - priceInCents
+        - isActive
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        category:
+          $ref: "#/components/schemas/ProductCategory"
+        type:
+          $ref: "#/components/schemas/ProductType"
+        strainType:
+          anyOf:
+            - $ref: "#/components/schemas/StrainType"
+            - type: "null"
+        thcPercentage:
+          type: [number, "null"]
+          minimum: 0
+        cbdPercentage:
+          type: [number, "null"]
+          minimum: 0
+        unit:
+          $ref: "#/components/schemas/ProductUnit"
+        priceInCents:
+          type: integer
+          minimum: 0
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Invalid request params or body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    DomainValidationError:
+      description: Domain validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

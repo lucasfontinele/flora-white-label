@@ -6,6 +6,7 @@ import { authRoutes } from "../../../../modules/auth/presentation/http/auth-rout
 import { organizationRoutes } from "../../../../modules/organizations/presentation/http/organization-routes.js";
 import { organizationDocumentRoutes } from "../../../../modules/organization-documents/presentation/http/organization-document-routes.js";
 import { patientRegistrationRoutes } from "../../../../modules/patients/presentation/http/patient-registration-routes.js";
+import { productRoutes } from "../../../../modules/products/presentation/http/product-routes.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
 import { userRoutes } from "../../../../modules/users/presentation/http/user-routes.js";
 import { createCorsOriginDelegate } from "./cors-origin.js";
@@ -46,6 +47,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(patientRegistrationRoutes);
   await app.register(organizationRoutes);
   await app.register(organizationDocumentRoutes);
+  await app.register(productRoutes);
   await app.register(subscriptionPlanRoutes);
   await app.register(userRoutes);
 
