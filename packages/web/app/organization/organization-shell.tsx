@@ -30,10 +30,6 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
     title: "Produtos",
     subtitle: "Produtos dispensados, lotes e rastreabilidade.",
   },
-  "/organization/operacional/strains": {
-    title: "Strains",
-    subtitle: "Dados técnicos exibidos no catálogo educativo.",
-  },
   "/organization/operacional/inventory": {
     title: "Estoque",
     subtitle: "Saldos, alertas de reposição e unidades.",
