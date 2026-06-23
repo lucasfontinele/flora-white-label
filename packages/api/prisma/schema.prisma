@@ -140,6 +140,7 @@ model Organization {
   requiredDocuments OrganizationRequiredDocument[]
   documentApprovals OrganizationDocumentPatientApproval[]
   products          Product[]
+  inventoryItems    InventoryItem[]
 
   @@map("organizations")
 }
@@ -240,11 +241,49 @@ model Product {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  inventoryItems InventoryItem[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
   @@map("products")
+}
+
+model InventoryItem {
+  id                String   @id @default(uuid())
+  organizationId    String
+  productId         String
+  availableQuantity Int      @default(0)
+  reservedQuantity  Int      @default(0)
+  minimumQuantity   Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  product      Product             @relation(fields: [productId], references: [id])
+  movements    InventoryMovement[]
+
+  @@unique([organizationId, productId])
+  @@index([organizationId])
+  @@map("inventory_items")
+}
+
+model InventoryMovement {
+  id              String                @id @default(uuid())
+  organizationId  String
+  inventoryItemId String
+  productId       String
+  type            InventoryMovementType
+  quantity        Int
+  reason          String?
+  createdByUserId String
+  createdAt       DateTime              @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([organizationId, productId])
+  @@index([inventoryItemId])
+  @@map("inventory_movements")
 }
 
 enum UserProfile {
@@ -305,4 +344,12 @@ enum ProductUnit {
   GRAM
   MILLILITER
   UNIT
+}
+
+enum InventoryMovementType {
+  IN
+  OUT
+  RESERVE
+  RELEASE
+  ADJUSTMENT
 }

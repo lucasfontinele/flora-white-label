@@ -1,0 +1,405 @@
+openapi: 3.1.0
+info:
+  title: FloraApp Organization Product Inventory API
+  version: 0.1.0
+  description: >-
+    Backend-only organization product inventory control: stock position and
+    append-only movement history per product. Orders, order-bound reservations,
+    prescriptions, checkout, payments, uploads, images, batch/lot, expiration,
+    multiple stocks, transfers, and RBAC are out of scope.
+servers:
+  - url: http://localhost:3333
+tags:
+  - name: Organization Product Inventory
+paths:
+  /organizations/{organizationId}/products/{productId}/inventory:
+    post:
+      tags: [Organization Product Inventory]
+      summary: Create the inventory position for a product
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInventoryItemBody"
+      responses:
+        "201":
+          description: Inventory position created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags: [Organization Product Inventory]
+      summary: Get the inventory position for a product
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Inventory position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/inventory/add-stock:
+    post:
+      tags: [Organization Product Inventory]
+      summary: Register a stock entry (IN)
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockOperationBody"
+      responses:
+        "200":
+          description: Updated inventory position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/inventory/reserve:
+    post:
+      tags: [Organization Product Inventory]
+      summary: Reserve available stock (RESERVE)
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockOperationBody"
+      responses:
+        "200":
+          description: Updated inventory position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/inventory/release-reservation:
+    post:
+      tags: [Organization Product Inventory]
+      summary: Release a reservation back to available (RELEASE)
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockOperationBody"
+      responses:
+        "200":
+          description: Updated inventory position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/inventory/confirm-stock-out:
+    post:
+      tags: [Organization Product Inventory]
+      summary: Confirm physical stock-out of reserved quantity (OUT)
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockOperationBody"
+      responses:
+        "200":
+          description: Updated inventory position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/inventory/adjust:
+    post:
+      tags: [Organization Product Inventory]
+      summary: Adjust available quantity to a new absolute value (ADJUSTMENT)
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustStockBody"
+      responses:
+        "200":
+          description: Updated inventory position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/DomainValidationError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organizationId}/products/{productId}/inventory/movements:
+    get:
+      tags: [Organization Product Inventory]
+      summary: List the inventory movement history for a product
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Inventory movements, most recent first
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InventoryMovement"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    InventoryMovementType:
+      type: string
+      enum: [IN, OUT, RESERVE, RELEASE, ADJUSTMENT]
+    CreateInventoryItemBody:
+      type: object
+      additionalProperties: false
+      required: [createdByUserId]
+      properties:
+        availableQuantity:
+          type: integer
+          minimum: 0
+          default: 0
+        minimumQuantity:
+          type: integer
+          minimum: 0
+          default: 0
+        reason:
+          type: [string, "null"]
+        createdByUserId:
+          type: string
+          minLength: 1
+    StockOperationBody:
+      type: object
+      additionalProperties: false
+      required: [quantity, createdByUserId]
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+        reason:
+          type: [string, "null"]
+        createdByUserId:
+          type: string
+          minLength: 1
+    AdjustStockBody:
+      type: object
+      additionalProperties: false
+      required: [quantity, createdByUserId]
+      properties:
+        quantity:
+          type: integer
+          minimum: 0
+        reason:
+          type: [string, "null"]
+        createdByUserId:
+          type: string
+          minLength: 1
+    InventoryItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - organizationId
+        - productId
+        - availableQuantity
+        - reservedQuantity
+        - minimumQuantity
+        - belowMinimum
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        productId:
+          type: string
+        availableQuantity:
+          type: integer
+          minimum: 0
+        reservedQuantity:
+          type: integer
+          minimum: 0
+        minimumQuantity:
+          type: integer
+          minimum: 0
+        belowMinimum:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    InventoryMovement:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - organizationId
+        - inventoryItemId
+        - productId
+        - type
+        - quantity
+        - reason
+        - createdByUserId
+        - createdAt
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        inventoryItemId:
+          type: string
+        productId:
+          type: string
+        type:
+          $ref: "#/components/schemas/InventoryMovementType"
+        quantity:
+          type: integer
+          minimum: 0
+        reason:
+          type: [string, "null"]
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Invalid request params or body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    DomainValidationError:
+      description: Domain invariant violated (e.g. reserve above available)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Product or inventory position not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ConflictError:
+      description: Inventory position already exists for the product
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

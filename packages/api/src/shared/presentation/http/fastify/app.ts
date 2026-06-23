@@ -4,6 +4,7 @@ import { env } from "../../../../config/env.js";
 import { addressRoutes } from "../../../../modules/addresses/presentation/http/address-routes.js";
 import { authRoutes } from "../../../../modules/auth/presentation/http/auth-routes.js";
 import { organizationRoutes } from "../../../../modules/organizations/presentation/http/organization-routes.js";
+import { inventoryRoutes } from "../../../../modules/inventory/presentation/http/inventory-routes.js";
 import { organizationDocumentRoutes } from "../../../../modules/organization-documents/presentation/http/organization-document-routes.js";
 import { patientRegistrationRoutes } from "../../../../modules/patients/presentation/http/patient-registration-routes.js";
 import { productRoutes } from "../../../../modules/products/presentation/http/product-routes.js";
@@ -48,6 +49,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(organizationRoutes);
   await app.register(organizationDocumentRoutes);
   await app.register(productRoutes);
+  await app.register(inventoryRoutes);
   await app.register(subscriptionPlanRoutes);
   await app.register(userRoutes);
 
