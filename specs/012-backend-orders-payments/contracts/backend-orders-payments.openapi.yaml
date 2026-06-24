@@ -48,6 +48,14 @@ paths:
       summary: List the organization's orders
       parameters:
         - $ref: "#/components/parameters/OrganizationId"
+        - name: status
+          in: query
+          required: false
+          description: >-
+            Comma-separated list of OrderStatus values to filter by (e.g.
+            `REQUESTED,UNDER_REVIEW`). Omit to return every order.
+          schema:
+            type: string
       responses:
         "200":
           description: Orders list
@@ -316,7 +324,9 @@ components:
         - organizationId
         - token
         - patientId
+        - patientName
         - guardianId
+        - guardianName
         - status
         - deliveryType
         - itemsAmount
@@ -331,7 +341,11 @@ components:
           type: string
         patientId:
           type: string
+        patientName:
+          type: string
         guardianId:
+          type: [string, "null"]
+        guardianName:
           type: [string, "null"]
         status:
           $ref: "#/components/schemas/OrderStatus"

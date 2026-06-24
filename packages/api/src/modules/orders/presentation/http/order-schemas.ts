@@ -75,6 +75,26 @@ export const organizationParamsSchema = z
   })
   .strict();
 
+// `status` is an optional comma-separated list of OrderStatus values, so a
+// grouped UI filter (e.g. "awaiting review" = REQUESTED + UNDER_REVIEW) can be
+// forwarded to the backend in a single query field.
+export const listOrdersQuerySchema = z
+  .object({
+    status: z
+      .string()
+      .optional()
+      .transform((value) =>
+        value === undefined
+          ? undefined
+          : value
+              .split(",")
+              .map((entry) => entry.trim())
+              .filter((entry) => entry.length > 0),
+      )
+      .pipe(z.array(z.enum(orderStatusValues)).optional()),
+  })
+  .strict();
+
 export const orderParamsSchema = organizationParamsSchema
   .extend({
     orderId: nonBlankString("orderId"),
@@ -108,6 +128,17 @@ export const orderParamsJsonSchema = {
   properties: {
     organizationId: idParamJsonProperty,
     orderId: idParamJsonProperty,
+  },
+} as const;
+
+export const listOrdersQueryJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    status: {
+      type: "string",
+      description: "Comma-separated list of OrderStatus values to filter by.",
+    },
   },
 } as const;
 
@@ -187,7 +218,9 @@ export const orderResponseSchema = {
     "organizationId",
     "token",
     "patientId",
+    "patientName",
     "guardianId",
+    "guardianName",
     "status",
     "deliveryType",
     "itemsAmount",
@@ -200,7 +233,9 @@ export const orderResponseSchema = {
     organizationId: idParamJsonProperty,
     token: { type: "string", minLength: 1 },
     patientId: idParamJsonProperty,
+    patientName: { type: "string" },
     guardianId: { type: ["string", "null"] },
+    guardianName: { type: ["string", "null"] },
     status: { type: "string", enum: orderStatusValues },
     deliveryType: { type: "string", enum: orderDeliveryTypeValues },
     itemsAmount: { type: "integer", minimum: 0 },

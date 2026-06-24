@@ -8,6 +8,8 @@ import {
   createPaymentBodyJsonSchema,
   createPaymentBodySchema,
   errorResponseSchema,
+  listOrdersQueryJsonSchema,
+  listOrdersQuerySchema,
   orderListResponseSchema,
   orderParamsJsonSchema,
   orderParamsSchema,
@@ -75,8 +77,9 @@ export async function orderRoutes(app: FastifyInstance): Promise<void> {
     {
       schema: {
         tags: ["Orders"],
-        summary: "Lista os pedidos da organização.",
+        summary: "Lista os pedidos da organização, opcionalmente filtrando por status.",
         params: organizationParamsJsonSchema,
+        querystring: listOrdersQueryJsonSchema,
         response: {
           200: orderListResponseSchema,
           400: errorResponseSchema,
@@ -90,7 +93,15 @@ export async function orderRoutes(app: FastifyInstance): Promise<void> {
         return sendValidationError(reply, "Invalid request params.");
       }
 
-      const output = await useCases.listOrdersUseCase.execute(params.data);
+      const query = listOrdersQuerySchema.safeParse(request.query);
+      if (!query.success) {
+        return sendValidationError(reply, "Invalid request query.");
+      }
+
+      const output = await useCases.listOrdersUseCase.execute({
+        organizationId: params.data.organizationId,
+        statuses: query.data.status,
+      });
 
       return {
         data: output.data.map((order) => OrderPresenter.toHttp(order)),

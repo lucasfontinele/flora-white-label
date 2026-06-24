@@ -4,7 +4,16 @@ import type {
   OrderRepository,
 } from "../../application/repositories/OrderRepository.js";
 import type { Order } from "../../domain/entities/Order.js";
+import type { OrderStatus } from "../../domain/enums/OrderStatus.js";
 import { OrderMapper } from "./OrderMapper.js";
+
+// Relations needed to build an OrderReadModel: items plus the patient and
+// (optional) guardian display names.
+const readModelInclude = {
+  items: true,
+  patient: { select: { name: true } },
+  guardian: { select: { name: true } },
+} as const;
 
 export class PrismaOrderRepository implements OrderRepository {
   constructor(private readonly prisma: TransactionalPrisma) {}
@@ -24,16 +33,22 @@ export class PrismaOrderRepository implements OrderRepository {
   ): Promise<OrderReadModel | null> {
     const record = await this.prisma.getClient().order.findFirst({
       where: { id: orderId, organizationId },
-      include: { items: true },
+      include: readModelInclude,
     });
 
     return record ? OrderMapper.toReadModel(record) : null;
   }
 
-  async findAllByOrganization(organizationId: string): Promise<OrderReadModel[]> {
+  async findAllByOrganization(
+    organizationId: string,
+    statuses?: OrderStatus[],
+  ): Promise<OrderReadModel[]> {
     const records = await this.prisma.getClient().order.findMany({
-      where: { organizationId },
-      include: { items: true },
+      where: {
+        organizationId,
+        ...(statuses && statuses.length > 0 ? { status: { in: statuses } } : {}),
+      },
+      include: readModelInclude,
       orderBy: { createdAt: "desc" },
     });
 
@@ -51,7 +66,7 @@ export class PrismaOrderRepository implements OrderRepository {
   async create(order: Order): Promise<OrderReadModel> {
     const record = await this.prisma.getClient().order.create({
       data: OrderMapper.toPersistence(order),
-      include: { items: true },
+      include: readModelInclude,
     });
 
     return OrderMapper.toReadModel(record);
@@ -61,7 +76,7 @@ export class PrismaOrderRepository implements OrderRepository {
     const record = await this.prisma.getClient().order.update({
       where: { id: order.id },
       data: OrderMapper.toUpdatePersistence(order),
-      include: { items: true },
+      include: readModelInclude,
     });
 
     return OrderMapper.toReadModel(record);

@@ -32,13 +32,15 @@ export class OrderMapper {
     );
   }
 
-  static toReadModel(record: PrismaOrderWithItems): OrderReadModel {
+  static toReadModel(record: PrismaOrderWithRelations): OrderReadModel {
     return {
       id: record.id,
       organizationId: record.organizationId,
       token: record.token,
       patientId: record.patientId,
+      patientName: record.patient.name,
       guardianId: record.guardianId,
+      guardianName: record.guardian?.name ?? null,
       status: record.status as OrderStatus,
       deliveryType: record.deliveryType as OrderDeliveryType,
       itemsAmount: record.itemsAmount,

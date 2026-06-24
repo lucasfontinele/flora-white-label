@@ -33,6 +33,28 @@ describe("ListOrdersUseCase", () => {
     expect(result.data).toHaveLength(1);
     expect(result.data[0]?.organizationId).toBe("org-1");
   });
+
+  it("filters by the provided statuses", async () => {
+    const repository = new InMemoryOrderRepository();
+    const requested = seedOrder(repository, "org-1");
+    const cancelled = seedOrder(repository, "org-1");
+    cancelled.cancel();
+
+    const useCase = new ListOrdersUseCase(repository);
+
+    const onlyCancelled = await useCase.execute({
+      organizationId: "org-1",
+      statuses: [OrderStatus.Cancelled],
+    });
+    expect(onlyCancelled.data).toHaveLength(1);
+    expect(onlyCancelled.data[0]?.id).toBe(cancelled.id);
+
+    const all = await useCase.execute({ organizationId: "org-1", statuses: [] });
+    expect(all.data).toHaveLength(2);
+    expect(all.data.map((order) => order.id)).toEqual(
+      expect.arrayContaining([requested.id, cancelled.id]),
+    );
+  });
 });
 
 describe("GetOrderByIdUseCase", () => {

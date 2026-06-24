@@ -7,6 +7,7 @@ import type { Product } from "../../../products/domain/entities/Product.js";
 import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
 import type { Order } from "../../domain/entities/Order.js";
 import type { OrderPayment } from "../../domain/entities/OrderPayment.js";
+import type { OrderStatus } from "../../domain/enums/OrderStatus.js";
 import { PaymentStatus } from "../../domain/enums/PaymentStatus.js";
 import type {
   CreatePaymentGatewayInput,
@@ -48,7 +49,9 @@ export function toOrderReadModel(
     organizationId: order.organizationId,
     token: order.token,
     patientId: order.patientId,
+    patientName: `Patient ${order.patientId}`,
     guardianId: order.guardianId,
+    guardianName: order.guardianId ? `Guardian ${order.guardianId}` : null,
     status: order.status,
     deliveryType: order.deliveryType,
     itemsAmount: order.itemsAmount,
@@ -107,9 +110,13 @@ export class InMemoryOrderRepository implements OrderRepository {
     return order && order.organizationId === organizationId ? toOrderReadModel(order) : null;
   }
 
-  async findAllByOrganization(organizationId: string): Promise<OrderReadModel[]> {
+  async findAllByOrganization(
+    organizationId: string,
+    statuses?: OrderStatus[],
+  ): Promise<OrderReadModel[]> {
     return [...this.orders.values()]
       .filter((order) => order.organizationId === organizationId)
+      .filter((order) => !statuses || statuses.length === 0 || statuses.includes(order.status))
       .map((order) => toOrderReadModel(order));
   }
 

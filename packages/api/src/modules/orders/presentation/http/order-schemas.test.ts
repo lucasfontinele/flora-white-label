@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createOrderBodySchema,
   createPaymentBodySchema,
+  listOrdersQuerySchema,
   orderParamsSchema,
   organizationParamsSchema,
   paymentParamsSchema,
@@ -71,6 +72,17 @@ describe("order schemas", () => {
       createPaymentBodySchema.safeParse({ paymentMethod: "PIX", discount: 1.5 }).success,
     ).toBe(false);
     expect(createPaymentBodySchema.safeParse({ paymentMethod: "INVALID" }).success).toBe(false);
+  });
+
+  it("parses the comma-separated status filter and rejects unknown statuses", () => {
+    const parsed = listOrdersQuerySchema.safeParse({ status: "REQUESTED,UNDER_REVIEW" });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.status).toEqual(["REQUESTED", "UNDER_REVIEW"]);
+    }
+
+    expect(listOrdersQuerySchema.safeParse({}).success).toBe(true);
+    expect(listOrdersQuerySchema.safeParse({ status: "REQUESTED,NOPE" }).success).toBe(false);
   });
 
   it("validates path params", () => {

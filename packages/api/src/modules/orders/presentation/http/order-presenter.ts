@@ -18,7 +18,9 @@ export interface OrderResponse {
   organizationId: string;
   token: string;
   patientId: string;
+  patientName: string;
   guardianId: string | null;
+  guardianName: string | null;
   status: OrderStatus;
   deliveryType: OrderDeliveryType;
   itemsAmount: number;
@@ -34,7 +36,9 @@ export class OrderPresenter {
       organizationId: order.organizationId,
       token: order.token,
       patientId: order.patientId,
+      patientName: order.patientName,
       guardianId: order.guardianId,
+      guardianName: order.guardianName,
       status: order.status,
       deliveryType: order.deliveryType,
       itemsAmount: order.itemsAmount,
