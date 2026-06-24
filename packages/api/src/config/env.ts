@@ -65,6 +65,11 @@ const envSchema = z.object({
         .filter((mimeType) => mimeType.length > 0),
     )
     .refine((value) => value.length > 0, "At least one document upload MIME type is required."),
+  // AbacatePay payment gateway. The API key is required in production and falls
+  // back to a non-functional dev placeholder locally; the secret is never
+  // exposed in responses or logs.
+  ABACATEPAY_API_KEY: requiredInProduction("ABACATEPAY_API_KEY", "dev-abacatepay-api-key"),
+  ABACATEPAY_BASE_URL: z.string().min(1).default("https://api.abacatepay.com/v2"),
 });
 
 const parsed = envSchema.safeParse(process.env);

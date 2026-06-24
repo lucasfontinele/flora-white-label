@@ -45,6 +45,7 @@ model Guardian {
 
   users    User[]    @relation("UserGuardian")
   patients Patient[]
+  orders   Order[]
 
   @@unique([organizationId, document])
   @@map("guardians")
@@ -68,6 +69,7 @@ model Patient {
   users             User[]                                @relation("UserPatient")
   assessments       PatientAssessment[]
   documentApprovals OrganizationDocumentPatientApproval[]
+  orders            Order[]
 
   @@unique([organizationId, document])
   @@map("patients")
@@ -141,6 +143,7 @@ model Organization {
   documentApprovals OrganizationDocumentPatientApproval[]
   products          Product[]
   inventoryItems    InventoryItem[]
+  orders            Order[]
 
   @@map("organizations")
 }
@@ -243,6 +246,7 @@ model Product {
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   inventoryItems InventoryItem[]
+  orderItems     OrderItem[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
@@ -284,6 +288,67 @@ model InventoryMovement {
   @@index([organizationId, productId])
   @@index([inventoryItemId])
   @@map("inventory_movements")
+}
+
+model Order {
+  id             String            @id @default(uuid())
+  organizationId String
+  token          String
+  patientId      String
+  guardianId     String?
+  status         OrderStatus       @default(REQUESTED)
+  deliveryType   OrderDeliveryType
+  itemsAmount    Int
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  patient      Patient        @relation(fields: [patientId], references: [id])
+  guardian     Guardian?      @relation(fields: [guardianId], references: [id])
+  items        OrderItem[]
+  payments     OrderPayment[]
+
+  @@unique([organizationId, token])
+  @@index([organizationId])
+  @@index([organizationId, patientId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String @id @default(uuid())
+  orderId          String
+  productId        String
+  unitPriceInCents Int
+  quantity         Int
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderPayment {
+  id                String        @id @default(uuid())
+  orderId           String
+  organizationId    String
+  totalPaidInCents  Int
+  discount          Decimal?      @db.Decimal(3, 2)
+  paymentMethod     PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  externalPaymentId String?
+  checkoutUrl       String?
+  pixQrCode         String?
+  pixQrCodeBase64   String?
+  expiresAt         DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([organizationId])
+  @@map("order_payments")
 }
 
 enum UserProfile {
@@ -352,4 +417,38 @@ enum InventoryMovementType {
   RESERVE
   RELEASE
   ADJUSTMENT
+}
+
+enum OrderStatus {
+  REQUESTED
+  UNDER_REVIEW
+  IN_SEPARATION
+  APPROVED
+  READY_FOR_PICKUP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderDeliveryType {
+  CORREIOS
+  PICKUP
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BOLETO
+  PIX
+}
+
+enum PaymentStatus {
+  PENDING
+  EXPIRED
+  CANCELLED
+  PAID
+  UNDER_DISPUTE
+  REFUNDED
+  REDEEMED
+  APPROVED
+  FAILED
 }

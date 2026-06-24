@@ -1,0 +1,93 @@
+import { describe, expect, it } from "vitest";
+import { CancelOrderUseCase } from "./CancelOrderUseCase.js";
+import { GetOrderByIdUseCase } from "./GetOrderByIdUseCase.js";
+import { ListOrdersUseCase } from "./ListOrdersUseCase.js";
+import { InMemoryOrderRepository, immediateUnitOfWork } from "./order-use-case-test-utils.js";
+import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
+import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
+import { Order } from "../../domain/entities/Order.js";
+import { OrderDeliveryType } from "../../domain/enums/OrderDeliveryType.js";
+import { OrderStatus } from "../../domain/enums/OrderStatus.js";
+
+function seedOrder(repository: InMemoryOrderRepository, organizationId: string): Order {
+  const order = Order.create({
+    organizationId,
+    patientId: "patient-1",
+    deliveryType: OrderDeliveryType.Pickup,
+    items: [{ productId: "product-1", unitPriceInCents: 1000, quantity: 1 }],
+  });
+  repository.seed(order);
+
+  return order;
+}
+
+describe("ListOrdersUseCase", () => {
+  it("returns only the organization's orders", async () => {
+    const repository = new InMemoryOrderRepository();
+    seedOrder(repository, "org-1");
+    seedOrder(repository, "org-2");
+
+    const useCase = new ListOrdersUseCase(repository);
+    const result = await useCase.execute({ organizationId: "org-1" });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.organizationId).toBe("org-1");
+  });
+});
+
+describe("GetOrderByIdUseCase", () => {
+  it("returns a scoped order", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+
+    const useCase = new GetOrderByIdUseCase(repository);
+    const result = await useCase.execute({ organizationId: "org-1", orderId: order.id });
+
+    expect(result.id).toBe(order.id);
+  });
+
+  it("rejects an order from another organization", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+
+    const useCase = new GetOrderByIdUseCase(repository);
+
+    await expect(
+      useCase.execute({ organizationId: "org-2", orderId: order.id }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("CancelOrderUseCase", () => {
+  it("cancels an order", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+
+    const useCase = new CancelOrderUseCase({ orderRepository: repository, unitOfWork: immediateUnitOfWork });
+    const result = await useCase.execute({ organizationId: "org-1", orderId: order.id });
+
+    expect(result.status).toBe(OrderStatus.Cancelled);
+    expect(repository.saveCalls).toBe(1);
+  });
+
+  it("rejects cancelling an already cancelled order", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+    order.cancel();
+
+    const useCase = new CancelOrderUseCase({ orderRepository: repository, unitOfWork: immediateUnitOfWork });
+
+    await expect(
+      useCase.execute({ organizationId: "org-1", orderId: order.id }),
+    ).rejects.toBeInstanceOf(DomainValidationError);
+  });
+
+  it("rejects an unknown order", async () => {
+    const repository = new InMemoryOrderRepository();
+    const useCase = new CancelOrderUseCase({ orderRepository: repository, unitOfWork: immediateUnitOfWork });
+
+    await expect(
+      useCase.execute({ organizationId: "org-1", orderId: "missing" }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
