@@ -2,8 +2,13 @@
 
 import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { organizationNav } from "@/components/layout/nav";
+import { useOrganizationOverview } from "./queries/use-organization-overview";
+
+const ORDERS_HREF = "/organization/operacional/orders";
+const APPROVALS_HREF = "/organization/operacional/approvals";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/organization/operacional/dashboard": {
@@ -61,13 +66,29 @@ export function OrganizationShell({ user, context, children }: OrganizationShell
   const organizationName = context.organization?.tradeName ?? "Organização";
   const employeeName = context.employee?.fullName ?? user.email;
 
+  // Live sidebar counters: total orders and patients awaiting validation.
+  const { data: overview } = useOrganizationOverview(context.organizationId);
+  const nav = useMemo(
+    () =>
+      organizationNav.map((item) => {
+        if (item.href === ORDERS_HREF) {
+          return { ...item, count: overview?.ordersCount };
+        }
+        if (item.href === APPROVALS_HREF) {
+          return { ...item, count: overview?.pendingApprovalsCount };
+        }
+        return item;
+      }),
+    [overview],
+  );
+
   return (
     <AppShell
       variant="organization"
       title={current.title}
       subtitle={current.subtitle}
       tenantLabel={`Operação · ${organizationName}`}
-      nav={organizationNav}
+      nav={nav}
       user={{ name: employeeName, detail: organizationName }}
     >
       {children}
