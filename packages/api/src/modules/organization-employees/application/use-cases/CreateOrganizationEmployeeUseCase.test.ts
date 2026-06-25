@@ -39,6 +39,14 @@ class InMemoryOrganizationEmployeeRepository implements OrganizationEmployeeRepo
     );
   }
 
+  async findRoleAssignment(employeeId: string) {
+    const employee = this.employees.find((entry) => entry.id === employeeId);
+
+    return employee
+      ? { id: employee.id, organizationId: employee.organizationId, roleId: employee.roleId }
+      : null;
+  }
+
   async create(employee: OrganizationEmployee): Promise<void> {
     this.employees.push(employee);
     this.created.push(employee);

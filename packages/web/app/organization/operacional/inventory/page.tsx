@@ -1,4 +1,5 @@
 import { getFloraSession } from "@/lib/session";
+import { ModuleGuard } from "../../permissions/module-guard";
 import { InventoryView } from "./components/inventory-view";
 
 export default async function InventoryPage() {
@@ -8,5 +9,9 @@ export default async function InventoryPage() {
   const organizationId = session.context?.organizationId ?? "";
   const currentUserId = session.user?.id ?? "";
 
-  return <InventoryView organizationId={organizationId} currentUserId={currentUserId} />;
+  return (
+    <ModuleGuard module="INVENTORY">
+      <InventoryView organizationId={organizationId} currentUserId={currentUserId} />
+    </ModuleGuard>
+  );
 }

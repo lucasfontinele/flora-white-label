@@ -1,5 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import argon2 from "argon2";
+import {
+  DEFAULT_ROLE_TEMPLATES,
+  SUPER_ADMIN_ROLE_TEMPLATE,
+  type DefaultRoleTemplate,
+} from "../src/modules/access-control/domain/default-roles.js";
 
 /**
  * Idempotent seed for backoffice authentication.
@@ -18,6 +23,50 @@ const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? "Flora@123";
 
 const MASTER_EMAIL = "master@flora.local";
 const ORGANIZATION_EMAIL = "gestor@flora.local";
+const SUPER_ADMIN_EMAIL = "admin@flora.local";
+
+/**
+ * Seeds a system role for an organization only when it is missing, so re-running
+ * the seed never clobbers permission edits made through the access screen.
+ */
+async function ensureRole(organizationId: string, template: DefaultRoleTemplate) {
+  const existing = await prisma.role.findUnique({
+    where: { organizationId_key: { organizationId, key: template.key } },
+  });
+  if (existing) {
+    return existing;
+  }
+
+  const role = await prisma.role.create({
+    data: {
+      organizationId,
+      key: template.key,
+      name: template.name,
+      description: template.description,
+      isSystem: template.isSystem,
+      fullAccess: template.fullAccess,
+      viewAll: template.viewAll,
+    },
+  });
+
+  if (template.permissions.length > 0) {
+    await prisma.rolePermission.createMany({
+      data: template.permissions.map((permission) => ({
+        roleId: role.id,
+        module: permission.module,
+        action: permission.action,
+      })),
+    });
+  }
+
+  return role;
+}
+
+async function seedRoles(organizationId: string) {
+  for (const template of [...DEFAULT_ROLE_TEMPLATES, SUPER_ADMIN_ROLE_TEMPLATE]) {
+    await ensureRole(organizationId, template);
+  }
+}
 
 async function resolveOrganization() {
   // Prefer an organization that already exists (e.g. one created through the
@@ -82,6 +131,20 @@ async function main() {
   const passwordHashed = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
   const organization = await resolveOrganization();
 
+  // Provision the default access roles for every organization in the database,
+  // so the access screen always has the suggested roles to start from.
+  const organizations = await prisma.organization.findMany({ select: { id: true } });
+  for (const org of organizations) {
+    await seedRoles(org.id);
+  }
+
+  const operatorRole = await prisma.role.findUnique({
+    where: { organizationId_key: { organizationId: organization.id, key: "OPERATOR" } },
+  });
+  const superAdminRole = await prisma.role.findUnique({
+    where: { organizationId_key: { organizationId: organization.id, key: "SUPER_ADMIN" } },
+  });
+
   // Master: backoffice admin. Must NOT be linked to a patient/guardian/employee.
   await prisma.user.upsert({
     where: { organizationId_email: { organizationId: organization.id, email: MASTER_EMAIL } },
@@ -99,12 +162,13 @@ async function main() {
     where: {
       organizationId_document: { organizationId: organization.id, document: "00000000000" },
     },
-    update: {},
+    update: { roleId: operatorRole?.id ?? null },
     create: {
       organizationId: organization.id,
       fullName: "Operador Demo",
       document: "00000000000",
       isActive: true,
+      roleId: operatorRole?.id ?? null,
     },
   });
 
@@ -120,9 +184,41 @@ async function main() {
     },
   });
 
+  // Super admin: an Organization user with total access to everything.
+  const superAdminEmployee = await prisma.organizationEmployee.upsert({
+    where: {
+      organizationId_document: { organizationId: organization.id, document: "11111111111" },
+    },
+    update: { roleId: superAdminRole?.id ?? null },
+    create: {
+      organizationId: organization.id,
+      fullName: "Super Admin",
+      document: "11111111111",
+      isActive: true,
+      roleId: superAdminRole?.id ?? null,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { organizationId_email: { organizationId: organization.id, email: SUPER_ADMIN_EMAIL } },
+    update: {
+      passwordHashed,
+      profile: "Organization",
+      organizationEmployeeId: superAdminEmployee.id,
+    },
+    create: {
+      organizationId: organization.id,
+      email: SUPER_ADMIN_EMAIL,
+      passwordHashed,
+      profile: "Organization",
+      organizationEmployeeId: superAdminEmployee.id,
+    },
+  });
+
   console.info("Seed concluído. Logins de backoffice (org %s):", organization.slug);
   console.info("  Master:       %s / %s", MASTER_EMAIL, DEMO_PASSWORD);
   console.info("  Organization: %s / %s", ORGANIZATION_EMAIL, DEMO_PASSWORD);
+  console.info("  Super admin:  %s / %s", SUPER_ADMIN_EMAIL, DEMO_PASSWORD);
 }
 
 main()

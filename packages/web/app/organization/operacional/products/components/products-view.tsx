@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import { getApiErrorMessage } from "@/lib/http";
 import { formatCentsAsCurrency, parseCurrencyToCents } from "@/lib/money";
+import { Can } from "../../../permissions/can";
 import { ProductFormDialog } from "./product-form-dialog";
 import { ProductsTable } from "./products-table";
 import {
@@ -190,10 +191,12 @@ export function ProductsView({ organizationId }: { organizationId: string }) {
             feito em uma tela própria.
           </p>
         </div>
-        <Button type="button" onClick={openCreate}>
-          <Icon name="plus" size={18} />
-          Novo produto
-        </Button>
+        <Can module="PRODUCTS" action="CREATE">
+          <Button type="button" onClick={openCreate}>
+            <Icon name="plus" size={18} />
+            Novo produto
+          </Button>
+        </Can>
       </section>
 
       <ProductsTable

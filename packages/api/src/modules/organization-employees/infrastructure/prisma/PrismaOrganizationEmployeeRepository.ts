@@ -1,6 +1,9 @@
 import type { TransactionalPrisma } from "../../../../shared/infrastructure/database/prisma/PrismaTransactionManager.js";
 import type { Document } from "../../../../shared/domain/value-objects/Document.js";
-import type { OrganizationEmployeeRepository } from "../../application/repositories/OrganizationEmployeeRepository.js";
+import type {
+  OrganizationEmployeeRepository,
+  OrganizationEmployeeRoleAssignment,
+} from "../../application/repositories/OrganizationEmployeeRepository.js";
 import type { OrganizationEmployee } from "../../domain/entities/OrganizationEmployee.js";
 import { OrganizationEmployeeMapper } from "./OrganizationEmployeeMapper.js";
 
@@ -24,6 +27,17 @@ export class PrismaOrganizationEmployeeRepository implements OrganizationEmploye
     });
 
     return record ? OrganizationEmployeeMapper.toDomain(record) : null;
+  }
+
+  async findRoleAssignment(
+    employeeId: string,
+  ): Promise<OrganizationEmployeeRoleAssignment | null> {
+    const record = await this.prisma.getClient().organizationEmployee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, organizationId: true, roleId: true },
+    });
+
+    return record ?? null;
   }
 
   async create(employee: OrganizationEmployee): Promise<void> {

@@ -22,7 +22,6 @@ export const organizationNav: Array<{
   { label: "Associados", href: "/organization/operacional/members", icon: "users" },
   { label: "Produtos", href: "/organization/operacional/products", icon: "package" },
   { label: "Estoque", href: "/organization/operacional/inventory", icon: "boxes" },
-  { label: "Relatórios", href: "/organization/operacional/reports", icon: "bar-chart-3" },
   { label: "Gestão de acessos", href: "/organization/operacional/access", icon: "shield-check" },
 ];
 

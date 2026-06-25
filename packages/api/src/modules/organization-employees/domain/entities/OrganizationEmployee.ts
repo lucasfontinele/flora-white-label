@@ -7,6 +7,7 @@ export interface OrganizationEmployeeProps {
   fullName: string;
   document: Document;
   isActive: boolean;
+  roleId?: string | null;
 }
 
 /**
@@ -30,11 +31,17 @@ export class OrganizationEmployee extends Entity<OrganizationEmployeeProps> {
       throw new DomainValidationError("Organization employee fullName is required.");
     }
 
-    return new OrganizationEmployee({ ...props, fullName }, id);
+    const roleId = props.roleId?.trim() ? props.roleId.trim() : null;
+
+    return new OrganizationEmployee({ ...props, fullName, roleId }, id);
   }
 
   get organizationId(): string {
     return this.props.organizationId;
+  }
+
+  get roleId(): string | null {
+    return this.props.roleId ?? null;
   }
 
   get fullName(): string {

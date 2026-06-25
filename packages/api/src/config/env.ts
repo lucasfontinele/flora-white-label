@@ -70,6 +70,19 @@ const envSchema = z.object({
   // exposed in responses or logs.
   ABACATEPAY_API_KEY: requiredInProduction("ABACATEPAY_API_KEY", "dev-abacatepay-api-key"),
   ABACATEPAY_BASE_URL: z.string().min(1).default("https://api.abacatepay.com/v2"),
+  // Public base URL of the web app, used to build links in e-mails (e.g. the
+  // employee invitation CTA). No trailing slash.
+  WEB_APP_URL: z
+    .string()
+    .min(1)
+    .default("http://localhost:3000")
+    .transform((value) => value.replace(/\/+$/, "")),
+  // Sender shown on transactional e-mails. Must be a Resend-verified domain
+  // (or `onboarding@resend.dev` for testing without a verified domain).
+  EMAIL_FROM: z.string().min(1).default("Flora <onboarding@resend.dev>"),
+  // Resend API key. When empty, e-mails are logged to the console (dev). When
+  // set, e-mails are delivered through Resend. Never exposed in responses/logs.
+  RESEND_API_KEY: z.string().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,4 +1,5 @@
 import { getFloraSession } from "@/lib/session";
+import { ModuleGuard } from "../../permissions/module-guard";
 import { RequiredDocumentsView } from "./components/required-documents-view";
 
 export default async function RequiredDocumentsPage() {
@@ -7,5 +8,9 @@ export default async function RequiredDocumentsPage() {
   const session = await getFloraSession();
   const organizationId = session.context?.organizationId ?? "";
 
-  return <RequiredDocumentsView organizationId={organizationId} />;
+  return (
+    <ModuleGuard module="DOCUMENTS">
+      <RequiredDocumentsView organizationId={organizationId} />
+    </ModuleGuard>
+  );
 }

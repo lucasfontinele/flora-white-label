@@ -1,4 +1,5 @@
 import { getFloraSession } from "@/lib/session";
+import { ModuleGuard } from "../../permissions/module-guard";
 import { OrdersView } from "./components/orders-view";
 
 export default async function OperationalOrdersPage() {
@@ -7,5 +8,9 @@ export default async function OperationalOrdersPage() {
   const session = await getFloraSession();
   const organizationId = session.context?.organizationId ?? "";
 
-  return <OrdersView organizationId={organizationId} />;
+  return (
+    <ModuleGuard module="ORDERS">
+      <OrdersView organizationId={organizationId} />
+    </ModuleGuard>
+  );
 }

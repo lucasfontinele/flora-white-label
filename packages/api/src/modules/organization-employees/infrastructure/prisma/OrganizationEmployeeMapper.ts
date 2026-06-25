@@ -10,6 +10,7 @@ export class OrganizationEmployeeMapper {
         fullName: record.fullName,
         document: Document.create(record.document),
         isActive: record.isActive,
+        roleId: record.roleId,
       },
       record.id,
     );
@@ -24,6 +25,7 @@ export class OrganizationEmployeeMapper {
       fullName: employee.fullName,
       document: employee.document.value,
       isActive: employee.isActive,
+      roleId: employee.roleId,
     };
   }
 }

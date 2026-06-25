@@ -5,10 +5,25 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { organizationNav } from "@/components/layout/nav";
+import { PermissionsProvider } from "./permissions/permissions-context";
+import type { PermissionModule } from "./permissions/types";
+import { useEmployeePermissionsQuery } from "./permissions/use-employee-permissions-query";
 import { useOrganizationOverview } from "./queries/use-organization-overview";
 
 const ORDERS_HREF = "/organization/operacional/orders";
 const APPROVALS_HREF = "/organization/operacional/approvals";
+
+// Which permission module gates each nav item. Items without an entry
+// (e.g. the dashboard) are always visible.
+const NAV_MODULE_BY_HREF: Record<string, PermissionModule> = {
+  "/organization/operacional/orders": "ORDERS",
+  "/organization/operacional/approvals": "DOCUMENTS",
+  "/organization/operacional/required-documents": "DOCUMENTS",
+  "/organization/operacional/members": "ASSOCIATES",
+  "/organization/operacional/products": "PRODUCTS",
+  "/organization/operacional/inventory": "INVENTORY",
+  "/organization/operacional/access": "ACCESS",
+};
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/organization/operacional/dashboard": {
@@ -39,10 +54,6 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
     title: "Estoque",
     subtitle: "Saldos, alertas de reposição e unidades.",
   },
-  "/organization/operacional/reports": {
-    title: "Relatórios",
-    subtitle: "Indicadores para diretoria e governança.",
-  },
   "/organization/operacional/access": {
     title: "Gestão de acessos",
     subtitle: "Perfis, permissões e convite de funcionários.",
@@ -68,9 +79,30 @@ export function OrganizationShell({ user, context, children }: OrganizationShell
 
   // Live sidebar counters: total orders and patients awaiting validation.
   const { data: overview } = useOrganizationOverview(context.organizationId);
-  const nav = useMemo(
-    () =>
-      organizationNav.map((item) => {
+
+  // Current user's effective permissions, used to gate the nav and the pages.
+  const employeeId = context.organizationEmployeeId ?? "";
+  const permissionsQuery = useEmployeePermissionsQuery(context.organizationId, employeeId);
+  const permissions = permissionsQuery.data;
+  const permissionsReady = permissionsQuery.isSuccess || permissionsQuery.isError;
+
+  function canViewModule(module: PermissionModule): boolean {
+    if (!permissions) return false;
+    if (permissions.fullAccess || permissions.viewAll) return true;
+    return permissions.permissions.some(
+      (permission) => permission.module === module && permission.action === "VIEW",
+    );
+  }
+
+  const nav = useMemo(() => {
+    return organizationNav
+      .filter((item) => {
+        const module = NAV_MODULE_BY_HREF[item.href];
+        // Show items without a gated module always; gate the rest only once the
+        // permissions have loaded (avoids hiding items during the initial load).
+        return !module || !permissionsReady || canViewModule(module);
+      })
+      .map((item) => {
         if (item.href === ORDERS_HREF) {
           return { ...item, count: overview?.ordersCount };
         }
@@ -78,20 +110,22 @@ export function OrganizationShell({ user, context, children }: OrganizationShell
           return { ...item, count: overview?.pendingApprovalsCount };
         }
         return item;
-      }),
-    [overview],
-  );
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview, permissions, permissionsReady]);
 
   return (
-    <AppShell
-      variant="organization"
-      title={current.title}
-      subtitle={current.subtitle}
-      tenantLabel={`Operação · ${organizationName}`}
-      nav={nav}
-      user={{ name: employeeName, detail: organizationName }}
-    >
-      {children}
-    </AppShell>
+    <PermissionsProvider value={{ data: permissions, ready: permissionsReady }}>
+      <AppShell
+        variant="organization"
+        title={current.title}
+        subtitle={current.subtitle}
+        tenantLabel={`Operação · ${organizationName}`}
+        nav={nav}
+        user={{ name: employeeName, detail: organizationName }}
+      >
+        {children}
+      </AppShell>
+    </PermissionsProvider>
   );
 }

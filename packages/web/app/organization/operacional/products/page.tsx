@@ -1,4 +1,5 @@
 import { getFloraSession } from "@/lib/session";
+import { ModuleGuard } from "../../permissions/module-guard";
 import { ProductsView } from "./components/products-view";
 
 export default async function ProductsPage() {
@@ -7,5 +8,9 @@ export default async function ProductsPage() {
   const session = await getFloraSession();
   const organizationId = session.context?.organizationId ?? "";
 
-  return <ProductsView organizationId={organizationId} />;
+  return (
+    <ModuleGuard module="PRODUCTS">
+      <ProductsView organizationId={organizationId} />
+    </ModuleGuard>
+  );
 }

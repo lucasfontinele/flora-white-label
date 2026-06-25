@@ -144,6 +144,8 @@ model Organization {
   products          Product[]
   inventoryItems    InventoryItem[]
   orders            Order[]
+  roles             Role[]
+  employeeInvitations EmployeeInvitation[]
 
   @@map("organizations")
 }
@@ -154,13 +156,16 @@ model OrganizationEmployee {
   fullName       String
   document       String
   isActive       Boolean  @default(true)
+  roleId         String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
   users        User[]       @relation("UserOrganizationEmployee")
+  role         Role?        @relation(fields: [roleId], references: [id])
 
   @@unique([organizationId, document])
+  @@index([roleId])
   @@map("organizations_employees")
 }
 
@@ -351,6 +356,62 @@ model OrderPayment {
   @@map("order_payments")
 }
 
+model Role {
+  id             String   @id @default(uuid())
+  organizationId String
+  key            String?
+  name           String
+  description    String?
+  isSystem       Boolean  @default(false)
+  fullAccess     Boolean  @default(false)
+  viewAll        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  permissions  RolePermission[]
+  employees    OrganizationEmployee[]
+  invitations  EmployeeInvitation[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model RolePermission {
+  id     String           @id @default(uuid())
+  roleId String
+  module PermissionModule
+  action PermissionAction
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action])
+  @@index([roleId])
+  @@map("role_permissions")
+}
+
+model EmployeeInvitation {
+  id              String           @id @default(uuid())
+  organizationId  String
+  email           String
+  roleId          String
+  token           String           @unique
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  invitedByUserId String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, email])
+  @@map("employee_invitations")
+}
+
 enum UserProfile {
   Master
   Organization
@@ -451,4 +512,28 @@ enum PaymentStatus {
   REDEEMED
   APPROVED
   FAILED
+}
+
+enum PermissionModule {
+  ORDERS
+  ASSOCIATES
+  PRODUCTS
+  INVENTORY
+  DOCUMENTS
+  SETTINGS
+  ACCESS
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  APPROVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
