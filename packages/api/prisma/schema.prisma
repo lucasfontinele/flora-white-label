@@ -70,9 +70,26 @@ model Patient {
   assessments       PatientAssessment[]
   documentApprovals OrganizationDocumentPatientApproval[]
   orders            Order[]
+  prescription      PatientPrescription?
 
   @@unique([organizationId, document])
   @@map("patients")
+}
+
+model PatientPrescription {
+  id             String   @id @default(uuid())
+  organizationId String
+  patientId      String   @unique
+  validUntil     DateTime
+  observations   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@map("patient_prescriptions")
 }
 
 model PatientAssessment {
@@ -146,6 +163,7 @@ model Organization {
   orders            Order[]
   roles             Role[]
   employeeInvitations EmployeeInvitation[]
+  prescriptions     PatientPrescription[]
 
   @@map("organizations")
 }

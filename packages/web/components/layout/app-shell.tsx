@@ -30,6 +30,7 @@ type AppShellProps = {
   };
   children: React.ReactNode;
   actions?: React.ReactNode;
+  showSearch?: boolean;
 };
 
 export function AppShell({
@@ -41,6 +42,7 @@ export function AppShell({
   user,
   children,
   actions,
+  showSearch = true,
 }: AppShellProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -219,14 +221,16 @@ export function AppShell({
               <p className="hidden truncate text-sm text-[var(--text-secondary)] md:block">{subtitle}</p>
             ) : null}
           </div>
-          <div className="hidden w-[min(34vw,360px)] md:block">
-            <Input
-              aria-label="Buscar"
-              placeholder={searchPlaceholder}
-              leadingIcon={<Icon name="search" size={18} />}
-              className="h-10"
-            />
-          </div>
+          {showSearch ? (
+            <div className="hidden w-[min(34vw,360px)] md:block">
+              <Input
+                aria-label="Buscar"
+                placeholder={searchPlaceholder}
+                leadingIcon={<Icon name="search" size={18} />}
+                className="h-10"
+              />
+            </div>
+          ) : null}
           {actions}
           <Button size="icon" variant="ghost" aria-label="Notificações" className="relative">
             <Icon name="bell" size={21} />

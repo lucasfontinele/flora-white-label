@@ -1,8 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { PatientProfile } from "@/lib/data";
-import { useScenario } from "./scenario-context";
 
 type PatientContextValue = {
   patients: PatientProfile[];
@@ -13,24 +12,28 @@ type PatientContextValue = {
 
 const PatientContext = createContext<PatientContextValue | null>(null);
 
-export function PatientProvider({ children }: { children: React.ReactNode }) {
-  const { scenarioId, scenario } = useScenario();
-  const patients = scenario.patients;
+// Patients come from the real auth session (mapped in the associated layout),
+// so the list is stable for the session. A guardian sees their managed
+// patients; a self-patient sees themselves.
+export function PatientProvider({
+  patients,
+  defaultPatientId,
+  children,
+}: {
+  patients: PatientProfile[];
+  defaultPatientId: string;
+  children: React.ReactNode;
+}) {
+  const [selectedPatientId, setSelectedPatientId] = useState(defaultPatientId);
 
-  const [selectedPatientId, setSelectedPatientId] = useState(scenario.responsible.activePatientId);
-
-  // Ao trocar de cenário, volta para o paciente padrão da nova persona.
-  useEffect(() => {
-    setSelectedPatientId(scenario.responsible.activePatientId);
-  }, [scenarioId, scenario.responsible.activePatientId]);
-
-  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
+  const selectedPatient =
+    patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
 
   const value = useMemo<PatientContextValue>(
     () => ({
       patients,
       selectedPatient,
-      selectedPatientId: selectedPatient.id,
+      selectedPatientId: selectedPatient?.id ?? "",
       selectPatient: (patientId) => {
         if (!patients.some((patient) => patient.id === patientId)) return;
         setSelectedPatientId(patientId);

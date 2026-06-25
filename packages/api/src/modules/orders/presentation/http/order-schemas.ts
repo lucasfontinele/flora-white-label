@@ -92,6 +92,9 @@ export const listOrdersQuerySchema = z
               .filter((entry) => entry.length > 0),
       )
       .pipe(z.array(z.enum(orderStatusValues)).optional()),
+    // Optional patient scope, used by the patient portal home to list a single
+    // patient's orders.
+    patientId: z.string().trim().min(1).optional(),
   })
   .strict();
 
@@ -138,6 +141,11 @@ export const listOrdersQueryJsonSchema = {
     status: {
       type: "string",
       description: "Comma-separated list of OrderStatus values to filter by.",
+    },
+    patientId: {
+      type: "string",
+      minLength: 1,
+      description: "Filtra os pedidos por paciente.",
     },
   },
 } as const;

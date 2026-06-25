@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { AssociatedShell } from "./associated-shell";
+import { derivePatientProfiles } from "@/components/associated/derive-patient-profiles";
 import { MemberAccountProvider } from "@/components/associated/member-account-context";
 import { PatientProvider } from "@/components/associated/patient-context";
-import { ScenarioProvider } from "@/components/associated/scenario-context";
 import { landingPathForSession } from "@/lib/auth-redirects";
 import { getFloraSession, sessionHasAuth } from "@/lib/session";
 
@@ -21,15 +21,16 @@ export default async function AssociatedLayout({ children }: { children: React.R
     redirect(landingPathForSession(session));
   }
 
+  const fallbackName = session.context.guardian?.name ?? session.user.email;
+  const { patients, defaultPatientId } = derivePatientProfiles(session.context, fallbackName);
+
   return (
-    <ScenarioProvider>
-      <MemberAccountProvider>
-        <PatientProvider>
-          <AssociatedShell user={session.user} context={session.context}>
-            {children}
-          </AssociatedShell>
-        </PatientProvider>
-      </MemberAccountProvider>
-    </ScenarioProvider>
+    <MemberAccountProvider>
+      <PatientProvider patients={patients} defaultPatientId={defaultPatientId}>
+        <AssociatedShell user={session.user} context={session.context}>
+          {children}
+        </AssociatedShell>
+      </PatientProvider>
+    </MemberAccountProvider>
   );
 }

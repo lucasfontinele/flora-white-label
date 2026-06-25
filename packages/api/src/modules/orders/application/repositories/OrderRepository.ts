@@ -36,6 +36,7 @@ export interface OrderRepository {
   findAllByOrganization(
     organizationId: string,
     statuses?: OrderStatus[],
+    patientId?: string,
   ): Promise<OrderReadModel[]>;
   existsByToken(organizationId: string, token: string): Promise<boolean>;
   create(order: Order): Promise<OrderReadModel>;

@@ -4,6 +4,7 @@ import type { OrderReadModel, OrderRepository } from "../repositories/OrderRepos
 export interface ListOrdersInput {
   organizationId: string;
   statuses?: OrderStatus[];
+  patientId?: string;
 }
 
 export interface ListOrdersOutput {
@@ -15,7 +16,11 @@ export class ListOrdersUseCase {
 
   async execute(input: ListOrdersInput): Promise<ListOrdersOutput> {
     const statuses = input.statuses && input.statuses.length > 0 ? input.statuses : undefined;
-    const data = await this.orderRepository.findAllByOrganization(input.organizationId, statuses);
+    const data = await this.orderRepository.findAllByOrganization(
+      input.organizationId,
+      statuses,
+      input.patientId,
+    );
 
     return { data };
   }

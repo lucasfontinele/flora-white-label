@@ -1,8 +1,8 @@
 "use client";
 
 import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
-import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { organizationNav } from "@/components/layout/nav";
 import { PermissionsProvider } from "./permissions/permissions-context";
@@ -22,6 +22,7 @@ const NAV_MODULE_BY_HREF: Record<string, PermissionModule> = {
   "/organization/operacional/orders": "ORDERS",
   "/organization/operacional/approvals": "DOCUMENTS",
   "/organization/operacional/required-documents": "DOCUMENTS",
+  "/organization/operacional/prescriptions": "DOCUMENTS",
   "/organization/operacional/members": "ASSOCIATES",
   "/organization/operacional/products": "PRODUCTS",
   "/organization/operacional/inventory": "INVENTORY",
@@ -44,6 +45,10 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   "/organization/operacional/required-documents": {
     title: "Documentos exigidos",
     subtitle: "Documentos que o paciente precisa enviar para se associar.",
+  },
+  "/organization/operacional/prescriptions": {
+    title: "Receitas",
+    subtitle: "Data limite da receita de cada paciente aprovado.",
   },
   "/organization/operacional/members": {
     title: "Associados",
@@ -71,6 +76,7 @@ type OrganizationShellProps = {
 
 export function OrganizationShell({ user, context, children }: OrganizationShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const normalized = pathname.startsWith("/organization/operacional/orders/")
     ? "/organization/operacional/orders"
     : pathname.startsWith("/organization/operacional/approvals/")
@@ -122,6 +128,27 @@ export function OrganizationShell({ user, context, children }: OrganizationShell
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview, permissions, permissionsReady]);
+
+  // Whether the current screen is one the user is allowed to see. Routes that
+  // are neither directors-only nor module-gated are always accessible.
+  function isAccessibleHref(href: string): boolean {
+    if (DIRECTORS_ONLY_HREFS.has(href)) return canViewDirectors;
+    const module = NAV_MODULE_BY_HREF[href];
+    return !module || canViewModule(module);
+  }
+
+  // The landing redirect after login points everyone at "Visão geral", which is
+  // directors-only — so an operator without access would just see the "Acesso
+  // restrito" card. Once permissions load, bounce them to the first sidebar
+  // screen they can actually open instead.
+  const firstAccessibleHref = permissionsReady ? nav[0]?.href : undefined;
+  const currentIsAccessible = permissionsReady && isAccessibleHref(normalized);
+
+  useEffect(() => {
+    if (!permissionsReady || currentIsAccessible) return;
+    if (!firstAccessibleHref || firstAccessibleHref === normalized) return;
+    router.replace(firstAccessibleHref);
+  }, [permissionsReady, currentIsAccessible, firstAccessibleHref, normalized, router]);
 
   return (
     <PermissionsProvider value={{ data: permissions, ready: permissionsReady }}>

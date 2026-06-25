@@ -42,11 +42,13 @@ export class PrismaOrderRepository implements OrderRepository {
   async findAllByOrganization(
     organizationId: string,
     statuses?: OrderStatus[],
+    patientId?: string,
   ): Promise<OrderReadModel[]> {
     const records = await this.prisma.getClient().order.findMany({
       where: {
         organizationId,
         ...(statuses && statuses.length > 0 ? { status: { in: statuses } } : {}),
+        ...(patientId ? { patientId } : {}),
       },
       include: readModelInclude,
       orderBy: { createdAt: "desc" },

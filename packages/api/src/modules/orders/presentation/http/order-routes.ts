@@ -101,6 +101,7 @@ export async function orderRoutes(app: FastifyInstance): Promise<void> {
       const output = await useCases.listOrdersUseCase.execute({
         organizationId: params.data.organizationId,
         statuses: query.data.status,
+        patientId: query.data.patientId,
       });
 
       return {

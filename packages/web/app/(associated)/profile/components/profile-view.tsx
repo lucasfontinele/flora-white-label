@@ -1,17 +1,15 @@
 "use client";
 
 import { BecomePatientCallout } from "@/components/associated/become-patient-callout";
-import { useScenario } from "@/components/associated/scenario-context";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import type { IconName } from "@/components/ui/icon";
-import { tenant } from "@/lib/data";
+import { associatedUser, tenant } from "@/lib/data";
 import { MembershipCard } from "./membership-card";
 import { TutelagePatients } from "./tutelage-patients";
 
 export function ProfileView() {
-  const { scenario } = useScenario();
-  const responsible = scenario.responsible;
+  const responsible = associatedUser;
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">

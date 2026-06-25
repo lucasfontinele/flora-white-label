@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useScenario } from "./scenario-context";
+import { associatedUser } from "@/lib/data";
 
 // Front-end model for the logged-in Member (Responsável). A Responsável manages
 // patients but is not necessarily a Patient — they may apply to become one.
@@ -32,8 +32,9 @@ function isStatus(value: string | null): value is PatientApplicationStatus {
 }
 
 export function MemberAccountProvider({ children }: { children: React.ReactNode }) {
-  const { scenario } = useScenario();
-  const responsible = scenario.responsible;
+  // Responsável data is still mock (carteirinha/become-patient flow); the
+  // scenario switcher was removed, so read the static associate directly.
+  const responsible = associatedUser;
   const [applicationStatus, setApplicationStatus] = useState<PatientApplicationStatus>("none");
 
   useEffect(() => {

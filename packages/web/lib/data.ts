@@ -37,7 +37,7 @@ export type PatientKind = "humano" | "pet";
 export type PatientProfile = {
   id: string;
   name: string;
-  relationship: "Paciente" | "Filho" | "Mãe" | "Pai" | "Titular" | "Pet";
+  relationship: string;
   initials: string;
   memberId: string;
   birthDate: string;
@@ -65,15 +65,6 @@ export type ResponsibleProfile = {
   membershipStatus: string;
   document: string;
   validThrough: string;
-};
-
-// Cenário de demonstração: combina um responsável e seus pacientes para
-// pré-visualizar as variações da home (mock; selecionável no topo da tela).
-export type AssociatedScenario = {
-  id: string;
-  label: string;
-  responsible: ResponsibleProfile;
-  patients: PatientProfile[];
 };
 
 export type AssociatedDocument = {
@@ -190,122 +181,6 @@ export const associatedPatients: PatientProfile[] = [
     prescriptionDue: "pendente de aprovação",
     anvisaDue: "renovar cadastro",
     nextReview: "aguardando documento",
-  },
-];
-
-// Reaproveita os dados ricos (pedidos, limites, documentos já existem por id) de
-// um paciente base e sobrescreve só o que muda na persona — assim cada cenário
-// mostra uma home populada.
-function scenarioPatient(baseId: string, overrides: Partial<PatientProfile>): PatientProfile {
-  const base = associatedPatients.find((patient) => patient.id === baseId) ?? associatedPatients[0];
-  return { ...base, ...overrides };
-}
-
-// Cenários de demonstração para pré-visualizar as variações da home (mock).
-// Selecionável no seletor do topo. O "Padrão" mantém o comportamento atual.
-export const associatedScenarios: AssociatedScenario[] = [
-  {
-    id: "padrao",
-    label: "Padrão · responsável por 3",
-    responsible: associatedUser,
-    patients: associatedPatients,
-  },
-  {
-    id: "self",
-    label: "Responsável por ele mesmo",
-    responsible: {
-      name: "Lucas Fontinele",
-      email: "lucas.fontinele@email.com",
-      phone: "(71) 99654-1240",
-      since: "desde 2025",
-      activePatientId: "joao-silva",
-      isPatient: true,
-      memberId: "4624",
-      memberSince: "11/06/2025",
-      memberType: "Titular",
-      membershipStatus: "Ativado",
-      document: "069.***.***-40",
-      validThrough: "06/2027",
-    },
-    patients: [
-      scenarioPatient("joao-silva", {
-        name: "Lucas Fontinele",
-        relationship: "Titular",
-        initials: "LF",
-        kind: "humano",
-        condition: "Dor crônica e ansiedade",
-        birthDate: "23 mar 1994",
-        memberId: "4624",
-      }),
-    ],
-  },
-  {
-    id: "two-people",
-    label: "Responsável por duas pessoas",
-    responsible: { ...associatedUser, activePatientId: "joao-silva" },
-    patients: [
-      scenarioPatient("joao-silva", { name: "João Silva", relationship: "Filho", kind: "humano" }),
-      scenarioPatient("marina-duarte", { name: "Marina Duarte", relationship: "Mãe", kind: "humano" }),
-    ],
-  },
-  {
-    id: "person-pet",
-    label: "Responsável por uma pessoa e um pet",
-    responsible: {
-      name: "Renata Lopes",
-      email: "renata.lopes@email.com",
-      phone: "(71) 99812-3300",
-      since: "desde 2024",
-      activePatientId: "joao-silva",
-      isPatient: false,
-      memberId: "5180",
-      memberSince: "02/02/2024",
-      memberType: "Responsável",
-      membershipStatus: "Ativado",
-      document: "***.412.880-**",
-      validThrough: "02/2027",
-    },
-    patients: [
-      scenarioPatient("joao-silva", { name: "Pedro Lopes", relationship: "Filho", initials: "PL", kind: "humano", condition: "TEA" }),
-      scenarioPatient("marina-duarte", {
-        name: "Thor",
-        relationship: "Pet",
-        initials: "TH",
-        kind: "pet",
-        species: "Canina · Golden Retriever",
-        condition: "Epilepsia",
-        birthDate: "10 jan 2019",
-      }),
-    ],
-  },
-  {
-    id: "only-pet",
-    label: "Associado com um pet",
-    responsible: {
-      name: "Bruno Antunes",
-      email: "bruno.antunes@email.com",
-      phone: "(71) 99500-7788",
-      since: "desde 2026",
-      activePatientId: "joao-silva",
-      isPatient: false,
-      memberId: "5402",
-      memberSince: "20/05/2026",
-      memberType: "Tutor",
-      membershipStatus: "Ativado",
-      document: "***.778.001-**",
-      validThrough: "05/2028",
-    },
-    patients: [
-      scenarioPatient("joao-silva", {
-        name: "Mel",
-        relationship: "Pet",
-        initials: "ME",
-        kind: "pet",
-        species: "Felina · SRD",
-        condition: "Dor crônica",
-        birthDate: "05 set 2020",
-      }),
-    ],
   },
 ];
 

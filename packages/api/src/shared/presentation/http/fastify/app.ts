@@ -14,6 +14,7 @@ import { organizationOverviewRoutes } from "../../../../modules/organization-ove
 import { operationalDashboardRoutes } from "../../../../modules/operational-dashboard/presentation/http/operational-dashboard-routes.js";
 import { masterReportsRoutes } from "../../../../modules/master-reports/presentation/http/master-reports-routes.js";
 import { patientRegistrationRoutes } from "../../../../modules/patients/presentation/http/patient-registration-routes.js";
+import { prescriptionRoutes } from "../../../../modules/prescriptions/presentation/http/prescription-routes.js";
 import { productRoutes } from "../../../../modules/products/presentation/http/product-routes.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
 import { userRoutes } from "../../../../modules/users/presentation/http/user-routes.js";
@@ -53,6 +54,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(addressRoutes);
   await app.register(patientRegistrationRoutes);
+  await app.register(prescriptionRoutes);
   await app.register(organizationRoutes);
   await app.register(organizationDocumentRoutes);
   await app.register(productRoutes);

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { associatedNav } from "@/components/layout/nav";
 import { usePatientSelection } from "@/components/associated/patient-context";
-import { ScenarioSwitcher } from "@/components/associated/scenario-switcher";
 import { tenant } from "@/lib/data";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
@@ -65,7 +64,7 @@ export function AssociatedShell({ user, context, children }: AssociatedShellProp
         name: accountName,
         detail: `${patientName} · ${organizationName}`,
       }}
-      actions={<ScenarioSwitcher />}
+      showSearch={false}
     >
       {children}
     </AppShell>

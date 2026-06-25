@@ -19,6 +19,7 @@ export const organizationNav: Array<{
   { label: "Pedidos", href: "/organization/operacional/orders", icon: "inbox" },
   { label: "Aprovações", href: "/organization/operacional/approvals", icon: "clipboard-check" },
   { label: "Documentos exigidos", href: "/organization/operacional/required-documents", icon: "file-check" },
+  { label: "Receitas", href: "/organization/operacional/prescriptions", icon: "calendar" },
   { label: "Associados", href: "/organization/operacional/members", icon: "users" },
   { label: "Produtos", href: "/organization/operacional/products", icon: "package" },
   { label: "Estoque", href: "/organization/operacional/inventory", icon: "boxes" },

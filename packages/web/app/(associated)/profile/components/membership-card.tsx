@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useMemberAccount } from "@/components/associated/member-account-context";
-import { useScenario } from "@/components/associated/scenario-context";
-import { tenant } from "@/lib/data";
+import { associatedUser, tenant } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 // Carteirinha digital do Responsável — comprovante de filiação à associação.
@@ -14,8 +13,7 @@ import { cn } from "@/lib/utils";
 // layout do print de referência. Dados do responsável vêm do cenário ativo.
 export function MembershipCard() {
   const { applicationStatus } = useMemberAccount();
-  const { scenario } = useScenario();
-  const responsible = scenario.responsible;
+  const responsible = associatedUser;
   const alsoPatient = applicationStatus === "approved";
 
   return (
