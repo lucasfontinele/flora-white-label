@@ -89,6 +89,12 @@ export class InMemoryEmployeeInvitationRepository implements EmployeeInvitationR
       .map((invitation) => toReadModel(invitation));
   }
 
+  async findFullAccessByOrganization(organizationId: string) {
+    return [...this.invitations.values()]
+      .filter((invitation) => invitation.organizationId === organizationId)
+      .map((invitation) => toReadModel(invitation));
+  }
+
   async create(invitation: EmployeeInvitation) {
     this.createCalls += 1;
     this.invitations.set(invitation.id, invitation);
@@ -110,6 +116,7 @@ export class InMemoryEmployeeInvitationRepository implements EmployeeInvitationR
 
 export class FakeRoleRepository implements RoleRepository {
   private readonly roles = new Map<string, Role>();
+  readonly createdKeys: string[] = [];
 
   constructor(roles: Role[] = []) {
     for (const role of roles) {
@@ -125,6 +132,21 @@ export class FakeRoleRepository implements RoleRepository {
     const role = this.roles.get(roleId);
 
     return role && role.organizationId === organizationId ? role : null;
+  }
+
+  async findByKeyInOrganization(organizationId: string, key: string): Promise<Role | null> {
+    return (
+      [...this.roles.values()].find(
+        (role) => role.organizationId === organizationId && role.key === key,
+      ) ?? null
+    );
+  }
+
+  async create(role: Role): Promise<void> {
+    this.roles.set(role.id, role);
+    if (role.key) {
+      this.createdKeys.push(role.key);
+    }
   }
 
   async replacePermissions(): Promise<RoleReadModel> {

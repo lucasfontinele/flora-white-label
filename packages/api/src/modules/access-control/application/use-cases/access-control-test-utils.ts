@@ -37,6 +37,18 @@ export class InMemoryRoleRepository implements RoleRepository {
     return role && role.organizationId === organizationId ? role : null;
   }
 
+  async findByKeyInOrganization(organizationId: string, key: string): Promise<Role | null> {
+    return (
+      [...this.roles.values()].find(
+        (role) => role.organizationId === organizationId && role.key === key,
+      ) ?? null
+    );
+  }
+
+  async create(role: Role): Promise<void> {
+    this.roles.set(role.id, role);
+  }
+
   async replacePermissions(role: Role): Promise<RoleReadModel> {
     this.replaceCalls += 1;
     this.roles.set(role.id, role);

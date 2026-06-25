@@ -40,6 +40,8 @@ export interface EmployeeInvitationRepository {
   ): Promise<EmployeeInvitationReadModel | null>;
   findDetailsByToken(token: string): Promise<EmployeeInvitationTokenReadModel | null>;
   findAllByOrganization(organizationId: string): Promise<EmployeeInvitationReadModel[]>;
+  /** Invitations to a full-access (super-admin) role — the org's master admins. */
+  findFullAccessByOrganization(organizationId: string): Promise<EmployeeInvitationReadModel[]>;
   create(invitation: EmployeeInvitation): Promise<EmployeeInvitationReadModel>;
   save(invitation: EmployeeInvitation): Promise<EmployeeInvitationReadModel>;
 }

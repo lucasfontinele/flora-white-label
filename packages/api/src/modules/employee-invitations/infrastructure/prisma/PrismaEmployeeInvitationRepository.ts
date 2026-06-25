@@ -81,6 +81,18 @@ export class PrismaEmployeeInvitationRepository implements EmployeeInvitationRep
     return records.map((record) => EmployeeInvitationMapper.toReadModel(record));
   }
 
+  async findFullAccessByOrganization(
+    organizationId: string,
+  ): Promise<EmployeeInvitationReadModel[]> {
+    const records = await this.prisma.getClient().employeeInvitation.findMany({
+      where: { organizationId, role: { fullAccess: true } },
+      ...withRole,
+      orderBy: { createdAt: "desc" },
+    });
+
+    return records.map((record) => EmployeeInvitationMapper.toReadModel(record));
+  }
+
   async create(invitation: EmployeeInvitation): Promise<EmployeeInvitationReadModel> {
     const record = await this.prisma.getClient().employeeInvitation.create({
       data: EmployeeInvitationMapper.toPersistence(invitation),

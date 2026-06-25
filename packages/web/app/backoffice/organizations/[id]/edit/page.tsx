@@ -75,12 +75,20 @@ export default function EditOrganizationPage() {
             Atualize os dados empresariais, endereço e plano da organização.
           </p>
         </div>
-        <Button asChild variant="secondary">
-          <Link href="/backoffice/organizations">
-            <Icon name="arrow-left" size={18} />
-            Voltar para listagem
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary">
+            <Link href={`/backoffice/organizations/${id}/admin`}>
+              <Icon name="shield-check" size={18} />
+              Administrador master
+            </Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/backoffice/organizations">
+              <Icon name="arrow-left" size={18} />
+              Voltar para listagem
+            </Link>
+          </Button>
+        </div>
       </section>
 
       {organizationQuery.isLoading ? (

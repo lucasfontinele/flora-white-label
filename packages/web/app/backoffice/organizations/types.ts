@@ -75,6 +75,37 @@ export type ListSubscriptionPlansResponse = {
   data: SubscriptionPlan[];
 };
 
+// Master-admin invitations — /backoffice/organizations/:id/admin-invitations.
+
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+
+export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
+  PENDING: "Pendente",
+  ACCEPTED: "Aceito",
+  EXPIRED: "Expirado",
+  REVOKED: "Cancelado",
+};
+
+export type AdminInvitation = {
+  id: string;
+  organizationId: string;
+  email: string;
+  roleId: string;
+  roleName: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminInvitationsResponse = {
+  data: AdminInvitation[];
+};
+
+export type SendAdminInvitationBody = {
+  email: string;
+};
+
 // GET /addresses/zipcode/:zipcode
 export type ZipcodeAddress = {
   zipcode: string;

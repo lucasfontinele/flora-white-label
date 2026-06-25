@@ -5,6 +5,7 @@ import { accessControlRoutes } from "../../../../modules/access-control/presenta
 import { addressRoutes } from "../../../../modules/addresses/presentation/http/address-routes.js";
 import { authRoutes } from "../../../../modules/auth/presentation/http/auth-routes.js";
 import { employeeInvitationRoutes } from "../../../../modules/employee-invitations/presentation/http/employee-invitation-routes.js";
+import { organizationAdminInvitationRoutes } from "../../../../modules/employee-invitations/presentation/http/organization-admin-invitation-routes.js";
 import { organizationRoutes } from "../../../../modules/organizations/presentation/http/organization-routes.js";
 import { inventoryRoutes } from "../../../../modules/inventory/presentation/http/inventory-routes.js";
 import { orderRoutes } from "../../../../modules/orders/presentation/http/order-routes.js";
@@ -62,6 +63,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(masterReportsRoutes);
   await app.register(accessControlRoutes);
   await app.register(employeeInvitationRoutes);
+  await app.register(organizationAdminInvitationRoutes);
   await app.register(subscriptionPlanRoutes);
   await app.register(userRoutes);
 
