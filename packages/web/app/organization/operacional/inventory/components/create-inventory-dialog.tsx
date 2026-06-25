@@ -1,0 +1,199 @@
+"use client";
+
+import * as React from "react";
+import { createPortal } from "react-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { PRODUCT_CATEGORY_LABELS, type Product } from "../../products/types";
+import {
+  createInventoryFormSchema,
+  type CreateInventoryFormValues,
+} from "../schemas/inventory-schema";
+
+type CreateInventoryDialogProps = {
+  open: boolean;
+  products: Product[];
+  preselectedProductId?: string;
+  pending: boolean;
+  onSubmit: (values: CreateInventoryFormValues) => void;
+  onCancel: () => void;
+};
+
+const EMPTY_VALUES: CreateInventoryFormValues = {
+  productId: "",
+  availableQuantity: "0",
+  minimumQuantity: "0",
+  reason: "",
+};
+
+const labelClassName = "text-sm font-bold text-[var(--text-primary)]";
+const optionalHint = <span className="font-normal text-[var(--text-tertiary)]">(opcional)</span>;
+
+export function CreateInventoryDialog({
+  open,
+  products,
+  preselectedProductId,
+  pending,
+  onSubmit,
+  onCancel,
+}: CreateInventoryDialogProps) {
+  const titleId = React.useId();
+  const [mounted, setMounted] = React.useState(false);
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateInventoryFormValues>({
+    resolver: zodResolver(createInventoryFormSchema),
+    defaultValues: EMPTY_VALUES,
+  });
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (open) {
+      reset({ ...EMPTY_VALUES, productId: preselectedProductId ?? "" });
+    }
+  }, [open, preselectedProductId, reset]);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !pending) onCancel();
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, pending, onCancel]);
+
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-black/50"
+        onClick={() => {
+          if (!pending) onCancel();
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg"
+      >
+        <h2 id={titleId} className="font-heading text-lg text-[var(--text-primary)]">
+          Nova posição de estoque
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Crie a posição de estoque inicial de um produto. O reservado começa em zero.
+        </p>
+
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="space-y-1.5">
+            <label className={labelClassName} htmlFor="inventory-product">
+              Produto
+            </label>
+            <Controller
+              control={control}
+              name="productId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="inventory-product" aria-label="Produto">
+                    <SelectValue placeholder="Selecione um produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} · {PRODUCT_CATEGORY_LABELS[product.category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.productId ? (
+              <p className="text-sm text-error">{errors.productId.message}</p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className={labelClassName} htmlFor="inventory-available">
+                Quantidade disponível
+              </label>
+              <Input
+                id="inventory-available"
+                inputMode="numeric"
+                placeholder="0"
+                {...register("availableQuantity")}
+              />
+              {errors.availableQuantity ? (
+                <p className="text-sm text-error">{errors.availableQuantity.message}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className={labelClassName} htmlFor="inventory-minimum">
+                Quantidade mínima
+              </label>
+              <Input
+                id="inventory-minimum"
+                inputMode="numeric"
+                placeholder="0"
+                {...register("minimumQuantity")}
+              />
+              {errors.minimumQuantity ? (
+                <p className="text-sm text-error">{errors.minimumQuantity.message}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={labelClassName} htmlFor="inventory-reason">
+              Motivo {optionalHint}
+            </label>
+            <Textarea
+              id="inventory-reason"
+              placeholder="Ex.: Saldo inicial de implantação."
+              {...register("reason")}
+            />
+            {errors.reason ? <p className="text-sm text-error">{errors.reason.message}</p> : null}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Salvando..." : "Criar posição"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}

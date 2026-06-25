@@ -6,20 +6,77 @@ import { PatientSelector } from "@/components/associated/patient-selector";
 import { usePatientSelection } from "@/components/associated/patient-context";
 import { OrderCard } from "@/components/domain/order-card";
 import { OrderTimeline } from "@/components/domain/order-timeline";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import type { AssociatedOrder, OrderStatus } from "@/lib/data";
 import { useDashboardQuery } from "../queries/use-dashboard-query";
+import {
+  DASHBOARD_ORDER_STATUS_LABELS,
+  TERMINAL_ORDER_STATUSES,
+  type DashboardOrder,
+  type DashboardOrderStatus,
+} from "../types";
 
-export function AssociatedDashboard() {
+const ORDER_STATUS_TONE: Record<DashboardOrderStatus, BadgeProps["tone"]> = {
+  REQUESTED: "neutral",
+  UNDER_REVIEW: "warning",
+  IN_SEPARATION: "info",
+  APPROVED: "primary",
+  READY_FOR_PICKUP: "accent",
+  SHIPPED: "petrol",
+  DELIVERED: "success",
+  CANCELLED: "error",
+};
+
+// Date-only values (prescription validity, order date) are formatted in UTC so
+// the day never shifts with the viewer's timezone.
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+// Adapts a real order to the mock-shaped `AssociatedOrder` consumed by the
+// shared OrderCard. The status label maps cleanly onto the card's stages.
+function toAssociatedOrder(order: DashboardOrder): AssociatedOrder {
+  return {
+    id: order.id,
+    patientId: order.patientId,
+    number: order.token,
+    status: DASHBOARD_ORDER_STATUS_LABELS[order.status] as OrderStatus,
+    createdAt: formatDate(order.createdAt),
+    items: order.itemsAmount,
+    deliveryType: order.deliveryType === "PICKUP" ? "Retirada na sede" : "Envio por correio",
+  };
+}
+
+export function AssociatedDashboard({ organizationId }: { organizationId: string }) {
   const { selectedPatient } = usePatientSelection();
-  const { data } = useDashboardQuery(selectedPatient.id);
-  const activeOrder = data?.activeOrder;
-  const recentOrders = data?.recentOrders ?? [];
-  const documents = data?.documents ?? [];
-  const documentsReady = documents.length > 0 && documents.every((document) => document.status === "Aprovado");
-  const lastOrderNumber = recentOrders[0]?.number ?? "Sem pedidos";
+  const { data } = useDashboardQuery(organizationId, selectedPatient.id);
+
+  const orders = data?.orders ?? [];
+  const requiredDocuments = data?.requiredDocuments ?? [];
+  const approvals = data?.approvals ?? [];
+  const prescription = data?.prescription ?? null;
+
+  // Orders come back newest-first; the first non-terminal one is "in progress".
+  const activeOrder = orders.find((order) => !TERMINAL_ORDER_STATUSES.includes(order.status));
+  const recentOrders = orders.slice(0, 3);
+  const lastOrderToken = orders[0]?.token ?? "Sem pedidos";
+
+  const documentsReady =
+    requiredDocuments.length > 0 &&
+    requiredDocuments.every(
+      (document) =>
+        approvals.find((approval) => approval.documentId === document.id)?.status === "APPROVED",
+    );
+
+  const prescriptionDue = prescription ? formatDate(prescription.validUntil) : "Não definida";
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -27,16 +84,20 @@ export function AssociatedDashboard() {
 
       <BecomePatientCallout variant="banner" />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MiniStatus icon="file-check" label="Receita válida até" value={selectedPatient.prescriptionDue} />
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <MiniStatus
+          icon="file-check"
+          label="Receita válida até"
+          value={prescriptionDue}
+          tone={prescription ? "success" : "warning"}
+        />
         <MiniStatus
           icon="shield-check"
           label="Cadastro"
-          value={selectedPatient.registrationStatus}
-          tone={selectedPatient.registrationStatus === "Ativo" ? "success" : "warning"}
+          value={documentsReady ? "Em dia" : "Em atenção"}
+          tone={documentsReady ? "success" : "warning"}
         />
-        <MiniStatus icon="package" label="Último pedido" value={lastOrderNumber} mono />
-        <MiniStatus icon="clock" label="Próxima ação" value={selectedPatient.nextReview} tone="warning" />
+        <MiniStatus icon="package" label="Último pedido" value={lastOrderToken} mono />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
@@ -46,13 +107,16 @@ export function AssociatedDashboard() {
               <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold text-[var(--text-secondary)]">Pedido em andamento</p>
-                  <p className="mt-1 font-mono text-xl font-extrabold">{activeOrder.number}</p>
+                  <p className="mt-1 font-mono text-xl font-extrabold">{activeOrder.token}</p>
                 </div>
-                <Badge tone="info" dot>
-                  {activeOrder.status}
+                <Badge tone={ORDER_STATUS_TONE[activeOrder.status]} dot>
+                  {DASHBOARD_ORDER_STATUS_LABELS[activeOrder.status]}
                 </Badge>
               </div>
-              <OrderTimeline current={activeOrder.status} timestamps={activeOrder.timestamps} compact />
+              <OrderTimeline
+                current={DASHBOARD_ORDER_STATUS_LABELS[activeOrder.status] as OrderStatus}
+                compact
+              />
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button asChild>
                   <Link href="/orders">
@@ -90,7 +154,7 @@ export function AssociatedDashboard() {
               <p className="font-bold">{documentsReady ? "Documentos em dia" : "Documentos em atenção"}</p>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
                 {documentsReady
-                  ? `Receita de ${selectedPatient.name} válida até ${selectedPatient.prescriptionDue}.`
+                  ? `Cadastro de ${selectedPatient.name} com todos os documentos aprovados.`
                   : `Revise os documentos de ${selectedPatient.name} antes de avançar pedidos.`}
               </p>
             </div>
@@ -113,7 +177,7 @@ export function AssociatedDashboard() {
         </div>
         <div className="grid gap-4 xl:grid-cols-3">
           {recentOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={toAssociatedOrder(order)} />
           ))}
           {recentOrders.length === 0 ? (
             <Card className="p-5 text-sm text-[var(--text-secondary)]">
@@ -133,7 +197,7 @@ function MiniStatus({
   tone,
   mono,
 }: {
-  icon: "file-check" | "shield-check" | "package" | "clock";
+  icon: "file-check" | "shield-check" | "package";
   label: string;
   value: string;
   tone?: "success" | "warning";

@@ -32,6 +32,9 @@ function isStatus(value: string | null): value is PatientApplicationStatus {
 }
 
 export function MemberAccountProvider({ children }: { children: React.ReactNode }) {
+  // Responsável data is still mock (carteirinha/become-patient flow); the
+  // scenario switcher was removed, so read the static associate directly.
+  const responsible = associatedUser;
   const [applicationStatus, setApplicationStatus] = useState<PatientApplicationStatus>("none");
 
   useEffect(() => {
@@ -39,18 +42,21 @@ export function MemberAccountProvider({ children }: { children: React.ReactNode 
     if (isStatus(stored)) setApplicationStatus(stored);
   }, []);
 
+  // Persona "responsável por ele mesmo" já é paciente — sobrepõe a solicitação.
+  const effectiveStatus: PatientApplicationStatus = responsible.isPatient ? "approved" : applicationStatus;
+
   const value = useMemo<MemberAccountValue>(
     () => ({
-      responsibleName: associatedUser.name,
-      applicationStatus,
-      isPatient: applicationStatus === "approved",
+      responsibleName: responsible.name,
+      applicationStatus: effectiveStatus,
+      isPatient: effectiveStatus === "approved",
       submitApplication: (draft) => {
         setApplicationStatus("pending");
         window.localStorage.setItem(STATUS_KEY, "pending");
         window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       },
     }),
-    [applicationStatus],
+    [responsible.name, effectiveStatus],
   );
 
   return <MemberAccountContext.Provider value={value}>{children}</MemberAccountContext.Provider>;

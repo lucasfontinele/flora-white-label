@@ -1,8 +1,17 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 import { Icon } from "@/components/ui/icon";
+import { landingPathForSession } from "@/lib/auth-redirects";
+import { getFloraSession, sessionHasAuth } from "@/lib/session";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await getFloraSession();
+
+  if (sessionHasAuth(session)) {
+    redirect(landingPathForSession(session));
+  }
+
   return (
     <main className="min-h-screen bg-[var(--neutral-100)] px-4 py-8 md:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center">

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { SignOutButton } from "./sign-out-button";
 
 type NavItem = {
   label: string;
@@ -21,6 +22,7 @@ type AppShellProps = {
   variant: "associated" | "master" | "organization";
   title: string;
   subtitle?: string;
+  tenantLabel?: string;
   nav: NavItem[];
   user: {
     name: string;
@@ -28,18 +30,30 @@ type AppShellProps = {
   };
   children: React.ReactNode;
   actions?: React.ReactNode;
+  showSearch?: boolean;
 };
 
-export function AppShell({ variant, title, subtitle, nav, user, children, actions }: AppShellProps) {
+export function AppShell({
+  variant,
+  title,
+  subtitle,
+  tenantLabel: tenantLabelOverride,
+  nav,
+  user,
+  children,
+  actions,
+  showSearch = true,
+}: AppShellProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const backoffice = variant === "master" || variant === "organization";
   const tenantLabel =
-    variant === "master"
+    tenantLabelOverride ??
+    (variant === "master"
       ? "Backoffice Master"
       : variant === "organization"
         ? "Operação · Vida Verde"
-        : "Portal do associado";
+        : "Portal do associado");
   const searchPlaceholder =
     variant === "master"
       ? "Buscar organização, CNPJ ou plano"
@@ -184,11 +198,7 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
               {user.detail}
             </p>
           </div>
-          <Icon
-            name={backoffice ? "log-out" : "settings"}
-            size={18}
-            className={backoffice ? "text-white/50" : "text-[var(--text-tertiary)]"}
-          />
+          <SignOutButton inverse={backoffice} />
         </div>
       </aside>
 
@@ -211,14 +221,16 @@ export function AppShell({ variant, title, subtitle, nav, user, children, action
               <p className="hidden truncate text-sm text-[var(--text-secondary)] md:block">{subtitle}</p>
             ) : null}
           </div>
-          <div className="hidden w-[min(34vw,360px)] md:block">
-            <Input
-              aria-label="Buscar"
-              placeholder={searchPlaceholder}
-              leadingIcon={<Icon name="search" size={18} />}
-              className="h-10"
-            />
-          </div>
+          {showSearch ? (
+            <div className="hidden w-[min(34vw,360px)] md:block">
+              <Input
+                aria-label="Buscar"
+                placeholder={searchPlaceholder}
+                leadingIcon={<Icon name="search" size={18} />}
+                className="h-10"
+              />
+            </div>
+          ) : null}
           {actions}
           <Button size="icon" variant="ghost" aria-label="Notificações" className="relative">
             <Icon name="bell" size={21} />

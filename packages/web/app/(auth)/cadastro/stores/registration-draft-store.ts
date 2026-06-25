@@ -6,6 +6,14 @@ import type { RegistrationSchema } from "../schemas/registration-schema";
 
 type RegistrationDraft = Partial<RegistrationSchema>;
 
+// Credentials are never written to localStorage; they are re-entered if a draft resumes.
+function omitCredentials(draft: RegistrationDraft): RegistrationDraft {
+  const next = { ...draft };
+  delete next.password;
+  delete next.passwordConfirmation;
+  return next;
+}
+
 type RegistrationDraftStore = {
   draft: RegistrationDraft;
   hasHydrated: boolean;
@@ -27,7 +35,7 @@ export const useRegistrationDraftStore = create<RegistrationDraftStore>()(
         set((state) => ({
           draft: {
             ...state.draft,
-            ...draft,
+            ...omitCredentials(draft),
           },
         })),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),

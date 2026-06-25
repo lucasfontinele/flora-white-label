@@ -8,14 +8,17 @@ import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { Turnstile, TURNSTILE_SITE_KEY } from "@/components/ui/turnstile";
+import { getApiErrorMessage } from "@/lib/http";
 import { cn } from "@/lib/utils";
+import { createPatientRegistration } from "../requests/create-patient-registration";
 import { getAddressByCep } from "../requests/get-address-by-cep";
-import { registrationSchema, type RegistrationSchema } from "../schemas/registration-schema";
+import { registrationSchema, toPatientRegistrationBody, type RegistrationSchema } from "../schemas/registration-schema";
 import { useRegistrationDraftStore } from "../stores/registration-draft-store";
 
-type StepKind = "profile" | "personal" | "pet" | "contact" | "address" | "legalGuardian";
+type StepKind = "profile" | "personal" | "access" | "pet" | "contact" | "address" | "legalGuardian";
 
 type RegistrationStep = {
   description: string;
@@ -25,8 +28,16 @@ type RegistrationStep = {
 };
 
 const profileStepFields: Array<keyof RegistrationSchema> = ["role"];
-const personalStepFields: Array<keyof RegistrationSchema> = ["fullName", "cpf", "birthDate", "nickname", "gender"];
-const contactStepFields: Array<keyof RegistrationSchema> = ["email", "phone"];
+const personalStepFields: Array<keyof RegistrationSchema> = [
+  "fullName",
+  "cpf",
+  "birthDate",
+  "nickname",
+  "gender",
+  "underPrivileged",
+];
+const accessStepFields: Array<keyof RegistrationSchema> = ["email", "password", "passwordConfirmation"];
+const contactStepFields: Array<keyof RegistrationSchema> = ["phone"];
 const addressStepFields: Array<keyof RegistrationSchema> = [
   "cep",
   "street",
@@ -42,8 +53,8 @@ const legalGuardianStepFields: Array<keyof RegistrationSchema> = [
   "guardianCpf",
   "guardianRg",
   "guardianRelationship",
+  "guardianGender",
   "guardianBirthDate",
-  "guardianEmail",
   "guardianPhone",
   "guardianCep",
   "guardianStreet",
@@ -62,6 +73,13 @@ const petTutorStepFields: Array<keyof RegistrationSchema> = [
   "petDiagnosis",
 ];
 
+const accessStep: RegistrationStep = {
+  kind: "access",
+  title: "Acesso",
+  description: "E-mail e senha que serão usados para entrar na plataforma.",
+  fields: accessStepFields,
+};
+
 const patientSteps: RegistrationStep[] = [
   { kind: "profile", title: "Perfil", description: "Escolha como você participa do cuidado.", fields: profileStepFields },
   {
@@ -70,6 +88,7 @@ const patientSteps: RegistrationStep[] = [
     description: "Identificação inicial do cadastro.",
     fields: personalStepFields,
   },
+  accessStep,
   { kind: "contact", title: "Contato", description: "Canais usados pela associação.", fields: contactStepFields },
   {
     kind: "address",
@@ -87,6 +106,7 @@ const petTutorSteps: RegistrationStep[] = [
     description: "Identificação inicial do tutor do PET.",
     fields: personalStepFields,
   },
+  accessStep,
   {
     kind: "pet",
     title: "Dados do PET",
@@ -163,7 +183,8 @@ const documentCards = [
 
 const petSpeciesOptions = ["Canina", "Felina", "Equina", "Aviária", "Exótica", "Silvestre", "Outras"] as const;
 
-type RegistrationFormData = z.infer<typeof registrationSchema>;
+// Input shape (what the fields hold); `RegistrationSchema` is the parsed output.
+type RegistrationFormData = z.input<typeof registrationSchema>;
 
 const defaultValues: RegistrationFormData = {
   role: "patient",
@@ -172,7 +193,10 @@ const defaultValues: RegistrationFormData = {
   birthDate: "",
   nickname: "",
   gender: "prefiro_nao_informar",
+  underPrivileged: false,
   email: "",
+  password: "",
+  passwordConfirmation: "",
   phone: "",
   cep: "",
   street: "",
@@ -185,8 +209,8 @@ const defaultValues: RegistrationFormData = {
   guardianCpf: "",
   guardianRg: "",
   guardianRelationship: "pai_mae",
+  guardianGender: "prefiro_nao_informar",
   guardianBirthDate: "",
-  guardianEmail: "",
   guardianPhone: "",
   guardianCep: "",
   guardianStreet: "",
@@ -213,13 +237,17 @@ function getStepsForRole(role: RegistrationFormData["role"]) {
   return patientSteps;
 }
 
-export function RegistrationForm() {
+export function RegistrationForm({ organizationId }: { organizationId?: string } = {}) {
   const [step, setStep] = useState(0);
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "found" | "error">("idle");
   const [guardianCepStatus, setGuardianCepStatus] = useState<"idle" | "loading" | "found" | "error">("idle");
   const [lastCepLookup, setLastCepLookup] = useState("");
   const [lastGuardianCepLookup, setLastGuardianCepLookup] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Bumped to remount the widget and request a fresh (single-use) token.
+  const [captchaKey, setCaptchaKey] = useState(0);
   const draftAppliedRef = useRef(false);
   const clearDraft = useRegistrationDraftStore((state) => state.clearDraft);
   const hasHydrated = useRegistrationDraftStore((state) => state.hasHydrated);
@@ -237,7 +265,7 @@ export function RegistrationForm() {
     setValue,
     trigger,
     watch,
-  } = useForm<RegistrationFormData>({
+  } = useForm<RegistrationFormData, unknown, RegistrationSchema>({
     resolver: zodResolver(registrationSchema),
     defaultValues,
     mode: "onBlur",
@@ -429,10 +457,24 @@ export function RegistrationForm() {
     await lookupGuardianCep(value);
   }
 
-  async function onSubmit(data: RegistrationFormData) {
-    await Promise.resolve(data);
-    clearDraft();
-    setSubmitted(true);
+  async function onSubmit(data: RegistrationSchema) {
+    setSubmitError(null);
+
+    if (!captchaToken) {
+      setSubmitError("Confirme a verificação de segurança antes de enviar.");
+      return;
+    }
+
+    try {
+      await createPatientRegistration(toPatientRegistrationBody(data), organizationId, captchaToken);
+      clearDraft();
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error, "Não foi possível enviar o cadastro."));
+      // The token is single-use; reset the widget for a retry.
+      setCaptchaToken(null);
+      setCaptchaKey((current) => current + 1);
+    }
   }
 
   if (submitted) {
@@ -492,19 +534,20 @@ export function RegistrationForm() {
         <PersonalStep
           birthDateField={birthDateField}
           cpfField={cpfField}
-          cpfRequired={role === "pet_tutor"}
+          cpfRequired
           errors={errors}
           register={register}
+          showUnderPrivileged={role !== "pet_tutor"}
         />
       ) : null}
+
+      {currentStep.kind === "access" ? <AccessStep errors={errors} register={register} /> : null}
 
       {currentStep.kind === "pet" ? (
         <PetStep birthDateField={petBirthDateField} errors={errors} register={register} />
       ) : null}
 
-      {currentStep.kind === "contact" ? (
-        <ContactStep errors={errors} phoneField={phoneField} register={register} />
-      ) : null}
+      {currentStep.kind === "contact" ? <ContactStep errors={errors} phoneField={phoneField} /> : null}
 
       {currentStep.kind === "address" ? (
         <AddressStep
@@ -530,6 +573,36 @@ export function RegistrationForm() {
         />
       ) : null}
 
+      {visibleStep === steps.length - 1 ? (
+        <Card className="p-5 md:p-6">
+          <div className="mb-4 flex items-start gap-3 rounded-md bg-primary-subtle p-4">
+            <Icon name="shield-check" size={20} className="text-primary" />
+            <div>
+              <h3 className="font-heading">Verificação de segurança</h3>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                Confirme que você não é um robô para concluir o cadastro.
+              </p>
+            </div>
+          </div>
+          <Turnstile
+            key={captchaKey}
+            siteKey={TURNSTILE_SITE_KEY}
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+            onError={() => setCaptchaToken(null)}
+          />
+        </Card>
+      ) : null}
+
+      {submitError ? (
+        <Card className="border-error bg-error-subtle p-4 text-error">
+          <div className="flex items-start gap-3">
+            <Icon name="alert-triangle" size={20} />
+            <p className="text-sm font-semibold">{submitError}</p>
+          </div>
+        </Card>
+      ) : null}
+
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
         <Button disabled={visibleStep === 0} type="button" variant="secondary" onClick={handlePrevious}>
           Voltar
@@ -540,7 +613,7 @@ export function RegistrationForm() {
             <Icon name="arrow-right" size={18} />
           </Button>
         ) : (
-          <Button disabled={isSubmitting} type="submit">
+          <Button disabled={isSubmitting || !captchaToken} type="submit">
             Enviar cadastro
           </Button>
         )}
@@ -627,12 +700,14 @@ function PersonalStep({
   cpfRequired,
   errors,
   register,
+  showUnderPrivileged,
 }: {
   birthDateField: UseFormRegisterReturn<"birthDate">;
   cpfField: UseFormRegisterReturn<"cpf">;
   cpfRequired?: boolean;
   errors: FieldErrors<RegistrationFormData>;
   register: ReturnType<typeof useForm<RegistrationFormData>>["register"];
+  showUnderPrivileged?: boolean;
 }) {
   return (
     <Card className="p-5 md:p-6">
@@ -660,6 +735,69 @@ function PersonalStep({
             <option value="prefiro_nao_informar">Prefiro não informar</option>
           </select>
         </Field>
+        {showUnderPrivileged ? (
+          <div className="md:col-span-2 xl:col-span-12">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary-border">
+              <input
+                className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-primary)]"
+                type="checkbox"
+                {...register("underPrivileged")}
+              />
+              <span className="min-w-0">
+                <span className="block font-bold text-[var(--text-primary)]">Paciente hipossuficiente</span>
+                <span className="mt-1 block text-sm text-[var(--text-secondary)]">
+                  Marque se o paciente se enquadra em baixa renda para fins de avaliação social.
+                </span>
+              </span>
+            </label>
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function AccessStep({
+  errors,
+  register,
+}: {
+  errors: FieldErrors<RegistrationFormData>;
+  register: ReturnType<typeof useForm<RegistrationFormData>>["register"];
+}) {
+  return (
+    <Card className="p-5 md:p-6">
+      <div className="mb-5 flex items-start gap-3 rounded-md bg-primary-subtle p-4">
+        <Icon name="lock" size={20} className="text-primary" />
+        <div>
+          <h3 className="font-heading">Informações de acesso</h3>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Defina o e-mail e a senha que o responsável usará para entrar na plataforma.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field className="md:col-span-2" error={errors.email?.message} label="E-mail" required>
+          <Input autoComplete="email" leadingIcon={<Icon name="mail" size={18} />} type="email" {...register("email")} />
+        </Field>
+        <Field error={errors.password?.message} label="Senha" required>
+          <Input
+            autoComplete="new-password"
+            leadingIcon={<Icon name="lock" size={18} />}
+            placeholder="Mínimo de 8 caracteres"
+            type="password"
+            {...register("password")}
+          />
+        </Field>
+        <Field error={errors.passwordConfirmation?.message} label="Confirmar senha" required>
+          <Input
+            autoComplete="new-password"
+            leadingIcon={<Icon name="lock" size={18} />}
+            placeholder="Repita a senha"
+            type="password"
+            {...register("passwordConfirmation")}
+          />
+        </Field>
       </div>
     </Card>
   );
@@ -668,19 +806,14 @@ function PersonalStep({
 function ContactStep({
   errors,
   phoneField,
-  register,
 }: {
   errors: FieldErrors<RegistrationFormData>;
   phoneField: UseFormRegisterReturn<"phone">;
-  register: ReturnType<typeof useForm<RegistrationFormData>>["register"];
 }) {
   return (
     <Card className="p-5 md:p-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Field className="xl:col-span-2" error={errors.email?.message} label="E-mail" required>
-          <Input autoComplete="email" leadingIcon={<Icon name="mail" size={18} />} type="email" {...register("email")} />
-        </Field>
-        <Field className="xl:col-span-1" error={errors.phone?.message} label="Telefone" required>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field error={errors.phone?.message} label="Telefone" required>
           <Input
             autoComplete="tel"
             inputMode="tel"
@@ -822,15 +955,21 @@ function LegalGuardianStep({
             >
               <option value="pai_mae">Pai/Mãe</option>
               <option value="tutor">Tutor</option>
+              <option value="filho">Filho</option>
+              <option value="cuidador">Cuidador</option>
+              <option value="procurador">Procurador</option>
             </select>
           </Field>
-          <Field className="md:col-span-1 xl:col-span-5" error={errors.guardianEmail?.message} label="E-mail" required>
-            <Input
-              autoComplete="email"
-              leadingIcon={<Icon name="mail" size={18} />}
-              type="email"
-              {...register("guardianEmail")}
-            />
+          <Field className="md:col-span-1 xl:col-span-2" error={errors.guardianGender?.message} label="Gênero" required>
+            <select
+              className="h-11 w-full rounded-md border border-input bg-card px-4 text-base shadow-xs focus:border-[var(--border-focus)]"
+              {...register("guardianGender")}
+            >
+              <option value="masculino">Masculino</option>
+              <option value="feminino">Feminino</option>
+              <option value="outro">Outro</option>
+              <option value="prefiro_nao_informar">Prefiro não informar</option>
+            </select>
           </Field>
           <Field className="md:col-span-2 xl:col-span-4" error={errors.guardianPhone?.message} label="Telefone celular" required>
             <Input

@@ -1,10 +1,11 @@
 "use client";
 
+import type { AuthContextDto, AuthenticatedUserDto } from "@flora/shared/authentication";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { associatedNav } from "@/components/layout/nav";
 import { usePatientSelection } from "@/components/associated/patient-context";
-import { associatedUser, tenant } from "@/lib/data";
+import { tenant } from "@/lib/data";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/dashboard": {
@@ -18,6 +19,10 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   "/catalog": {
     title: "Catálogo educativo",
     subtitle: "Informações descritivas para consulta junto à orientação médica.",
+  },
+  "/limites": {
+    title: "Limites de compra",
+    subtitle: "Quantidades liberadas pela receita do paciente no período vigente.",
   },
   "/documents": {
     title: "Meus documentos",
@@ -33,21 +38,33 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   },
 };
 
-export function AssociatedShell({ children }: { children: React.ReactNode }) {
+type AssociatedShellProps = {
+  user: AuthenticatedUserDto;
+  context: AuthContextDto;
+  children: React.ReactNode;
+};
+
+export function AssociatedShell({ user, context, children }: AssociatedShellProps) {
   const pathname = usePathname();
   const { selectedPatient } = usePatientSelection();
   const current = titles[pathname] ?? titles["/dashboard"];
+  const organizationName = context.organization?.tradeName ?? tenant.shortName;
+  const accountName = context.guardian?.name ?? context.patient?.name ?? user.email;
+  const patientName =
+    context.patient?.name ?? context.managedPatients[0]?.name ?? selectedPatient.name;
 
   return (
     <AppShell
       variant="associated"
       title={current.title}
       subtitle={current.subtitle}
+      tenantLabel={`Portal · ${organizationName}`}
       nav={associatedNav}
       user={{
-        name: associatedUser.name,
-        detail: `${selectedPatient.name} · ${tenant.shortName}`,
+        name: accountName,
+        detail: `${patientName} · ${organizationName}`,
       }}
+      showSearch={false}
     >
       {children}
     </AppShell>

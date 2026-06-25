@@ -1,3 +1,8 @@
+// Prisma schema.
+//
+// Models for the initial patient-registration domain slice. `Organization`
+// does not exist yet, so `organizationId` is kept as a scalar field for now.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,65 +12,546 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum OperatorLimitType {
-  limited
-  unlimited
+model User {
+  id                     String      @id @default(uuid())
+  organizationId         String
+  email                  String
+  passwordHashed         String
+  profile                UserProfile
+  guardianId             String?
+  patientId              String?
+  organizationEmployeeId String?
+  isActive               Boolean     @default(true)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  guardian             Guardian?             @relation("UserGuardian", fields: [guardianId], references: [id])
+  patient              Patient?              @relation("UserPatient", fields: [patientId], references: [id])
+  organizationEmployee OrganizationEmployee? @relation("UserOrganizationEmployee", fields: [organizationEmployeeId], references: [id])
+
+  @@unique([organizationId, email])
+  @@map("users")
 }
 
-model Address {
-  id           String        @id @default(cuid())
-  cep          String
-  logradouro   String
-  number       String
-  complement   String?
-  neighborhood String
-  city         String
-  state        String
-  organization Organization?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+model Guardian {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  document       String
+  birthdate      DateTime
+  gender         Gender
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@map("addresses")
+  users    User[]    @relation("UserGuardian")
+  patients Patient[]
+  orders   Order[]
+
+  @@unique([organizationId, document])
+  @@map("guardians")
+}
+
+model Patient {
+  id              String        @id @default(uuid())
+  organizationId  String
+  guardianId      String?
+  name            String
+  document        String
+  birthdate       DateTime
+  gender          Gender
+  underPrivileged Boolean       @default(false)
+  patientStatus   PatientStatus @default(WAITING_DOCUMENTS)
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  guardian          Guardian?                             @relation(fields: [guardianId], references: [id])
+  users             User[]                                @relation("UserPatient")
+  assessments       PatientAssessment[]
+  documentApprovals OrganizationDocumentPatientApproval[]
+  orders            Order[]
+  prescription      PatientPrescription?
+
+  @@unique([organizationId, document])
+  @@map("patients")
+}
+
+model PatientPrescription {
+  id             String   @id @default(uuid())
+  organizationId String
+  patientId      String   @unique
+  validUntil     DateTime
+  observations   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@map("patient_prescriptions")
+}
+
+model PatientAssessment {
+  id         String    @id @default(uuid())
+  patientId  String
+  guardianId String
+  isApproved Boolean   @default(false)
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@map("patient_assessments")
 }
 
 model SubscriptionPlan {
-  id                String            @id @default(cuid())
-  code              String            @unique
-  name              String            @unique
-  priceInCents      Int
-  maxActiveUsers    Int
-  operatorLimitType OperatorLimitType
-  maxOperators      Int?
-  organizations     Organization[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                 String   @id @default(uuid())
+  title              String
+  description        String?
+  priceInCents       Int
+  operatorsLimit     Int
+  patientsLimit      Int
+  unlimitedOperators Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organizations Organization[]
 
   @@map("subscription_plans")
 }
 
-model Organization {
-  id                    String           @id @default(cuid())
-  legalName             String
-  tradeName             String
-  cnpj                  String           @unique
-  foundationDate        DateTime
-  primaryCnae           String
-  secondaryCnaes        String[]         @default([])
-  institutionalEmail    String
-  phone                 String?
-  whatsapp              String
-  site                  String?
-  instagram             String?
-  facebook              String?
-  linkedin              String?
-  addressId             String           @unique
-  subscriptionPlanId    String
-  createdByMasterUserId String
-  address               Address          @relation(fields: [addressId], references: [id], onDelete: Restrict)
-  subscriptionPlan      SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict)
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+model Address {
+  id           String   @id @default(uuid())
+  title        String?
+  zipcode      String
+  street       String
+  neighborhood String
+  complement   String?
+  city         String
+  state        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@index([subscriptionPlanId])
+  organizations Organization[]
+
+  @@map("addresses")
+}
+
+model Organization {
+  id             String   @id @default(uuid())
+  slug           String   @unique
+  tradeName      String
+  legalName      String
+  cnpj           String   @unique
+  primaryCnae    String
+  secondaryCnaes String[]
+  currentPlanId  String
+  addressId      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  currentPlan       SubscriptionPlan                      @relation(fields: [currentPlanId], references: [id])
+  address           Address                               @relation(fields: [addressId], references: [id])
+  settings          OrganizationSettings?
+  employees         OrganizationEmployee[]
+  requiredDocuments OrganizationRequiredDocument[]
+  documentApprovals OrganizationDocumentPatientApproval[]
+  products          Product[]
+  inventoryItems    InventoryItem[]
+  orders            Order[]
+  roles             Role[]
+  employeeInvitations EmployeeInvitation[]
+  prescriptions     PatientPrescription[]
+
   @@map("organizations")
+}
+
+model OrganizationEmployee {
+  id             String   @id @default(uuid())
+  organizationId String
+  fullName       String
+  document       String
+  isActive       Boolean  @default(true)
+  roleId         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  users        User[]       @relation("UserOrganizationEmployee")
+  role         Role?        @relation(fields: [roleId], references: [id])
+
+  @@unique([organizationId, document])
+  @@index([roleId])
+  @@map("organizations_employees")
+}
+
+model OrganizationSettings {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  logoUrl        String?
+  primaryColor   String?
+  secondaryColor String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("organization_settings")
+}
+
+model OrganizationRequiredDocument {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  observations   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization                          @relation(fields: [organizationId], references: [id])
+  approvals    OrganizationDocumentPatientApproval[]
+
+  @@unique([organizationId, name])
+  @@map("organization_required_documents")
+}
+
+model OrganizationDocumentPatientApproval {
+  id             String                 @id @default(uuid())
+  organizationId String
+  documentId     String
+  patientId      String
+  status         DocumentApprovalStatus @default(PENDING)
+  rejectedReason String?
+  fileName       String?
+  mimeType       String?
+  size           Int?
+  storageKey     String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  organization Organization                      @relation(fields: [organizationId], references: [id])
+  document     OrganizationRequiredDocument      @relation(fields: [documentId], references: [id])
+  patient      Patient                           @relation(fields: [patientId], references: [id])
+  logs         OrganizationDocumentApprovalLog[]
+
+  @@unique([documentId, patientId])
+  @@map("organization_document_patient_approvals")
+}
+
+model OrganizationDocumentApprovalLog {
+  id                 String   @id @default(uuid())
+  action             String
+  patientApprovalId  String
+  organizationUserId String
+  createdAt          DateTime @default(now())
+
+  patientApproval OrganizationDocumentPatientApproval @relation(fields: [patientApprovalId], references: [id])
+
+  @@map("organization_document_approval_logs")
+}
+
+model Product {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  category       ProductCategory
+  type           ProductType
+  strainType     StrainType?
+  thcPercentage  Float?
+  cbdPercentage  Float?
+  unit           ProductUnit
+  priceInCents   Int
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  inventoryItems InventoryItem[]
+  orderItems     OrderItem[]
+
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@map("products")
+}
+
+model InventoryItem {
+  id                String   @id @default(uuid())
+  organizationId    String
+  productId         String
+  availableQuantity Int      @default(0)
+  reservedQuantity  Int      @default(0)
+  minimumQuantity   Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  product      Product             @relation(fields: [productId], references: [id])
+  movements    InventoryMovement[]
+
+  @@unique([organizationId, productId])
+  @@index([organizationId])
+  @@map("inventory_items")
+}
+
+model InventoryMovement {
+  id              String                @id @default(uuid())
+  organizationId  String
+  inventoryItemId String
+  productId       String
+  type            InventoryMovementType
+  quantity        Int
+  reason          String?
+  createdByUserId String
+  createdAt       DateTime              @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([organizationId, productId])
+  @@index([inventoryItemId])
+  @@map("inventory_movements")
+}
+
+model Order {
+  id             String            @id @default(uuid())
+  organizationId String
+  token          String
+  patientId      String
+  guardianId     String?
+  status         OrderStatus       @default(REQUESTED)
+  deliveryType   OrderDeliveryType
+  itemsAmount    Int
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  patient      Patient        @relation(fields: [patientId], references: [id])
+  guardian     Guardian?      @relation(fields: [guardianId], references: [id])
+  items        OrderItem[]
+  payments     OrderPayment[]
+
+  @@unique([organizationId, token])
+  @@index([organizationId])
+  @@index([organizationId, patientId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String @id @default(uuid())
+  orderId          String
+  productId        String
+  unitPriceInCents Int
+  quantity         Int
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderPayment {
+  id                String        @id @default(uuid())
+  orderId           String
+  organizationId    String
+  totalPaidInCents  Int
+  discount          Decimal?      @db.Decimal(3, 2)
+  paymentMethod     PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  externalPaymentId String?
+  checkoutUrl       String?
+  pixQrCode         String?
+  pixQrCodeBase64   String?
+  expiresAt         DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([organizationId])
+  @@map("order_payments")
+}
+
+model Role {
+  id             String   @id @default(uuid())
+  organizationId String
+  key            String?
+  name           String
+  description    String?
+  isSystem       Boolean  @default(false)
+  fullAccess     Boolean  @default(false)
+  viewAll        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  permissions  RolePermission[]
+  employees    OrganizationEmployee[]
+  invitations  EmployeeInvitation[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model RolePermission {
+  id     String           @id @default(uuid())
+  roleId String
+  module PermissionModule
+  action PermissionAction
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action])
+  @@index([roleId])
+  @@map("role_permissions")
+}
+
+model EmployeeInvitation {
+  id              String           @id @default(uuid())
+  organizationId  String
+  email           String
+  roleId          String
+  token           String           @unique
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  invitedByUserId String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, email])
+  @@map("employee_invitations")
+}
+
+enum UserProfile {
+  Master
+  Organization
+  Patient
+  Guardian
+}
+
+enum Gender {
+  M
+  F
+  O
+  NA @map("N/A")
+}
+
+enum DocumentApprovalStatus {
+  PENDING
+  REJECTED
+  APPROVED
+}
+
+enum PatientStatus {
+  WAITING_DOCUMENTS
+  WAITING_APPROVAL
+  APPROVAL
+  REJECTED
+}
+
+enum ProductCategory {
+  FLOWER
+  OIL
+  EXTRACT
+  CAPSULE
+  EDIBLE
+  TOPICAL
+  VAPORIZER
+  ACCESSORY
+  OTHER
+}
+
+enum ProductType {
+  CBD
+  THC
+  BALANCED
+  FULL_SPECTRUM
+  BROAD_SPECTRUM
+  ISOLATE
+}
+
+enum StrainType {
+  INDICA
+  SATIVA
+  HYBRID
+}
+
+enum ProductUnit {
+  GRAM
+  MILLILITER
+  UNIT
+}
+
+enum InventoryMovementType {
+  IN
+  OUT
+  RESERVE
+  RELEASE
+  ADJUSTMENT
+}
+
+enum OrderStatus {
+  REQUESTED
+  UNDER_REVIEW
+  IN_SEPARATION
+  APPROVED
+  READY_FOR_PICKUP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderDeliveryType {
+  CORREIOS
+  PICKUP
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BOLETO
+  PIX
+}
+
+enum PaymentStatus {
+  PENDING
+  EXPIRED
+  CANCELLED
+  PAID
+  UNDER_DISPUTE
+  REFUNDED
+  REDEEMED
+  APPROVED
+  FAILED
+}
+
+enum PermissionModule {
+  ORDERS
+  ASSOCIATES
+  PRODUCTS
+  INVENTORY
+  DOCUMENTS
+  SETTINGS
+  ACCESS
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  APPROVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }

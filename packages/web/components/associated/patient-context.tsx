@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { associatedPatients, associatedUser, type PatientProfile } from "@/lib/data";
+import { createContext, useContext, useMemo, useState } from "react";
+import type { PatientProfile } from "@/lib/data";
 
 type PatientContextValue = {
   patients: PatientProfile[];
@@ -12,31 +12,34 @@ type PatientContextValue = {
 
 const PatientContext = createContext<PatientContextValue | null>(null);
 
-export function PatientProvider({ children }: { children: React.ReactNode }) {
-  const [selectedPatientId, setSelectedPatientId] = useState(associatedUser.activePatientId);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("flora:selected-patient-id");
-    if (stored && associatedPatients.some((patient) => patient.id === stored)) {
-      setSelectedPatientId(stored);
-    }
-  }, []);
+// Patients come from the real auth session (mapped in the associated layout),
+// so the list is stable for the session. A guardian sees their managed
+// patients; a self-patient sees themselves.
+export function PatientProvider({
+  patients,
+  defaultPatientId,
+  children,
+}: {
+  patients: PatientProfile[];
+  defaultPatientId: string;
+  children: React.ReactNode;
+}) {
+  const [selectedPatientId, setSelectedPatientId] = useState(defaultPatientId);
 
   const selectedPatient =
-    associatedPatients.find((patient) => patient.id === selectedPatientId) ?? associatedPatients[0];
+    patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
 
   const value = useMemo<PatientContextValue>(
     () => ({
-      patients: associatedPatients,
+      patients,
       selectedPatient,
-      selectedPatientId: selectedPatient.id,
+      selectedPatientId: selectedPatient?.id ?? "",
       selectPatient: (patientId) => {
-        if (!associatedPatients.some((patient) => patient.id === patientId)) return;
+        if (!patients.some((patient) => patient.id === patientId)) return;
         setSelectedPatientId(patientId);
-        window.localStorage.setItem("flora:selected-patient-id", patientId);
       },
     }),
-    [selectedPatient],
+    [patients, selectedPatient],
   );
 
   return <PatientContext.Provider value={value}>{children}</PatientContext.Provider>;
