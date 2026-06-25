@@ -10,8 +10,13 @@ import { useOperationalDashboardQuery } from "../queries/use-operational-dashboa
 import type { OperationalDashboard, OperationalOrdersByStatus } from "../types";
 import { OperationalDashboardSkeleton } from "./operational-dashboard-skeleton";
 
-export function OperationalDashboard() {
-  const { data, error, isPending, refetch } = useOperationalDashboardQuery();
+type OperationalDashboardProps = {
+  organizationId: string;
+  employeeId: string;
+};
+
+export function OperationalDashboard({ organizationId, employeeId }: OperationalDashboardProps) {
+  const { data, error, isPending, refetch } = useOperationalDashboardQuery(organizationId, employeeId);
 
   if (isPending) {
     return <OperationalDashboardSkeleton />;

@@ -9,6 +9,7 @@ export interface OrderItemResponse {
   id: string;
   orderId: string;
   productId: string;
+  productName: string;
   unitPrice: number;
   quantity: number;
 }
@@ -53,6 +54,7 @@ export class OrderPresenter {
       id: item.id,
       orderId: item.orderId,
       productId: item.productId,
+      productName: item.productName,
       unitPrice: item.unitPriceInCents,
       quantity: item.quantity,
     };

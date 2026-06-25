@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CancelOrderUseCase } from "./CancelOrderUseCase.js";
 import { GetOrderByIdUseCase } from "./GetOrderByIdUseCase.js";
 import { ListOrdersUseCase } from "./ListOrdersUseCase.js";
+import { UpdateOrderFulfillmentStatusUseCase } from "./UpdateOrderFulfillmentStatusUseCase.js";
 import { InMemoryOrderRepository, immediateUnitOfWork } from "./order-use-case-test-utils.js";
 import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
@@ -110,6 +111,72 @@ describe("CancelOrderUseCase", () => {
 
     await expect(
       useCase.execute({ organizationId: "org-1", orderId: "missing" }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("UpdateOrderFulfillmentStatusUseCase", () => {
+  it("marks an order ready for pickup", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+
+    const useCase = new UpdateOrderFulfillmentStatusUseCase({
+      orderRepository: repository,
+      unitOfWork: immediateUnitOfWork,
+    });
+    const result = await useCase.execute({
+      organizationId: "org-1",
+      orderId: order.id,
+      target: "READY_FOR_PICKUP",
+    });
+
+    expect(result.status).toBe(OrderStatus.ReadyForPickup);
+    expect(repository.saveCalls).toBe(1);
+  });
+
+  it("marks an order as shipped (awaiting correios)", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+
+    const useCase = new UpdateOrderFulfillmentStatusUseCase({
+      orderRepository: repository,
+      unitOfWork: immediateUnitOfWork,
+    });
+    const result = await useCase.execute({
+      organizationId: "org-1",
+      orderId: order.id,
+      target: "SHIPPED",
+    });
+
+    expect(result.status).toBe(OrderStatus.Shipped);
+  });
+
+  it("rejects transitioning a cancelled order", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+    order.cancel();
+
+    const useCase = new UpdateOrderFulfillmentStatusUseCase({
+      orderRepository: repository,
+      unitOfWork: immediateUnitOfWork,
+    });
+
+    await expect(
+      useCase.execute({ organizationId: "org-1", orderId: order.id, target: "READY_FOR_PICKUP" }),
+    ).rejects.toBeInstanceOf(DomainValidationError);
+  });
+
+  it("rejects an order from another organization", async () => {
+    const repository = new InMemoryOrderRepository();
+    const order = seedOrder(repository, "org-1");
+
+    const useCase = new UpdateOrderFulfillmentStatusUseCase({
+      orderRepository: repository,
+      unitOfWork: immediateUnitOfWork,
+    });
+
+    await expect(
+      useCase.execute({ organizationId: "org-2", orderId: order.id, target: "SHIPPED" }),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

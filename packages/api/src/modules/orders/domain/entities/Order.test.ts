@@ -76,6 +76,30 @@ describe("Order", () => {
     expect(() => order.ensureMutable()).toThrow(DomainValidationError);
   });
 
+  it("marks an order ready for pickup", () => {
+    const order = buildOrder();
+
+    order.markReadyForPickup();
+
+    expect(order.status).toBe(OrderStatus.ReadyForPickup);
+  });
+
+  it("marks an order as shipped (awaiting correios)", () => {
+    const order = buildOrder();
+
+    order.markShipped();
+
+    expect(order.status).toBe(OrderStatus.Shipped);
+  });
+
+  it("blocks fulfillment transitions on a cancelled order", () => {
+    const order = buildOrder();
+    order.cancel();
+
+    expect(() => order.markReadyForPickup()).toThrow(DomainValidationError);
+    expect(() => order.markShipped()).toThrow(DomainValidationError);
+  });
+
   it("generates distinct tokens with the ORD- prefix", () => {
     const tokens = new Set(Array.from({ length: 20 }, () => Order.generateToken()));
 

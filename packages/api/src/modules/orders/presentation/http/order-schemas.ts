@@ -200,11 +200,12 @@ export const errorResponseSchema = {
 const orderItemResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "orderId", "productId", "unitPrice", "quantity"],
+  required: ["id", "orderId", "productId", "productName", "unitPrice", "quantity"],
   properties: {
     id: idParamJsonProperty,
     orderId: idParamJsonProperty,
     productId: idParamJsonProperty,
+    productName: { type: "string" },
     unitPrice: { type: "integer", minimum: 0 },
     quantity: { type: "integer", minimum: 1 },
   },

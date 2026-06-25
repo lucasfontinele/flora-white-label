@@ -10,10 +10,6 @@
       "types": "./src/index.ts",
       "import": "./dist/index.js"
     },
-    "./operational-dashboard": {
-      "types": "./src/operational-dashboard.ts",
-      "import": "./dist/operational-dashboard.js"
-    },
     "./organizations": {
       "types": "./src/organizations.ts",
       "import": "./dist/organizations.js"

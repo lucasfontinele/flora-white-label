@@ -143,6 +143,18 @@ export class Order extends AggregateRoot<OrderProps> {
     this.props.status = OrderStatus.Cancelled;
   }
 
+  /** Marks the order as ready to be picked up at the organization's site. */
+  markReadyForPickup(): void {
+    this.ensureMutable();
+    this.props.status = OrderStatus.ReadyForPickup;
+  }
+
+  /** Marks the order as handed over to the postal service (awaiting correios). */
+  markShipped(): void {
+    this.ensureMutable();
+    this.props.status = OrderStatus.Shipped;
+  }
+
   private static normalizeOptionalId(value: string | null | undefined): string | null {
     if (value === undefined || value === null) {
       return null;

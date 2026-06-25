@@ -164,6 +164,68 @@ export async function orderRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.patch(
+    "/organizations/:organizationId/orders/:orderId/ready-for-pickup",
+    {
+      schema: {
+        tags: ["Orders"],
+        summary: "Marca o pedido como pronto para retirada na sede.",
+        params: orderParamsJsonSchema,
+        response: {
+          200: orderResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = orderParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.updateOrderFulfillmentStatusUseCase.execute({
+        ...params.data,
+        target: "READY_FOR_PICKUP",
+      });
+
+      return OrderPresenter.toHttp(output);
+    },
+  );
+
+  app.patch(
+    "/organizations/:organizationId/orders/:orderId/ship",
+    {
+      schema: {
+        tags: ["Orders"],
+        summary: "Marca o pedido como enviado/aguardando correios.",
+        params: orderParamsJsonSchema,
+        response: {
+          200: orderResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = orderParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.updateOrderFulfillmentStatusUseCase.execute({
+        ...params.data,
+        target: "SHIPPED",
+      });
+
+      return OrderPresenter.toHttp(output);
+    },
+  );
+
   app.post(
     "/organizations/:organizationId/orders/:orderId/payments",
     {

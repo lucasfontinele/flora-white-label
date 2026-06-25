@@ -7,11 +7,12 @@ import type { OrderReadModel } from "../../application/repositories/OrderReposit
 import { Order } from "../../domain/entities/Order.js";
 import { OrderDeliveryType } from "../../domain/enums/OrderDeliveryType.js";
 import { OrderStatus } from "../../domain/enums/OrderStatus.js";
-import { OrderItemMapper } from "./OrderItemMapper.js";
+import { OrderItemMapper, type PrismaOrderItemWithProduct } from "./OrderItemMapper.js";
 
 export type PrismaOrderWithItems = PrismaOrder & { items: PrismaOrderItem[] };
 
-export type PrismaOrderWithRelations = PrismaOrderWithItems & {
+export type PrismaOrderWithRelations = PrismaOrder & {
+  items: PrismaOrderItemWithProduct[];
   patient: { name: string };
   guardian: { name: string } | null;
 };

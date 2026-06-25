@@ -13,8 +13,11 @@ import { useOrganizationOverview } from "./queries/use-organization-overview";
 const ORDERS_HREF = "/organization/operacional/orders";
 const APPROVALS_HREF = "/organization/operacional/approvals";
 
-// Which permission module gates each nav item. Items without an entry
-// (e.g. the dashboard) are always visible.
+// Hrefs restricted to "diretoria pra cima" (view-everything roles).
+const DIRECTORS_ONLY_HREFS = new Set<string>(["/organization/operacional/dashboard"]);
+
+// Which permission module gates each nav item. Items without an entry here (and
+// not directors-only) are always visible.
 const NAV_MODULE_BY_HREF: Record<string, PermissionModule> = {
   "/organization/operacional/orders": "ORDERS",
   "/organization/operacional/approvals": "DOCUMENTS",
@@ -94,12 +97,18 @@ export function OrganizationShell({ user, context, children }: OrganizationShell
     );
   }
 
+  // "Diretoria pra cima": only view-everything roles (Diretoria, Super admin).
+  const canViewDirectors = Boolean(permissions?.fullAccess || permissions?.viewAll);
+
   const nav = useMemo(() => {
     return organizationNav
       .filter((item) => {
+        // Gate everything only once permissions load, to avoid hiding items
+        // during the initial fetch.
+        if (DIRECTORS_ONLY_HREFS.has(item.href)) {
+          return !permissionsReady || canViewDirectors;
+        }
         const module = NAV_MODULE_BY_HREF[item.href];
-        // Show items without a gated module always; gate the rest only once the
-        // permissions have loaded (avoids hiding items during the initial load).
         return !module || !permissionsReady || canViewModule(module);
       })
       .map((item) => {

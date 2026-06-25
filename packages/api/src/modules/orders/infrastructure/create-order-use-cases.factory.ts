@@ -12,6 +12,7 @@ import { GetOrderPaymentByIdUseCase } from "../application/use-cases/GetOrderPay
 import { ListOrderPaymentsUseCase } from "../application/use-cases/ListOrderPaymentsUseCase.js";
 import { ListOrdersUseCase } from "../application/use-cases/ListOrdersUseCase.js";
 import { SyncOrderPaymentStatusUseCase } from "../application/use-cases/SyncOrderPaymentStatusUseCase.js";
+import { UpdateOrderFulfillmentStatusUseCase } from "../application/use-cases/UpdateOrderFulfillmentStatusUseCase.js";
 import { AbacatePayPaymentGatewayService } from "./gateway/AbacatePayPaymentGatewayService.js";
 import { PrismaOrderPaymentRepository } from "./prisma/PrismaOrderPaymentRepository.js";
 import { PrismaOrderRepository } from "./prisma/PrismaOrderRepository.js";
@@ -21,6 +22,7 @@ export interface OrderUseCases {
   listOrdersUseCase: ListOrdersUseCase;
   getOrderByIdUseCase: GetOrderByIdUseCase;
   cancelOrderUseCase: CancelOrderUseCase;
+  updateOrderFulfillmentStatusUseCase: UpdateOrderFulfillmentStatusUseCase;
   createOrderPaymentUseCase: CreateOrderPaymentUseCase;
   listOrderPaymentsUseCase: ListOrderPaymentsUseCase;
   getOrderPaymentByIdUseCase: GetOrderPaymentByIdUseCase;
@@ -52,6 +54,10 @@ export function makeOrderUseCases(prisma: PrismaService): OrderUseCases {
     listOrdersUseCase: new ListOrdersUseCase(orderRepository),
     getOrderByIdUseCase: new GetOrderByIdUseCase(orderRepository),
     cancelOrderUseCase: new CancelOrderUseCase({
+      orderRepository,
+      unitOfWork: transactionManager,
+    }),
+    updateOrderFulfillmentStatusUseCase: new UpdateOrderFulfillmentStatusUseCase({
       orderRepository,
       unitOfWork: transactionManager,
     }),

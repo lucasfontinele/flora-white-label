@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getOperationalDashboard } from "./get-operational-dashboard";
 
+const ORGANIZATION_ID = "org-1";
+const EMPLOYEE_ID = "emp-1";
+
 const response = {
   data: {
     lowStock: [{ amount: "4 un.", name: "Óleo CBD 17% - 30ml", tone: "error" }],
@@ -19,10 +22,10 @@ describe("getOperationalDashboard", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getOperationalDashboard()).resolves.toEqual(response.data);
+    await expect(getOperationalDashboard(ORGANIZATION_ID, EMPLOYEE_ID)).resolves.toEqual(response.data);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3333/operational/dashboard",
+      "http://localhost:3333/organizations/org-1/operational-dashboard?employeeId=emp-1",
       expect.objectContaining({
         headers: expect.any(Headers),
         method: "GET",
@@ -34,19 +37,21 @@ describe("getOperationalDashboard", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ error: { code: "FORBIDDEN", message: "Usuário não autorizado." } }), {
+        new Response(JSON.stringify({ error: "ForbiddenError", message: "Acesso restrito à diretoria." }), {
           status: 403,
         }),
       ),
     );
 
-    await expect(getOperationalDashboard()).rejects.toThrow("Usuário não autorizado.");
+    await expect(getOperationalDashboard(ORGANIZATION_ID, EMPLOYEE_ID)).rejects.toThrow(
+      "Acesso restrito à diretoria.",
+    );
   });
 
   it("rejects payloads that violate the response contract", async () => {
     const invalid = { data: { ...response.data, metrics: [{ ...response.data.metrics[0], icon: "not-an-icon" }] } };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(invalid), { status: 200 })));
 
-    await expect(getOperationalDashboard()).rejects.toThrow();
+    await expect(getOperationalDashboard(ORGANIZATION_ID, EMPLOYEE_ID)).rejects.toThrow();
   });
 });

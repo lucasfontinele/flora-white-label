@@ -7,10 +7,10 @@ import type { Order } from "../../domain/entities/Order.js";
 import type { OrderStatus } from "../../domain/enums/OrderStatus.js";
 import { OrderMapper } from "./OrderMapper.js";
 
-// Relations needed to build an OrderReadModel: items plus the patient and
-// (optional) guardian display names.
+// Relations needed to build an OrderReadModel: items (with the product display
+// name) plus the patient and (optional) guardian display names.
 const readModelInclude = {
-  items: true,
+  items: { include: { product: { select: { name: true } } } },
   patient: { select: { name: true } },
   guardian: { select: { name: true } },
 } as const;

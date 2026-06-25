@@ -6,6 +6,7 @@ export interface OrderItemReadModel {
   id: string;
   orderId: string;
   productId: string;
+  productName: string;
   unitPriceInCents: number;
   quantity: number;
 }

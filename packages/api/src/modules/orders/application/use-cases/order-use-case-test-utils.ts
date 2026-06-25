@@ -59,6 +59,7 @@ export function toOrderReadModel(
       id: item.id,
       orderId: item.orderId,
       productId: item.productId,
+      productName: `Product ${item.productId}`,
       unitPriceInCents: item.unitPriceInCents,
       quantity: item.quantity,
     })),

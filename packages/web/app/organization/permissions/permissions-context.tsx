@@ -25,6 +25,8 @@ export type UsePermissions = {
   ready: boolean;
   /** True when the user has a full-access role (sees/does everything). */
   fullAccess: boolean;
+  /** True for "diretoria pra cima" roles that view everything (Diretoria, Super admin). */
+  viewAll: boolean;
   can: (module: PermissionModule, action: PermissionAction) => boolean;
   canView: (module: PermissionModule) => boolean;
 };
@@ -49,6 +51,7 @@ export function usePermissions(): UsePermissions {
   return {
     ready,
     fullAccess: data?.fullAccess ?? false,
+    viewAll: data?.viewAll ?? false,
     can,
     canView: (module) => can(module, "VIEW"),
   };
