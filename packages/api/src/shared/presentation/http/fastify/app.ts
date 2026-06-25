@@ -11,6 +11,7 @@ import { orderRoutes } from "../../../../modules/orders/presentation/http/order-
 import { organizationDocumentRoutes } from "../../../../modules/organization-documents/presentation/http/organization-document-routes.js";
 import { organizationOverviewRoutes } from "../../../../modules/organization-overview/presentation/http/organization-overview-routes.js";
 import { operationalDashboardRoutes } from "../../../../modules/operational-dashboard/presentation/http/operational-dashboard-routes.js";
+import { masterReportsRoutes } from "../../../../modules/master-reports/presentation/http/master-reports-routes.js";
 import { patientRegistrationRoutes } from "../../../../modules/patients/presentation/http/patient-registration-routes.js";
 import { productRoutes } from "../../../../modules/products/presentation/http/product-routes.js";
 import { subscriptionPlanRoutes } from "../../../../modules/subscription-plans/presentation/http/subscription-plan-routes.js";
@@ -58,6 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(orderRoutes);
   await app.register(organizationOverviewRoutes);
   await app.register(operationalDashboardRoutes);
+  await app.register(masterReportsRoutes);
   await app.register(accessControlRoutes);
   await app.register(employeeInvitationRoutes);
   await app.register(subscriptionPlanRoutes);

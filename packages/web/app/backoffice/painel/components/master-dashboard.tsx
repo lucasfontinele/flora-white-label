@@ -1,83 +1,89 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/domain/stat-card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
+import { useOrganizations } from "../../organizations/queries/use-organizations";
+import { useMasterReportsQuery } from "../queries/use-master-reports-query";
+import type {
+  MasterMonthlyOrganizations,
+  MasterPlanDistributionItem,
+  MasterRecentOrganization,
+  MasterReports,
+} from "../types";
+import { MasterDashboardSkeleton } from "./master-dashboard-skeleton";
 
-// Front-end prototype — static mock data to validate the dashboard concept.
-// When the backend is ready, replace these constants with a query/request layer
-// (e.g. queries/use-master-dashboard-query.ts) following the existing pattern.
+// Plan/organization badges cycle through these tones for a consistent palette.
+const ROTATING_TONES: BadgeProps["tone"][] = ["primary", "accent", "petrol", "neutral"];
 
-const metrics = [
-  { label: "Organizações ativas", value: "48", icon: "store", delta: "+5", hint: "novas no mês", tone: "success" },
-  { label: "Associados na rede", value: "12.480", icon: "users", delta: "+842", hint: "no mês", tone: "success" },
-  { label: "Operadores ativos", value: "326", icon: "shield-check", delta: "+18", hint: "no mês", tone: "success" },
-  { label: "Receita recorrente (MRR)", value: "R$ 284,6 mil", icon: "bar-chart-3", delta: "+9,2%", hint: "vs. mês anterior", tone: "success" },
-  { label: "Pedidos processados", value: "9.137", icon: "package", delta: "+12%", hint: "toda a rede no mês", tone: "success" },
-  { label: "Ativações pendentes", value: "3", icon: "clock", delta: "+1", hint: "aguardando liberação", tone: "error" },
-] satisfies Array<{
-  label: string;
-  value: string;
-  icon: IconName;
-  delta: string;
-  hint: string;
-  tone?: "success" | "error";
-}>;
+type MasterDashboardProps = {
+  userId: string;
+};
 
-const monthlyGrowth = [
-  { month: "Jan", value: 31 },
-  { month: "Fev", value: 34 },
-  { month: "Mar", value: 37 },
-  { month: "Abr", value: 41 },
-  { month: "Mai", value: 43 },
-  { month: "Jun", value: 48 },
-];
+export function MasterDashboard({ userId }: MasterDashboardProps) {
+  const [selectedOrganizationIds, setSelectedOrganizationIds] = useState<string[]>([]);
 
-const planDistribution = [
-  { name: "Starter", organizations: 22, tone: "neutral" },
-  { name: "Growth", organizations: 18, tone: "primary" },
-  { name: "Unlimited", organizations: 8, tone: "accent" },
-] satisfies Array<{ name: string; organizations: number; tone: BadgeProps["tone"] }>;
+  const organizationsQuery = useOrganizations();
+  const reportsQuery = useMasterReportsQuery(userId, selectedOrganizationIds);
 
-const recentOrganizations = [
-  { tradeName: "Verde Vida", city: "Palmas", state: "TO", plan: "Growth", createdAt: "12 jun 2026", tone: "primary" },
-  { tradeName: "Cannabis & Cuidado", city: "Goiânia", state: "GO", plan: "Unlimited", createdAt: "10 jun 2026", tone: "accent" },
-  { tradeName: "Instituto Folha", city: "Recife", state: "PE", plan: "Starter", createdAt: "08 jun 2026", tone: "neutral" },
-  { tradeName: "Raiz Terapêutica", city: "Curitiba", state: "PR", plan: "Growth", createdAt: "05 jun 2026", tone: "primary" },
-] satisfies Array<{
-  tradeName: string;
-  city: string;
-  state: string;
-  plan: string;
-  createdAt: string;
-  tone: BadgeProps["tone"];
-}>;
+  const organizationOptions = useMemo<MultiSelectOption[]>(
+    () =>
+      (organizationsQuery.data?.data ?? [])
+        .map((organization) => ({ label: organization.tradeName, value: organization.id }))
+        .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
+    [organizationsQuery.data],
+  );
 
-const highlights = [
-  { label: "Ticket médio por pedido", value: "R$ 312", icon: "bar-chart-3" },
-  { label: "Taxa de retenção", value: "94%", icon: "check-circle-2" },
-  { label: "Documentos aprovados", value: "98,2%", icon: "file-check" },
-  { label: "Tempo médio de ativação", value: "2,4 dias", icon: "clock" },
-] satisfies Array<{ label: string; value: string; icon: IconName }>;
-
-export function MasterDashboard() {
   return (
     <div className="space-y-5 pb-20 lg:pb-0">
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase text-[var(--text-secondary)]">Housekeeping Master</p>
           <h2 className="mt-1 font-heading text-2xl text-[var(--text-primary)]">Visão geral da rede</h2>
           <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Totalizadores consolidados de todas as organizações ativas na plataforma Flora.
+            Totalizadores consolidados das organizações ativas na plataforma Flora.
           </p>
         </div>
-        <Badge tone="petrol" dot>
-          Junho 2026
-        </Badge>
+        <div className="w-full lg:w-72">
+          <label className="mb-1.5 block text-xs font-semibold uppercase text-[var(--text-secondary)]">
+            Filtrar organizações
+          </label>
+          <MultiSelect
+            options={organizationOptions}
+            value={selectedOrganizationIds}
+            onChange={setSelectedOrganizationIds}
+            allLabel="Todas as organizações"
+            searchPlaceholder="Buscar organização..."
+            emptyMessage="Nenhuma organização encontrada."
+            disabled={organizationsQuery.isPending}
+          />
+        </div>
       </section>
 
+      {reportsQuery.isPending ? (
+        <MasterDashboardSkeleton />
+      ) : reportsQuery.error ? (
+        <MasterDashboardError
+          message={reportsQuery.error.message}
+          onRetry={() => reportsQuery.refetch()}
+        />
+      ) : (
+        <MasterDashboardContent reports={reportsQuery.data} />
+      )}
+    </div>
+  );
+}
+
+function MasterDashboardContent({ reports }: { reports: MasterReports }) {
+  return (
+    <>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {metrics.map((metric) => (
+        {reports.metrics.map((metric) => (
           <StatCard key={metric.label} {...metric} />
         ))}
       </section>
@@ -86,11 +92,13 @@ export function MasterDashboard() {
         <Card className="p-5 md:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-heading">Novas organizações por mês</h2>
-            <Badge tone="success" size="sm">
-              +54% no semestre
-            </Badge>
+            {reports.monthlyOrganizations.growthLabel ? (
+              <Badge tone="success" size="sm">
+                {reports.monthlyOrganizations.growthLabel}
+              </Badge>
+            ) : null}
           </div>
-          <GrowthChart />
+          <GrowthChart monthly={reports.monthlyOrganizations} />
         </Card>
 
         <Card className="p-5 md:p-6">
@@ -100,7 +108,7 @@ export function MasterDashboard() {
               Ver todas
             </Link>
           </div>
-          <PlanDistribution />
+          <PlanDistribution plans={reports.planDistribution} />
         </Card>
       </section>
 
@@ -112,30 +120,13 @@ export function MasterDashboard() {
               Ver todas
             </Link>
           </div>
-          <div className="divide-y divide-border">
-            {recentOrganizations.map((organization) => (
-              <div key={organization.tradeName} className="flex items-center gap-3 py-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[var(--green-700)]">
-                  <Icon name="store" size={18} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-[var(--text-primary)]">{organization.tradeName}</p>
-                  <p className="truncate text-xs text-[var(--text-secondary)]">
-                    {organization.city}/{organization.state} · {organization.createdAt}
-                  </p>
-                </div>
-                <Badge tone={organization.tone} size="sm">
-                  {organization.plan}
-                </Badge>
-              </div>
-            ))}
-          </div>
+          <RecentOrganizations organizations={reports.recentOrganizations} />
         </Card>
 
         <Card className="p-5 md:p-6">
           <h2 className="mb-4 font-heading">Saúde da rede</h2>
           <div className="divide-y divide-border">
-            {highlights.map((highlight) => (
+            {reports.networkHealth.map((highlight) => (
               <div key={highlight.label} className="flex items-center gap-3 py-3">
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-[var(--text-secondary)]">
                   <Icon name={highlight.icon} size={18} />
@@ -147,47 +138,48 @@ export function MasterDashboard() {
           </div>
         </Card>
       </section>
-    </div>
+    </>
   );
 }
 
-function GrowthChart() {
-  const max = Math.max(...monthlyGrowth.map((item) => item.value));
+function GrowthChart({ monthly }: { monthly: MasterMonthlyOrganizations }) {
+  const max = Math.max(1, ...monthly.points.map((point) => point.value));
 
   return (
     <div className="flex items-end gap-2 sm:gap-3">
-      {monthlyGrowth.map((item) => (
-        <div key={item.month} className="flex flex-1 flex-col items-center gap-2">
-          <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}</span>
+      {monthly.points.map((point) => (
+        <div key={point.month} className="flex flex-1 flex-col items-center gap-2">
+          <span className="text-xs font-bold text-[var(--text-primary)]">{point.value}</span>
           <div className="flex h-32 w-full items-end">
             <div
               className="w-full rounded-t-md bg-primary"
-              style={{ height: `${Math.max(6, (item.value / max) * 100)}%` }}
+              style={{ height: `${Math.max(6, (point.value / max) * 100)}%` }}
             />
           </div>
-          <span className="text-xs text-[var(--text-secondary)]">{item.month}</span>
+          <span className="text-xs text-[var(--text-secondary)]">{point.month}</span>
         </div>
       ))}
     </div>
   );
 }
 
-function PlanDistribution() {
-  const total = planDistribution.reduce((sum, plan) => sum + plan.organizations, 0);
-  const max = Math.max(...planDistribution.map((plan) => plan.organizations));
+function PlanDistribution({ plans }: { plans: MasterPlanDistributionItem[] }) {
+  const max = Math.max(1, ...plans.map((plan) => plan.organizations));
+
+  if (plans.length === 0) {
+    return <p className="py-6 text-sm text-[var(--text-secondary)]">Nenhuma organização no recorte selecionado.</p>;
+  }
 
   return (
     <div className="space-y-4">
-      {planDistribution.map((plan) => (
+      {plans.map((plan, index) => (
         <div key={plan.name}>
           <div className="mb-1.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Badge tone={plan.tone} size="sm">
+              <Badge tone={ROTATING_TONES[index % ROTATING_TONES.length]} size="sm">
                 {plan.name}
               </Badge>
-              <span className="text-xs text-[var(--text-secondary)]">
-                {Math.round((plan.organizations / total) * 100)}%
-              </span>
+              <span className="text-xs text-[var(--text-secondary)]">{plan.percentage}%</span>
             </div>
             <span className="font-mono text-sm font-bold text-[var(--text-primary)]">{plan.organizations}</span>
           </div>
@@ -200,5 +192,50 @@ function PlanDistribution() {
         </div>
       ))}
     </div>
+  );
+}
+
+function RecentOrganizations({ organizations }: { organizations: MasterRecentOrganization[] }) {
+  if (organizations.length === 0) {
+    return <p className="py-6 text-sm text-[var(--text-secondary)]">Nenhuma organização no recorte selecionado.</p>;
+  }
+
+  return (
+    <div className="divide-y divide-border">
+      {organizations.map((organization, index) => (
+        <div key={`${organization.tradeName}-${index}`} className="flex items-center gap-3 py-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-[var(--green-700)]">
+            <Icon name="store" size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-bold text-[var(--text-primary)]">{organization.tradeName}</p>
+            <p className="truncate text-xs text-[var(--text-secondary)]">
+              {organization.city}/{organization.state} · {organization.createdAt}
+            </p>
+          </div>
+          <Badge tone={ROTATING_TONES[index % ROTATING_TONES.length]} size="sm">
+            {organization.plan}
+          </Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MasterDashboardError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 py-10 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="font-heading text-lg text-[var(--text-primary)]">
+            Não foi possível carregar os relatórios
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">{message}</p>
+        </div>
+        <Button onClick={onRetry} type="button" variant="secondary">
+          Tentar novamente
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
