@@ -39,12 +39,14 @@ const guardianOnlyContext: AuthenticatedUserContext = {
       name: "Alice Doe",
       document: "11144477735",
       underPrivileged: false,
+      patientStatus: "APPROVAL",
     },
     {
       id: "patient-2",
       name: "Charlie Doe",
       document: "93541134780",
       underPrivileged: true,
+      patientStatus: "WAITING_DOCUMENTS",
     },
   ],
 };
@@ -117,6 +119,7 @@ describe("GetAuthenticatedUserContextUseCase", () => {
         name: "Charlie Doe",
         document: "93541134780",
         underPrivileged: true,
+        patientStatus: "WAITING_DOCUMENTS",
       },
     });
 

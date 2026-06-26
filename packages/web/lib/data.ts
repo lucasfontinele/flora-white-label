@@ -1,3 +1,4 @@
+import type { PatientRegistrationStatus } from "@flora/shared/authentication";
 import type { BadgeProps } from "@/components/ui/badge";
 import type { IconName } from "@/components/ui/icon";
 
@@ -43,6 +44,9 @@ export type PatientProfile = {
   birthDate: string;
   condition: string;
   registrationStatus: "Ativo" | "Em análise";
+  // Registration status straight from the auth context — gates catalog access.
+  // Optional because legacy mock rows below predate the real session wiring.
+  patientStatus?: PatientRegistrationStatus;
   prescriptionDue: string;
   anvisaDue: string;
   nextReview: string;

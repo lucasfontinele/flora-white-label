@@ -17,8 +17,8 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
     subtitle: "Histórico e andamento dos pedidos solicitados.",
   },
   "/catalog": {
-    title: "Catálogo educativo",
-    subtitle: "Informações descritivas para consulta junto à orientação médica.",
+    title: "Catálogo",
+    subtitle: "Catálogo de produtos disponíveis para adquirir de acordo com a receita médica.",
   },
   "/limites": {
     title: "Limites de compra",

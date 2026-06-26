@@ -119,7 +119,7 @@ export const authGuardianContextResponseSchema = {
 export const authPatientContextResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "name", "document", "relationshipLabel", "underPrivileged"],
+  required: ["id", "name", "document", "relationshipLabel", "underPrivileged", "patientStatus"],
   properties: {
     id: {
       type: "string",
@@ -139,6 +139,10 @@ export const authPatientContextResponseSchema = {
     },
     underPrivileged: {
       type: "boolean",
+    },
+    patientStatus: {
+      type: "string",
+      enum: ["WAITING_DOCUMENTS", "WAITING_APPROVAL", "APPROVAL", "REJECTED"],
     },
   },
 } as const;

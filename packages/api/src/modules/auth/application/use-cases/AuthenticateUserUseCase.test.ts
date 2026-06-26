@@ -237,12 +237,14 @@ describe("AuthenticateUserUseCase", () => {
               name: "Alice Doe",
               document: "11144477735",
               underPrivileged: false,
+              patientStatus: "APPROVAL",
             },
             {
               id: "patient-2",
               name: "Charlie Doe",
               document: "93541134780",
               underPrivileged: true,
+              patientStatus: "WAITING_DOCUMENTS",
             },
           ],
         },
@@ -267,6 +269,7 @@ describe("AuthenticateUserUseCase", () => {
         document: "11144477735",
         relationshipLabel: "Paciente vinculado",
         underPrivileged: false,
+        patientStatus: "APPROVAL",
       },
       {
         id: "patient-2",
@@ -274,6 +277,7 @@ describe("AuthenticateUserUseCase", () => {
         document: "93541134780",
         relationshipLabel: "Paciente vinculado",
         underPrivileged: true,
+        patientStatus: "WAITING_DOCUMENTS",
       },
     ]);
   });
@@ -312,6 +316,7 @@ describe("AuthenticateUserUseCase", () => {
             name: "Alice Doe",
             document: "11144477735",
             underPrivileged: false,
+            patientStatus: "APPROVAL",
           },
           managedPatients: [
             {
@@ -319,12 +324,14 @@ describe("AuthenticateUserUseCase", () => {
               name: "Alice Doe",
               document: "11144477735",
               underPrivileged: false,
+              patientStatus: "APPROVAL",
             },
             {
               id: "patient-2",
               name: "Charlie Doe",
               document: "93541134780",
               underPrivileged: true,
+              patientStatus: "WAITING_DOCUMENTS",
             },
           ],
         },
@@ -345,6 +352,7 @@ describe("AuthenticateUserUseCase", () => {
       document: "11144477735",
       relationshipLabel: "Titular",
       underPrivileged: false,
+      patientStatus: "APPROVAL",
     });
     expect(output.context.managedPatients).toEqual([]);
   });

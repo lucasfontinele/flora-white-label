@@ -22,6 +22,9 @@ function toPatientProfile(patient: AuthPatientContextDto, relationship: string):
     birthDate: "—",
     condition: "—",
     registrationStatus: "Ativo",
+    // Carried verbatim from the auth context so screens (e.g. the catalog gate)
+    // read exactly the status the backend approved.
+    patientStatus: patient.patientStatus,
     prescriptionDue: "—",
     anvisaDue: "—",
     nextReview: "—",

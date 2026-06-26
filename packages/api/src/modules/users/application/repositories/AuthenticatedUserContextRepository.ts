@@ -1,3 +1,4 @@
+import type { PatientRegistrationStatus } from "@flora/shared/authentication";
 import type { UserProfile } from "../../domain/enums/UserProfile.js";
 
 export interface AuthenticatedUserContextUser {
@@ -21,6 +22,7 @@ export interface AuthenticatedUserContextPatient {
   name: string;
   document: string;
   underPrivileged: boolean;
+  patientStatus: PatientRegistrationStatus;
 }
 
 export interface AuthenticatedUserContextEmployee {

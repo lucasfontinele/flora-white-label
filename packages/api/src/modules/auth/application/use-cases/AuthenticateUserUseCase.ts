@@ -35,6 +35,7 @@ export interface AuthPatientContext {
   document: string;
   relationshipLabel: string;
   underPrivileged: boolean;
+  patientStatus: AuthenticatedUserContextPatient["patientStatus"];
 }
 
 export interface AuthGuardianContext {
@@ -225,6 +226,7 @@ export class AuthenticateUserUseCase {
       document: patient.document,
       relationshipLabel: patient.id === userPatientId ? "Titular" : "Paciente vinculado",
       underPrivileged: patient.underPrivileged,
+      patientStatus: patient.patientStatus,
     };
   }
 }

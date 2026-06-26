@@ -93,12 +93,14 @@ export class PrismaAuthenticatedUserContextRepository
     name: string;
     document: string;
     underPrivileged: boolean;
+    patientStatus: AuthenticatedUserContextPatient["patientStatus"];
   }): AuthenticatedUserContextPatient {
     return {
       id: patient.id,
       name: patient.name,
       document: patient.document,
       underPrivileged: patient.underPrivileged,
+      patientStatus: patient.patientStatus,
     };
   }
 }

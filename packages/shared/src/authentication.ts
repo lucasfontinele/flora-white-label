@@ -16,12 +16,21 @@ export type LoginRequest = {
   password: string;
 };
 
+// Patient registration lifecycle (mirrors the API `PatientStatus` enum). Only
+// `APPROVAL` means the association approved the patient.
+export type PatientRegistrationStatus =
+  | "WAITING_DOCUMENTS"
+  | "WAITING_APPROVAL"
+  | "APPROVAL"
+  | "REJECTED";
+
 export type AuthPatientContextDto = {
   id: string;
   name: string;
   document: string;
   relationshipLabel: string;
   underPrivileged: boolean;
+  patientStatus: PatientRegistrationStatus;
 };
 
 export type AuthGuardianContextDto = {
