@@ -4,6 +4,7 @@ import { ProductType } from "../../domain/enums/ProductType.js";
 import { ProductUnit } from "../../domain/enums/ProductUnit.js";
 import {
   createProductBodySchema,
+  createProductImageMetadataSchema,
   listProductsQuerySchema,
   organizationProductParamsSchema,
   productParamsSchema,
@@ -120,5 +121,29 @@ describe("product schemas", () => {
   it("accepts empty list query and rejects unsupported query params", () => {
     expect(listProductsQuerySchema.safeParse({}).success).toBe(true);
     expect(listProductsQuerySchema.safeParse({ isActive: "true" }).success).toBe(false);
+  });
+
+  it("validates product cover image metadata against the configured limits", () => {
+    const metadataSchema = createProductImageMetadataSchema({
+      allowedMimeTypes: ["image/jpeg", "image/png"],
+      maxSizeBytes: 1024,
+    });
+
+    expect(
+      metadataSchema.safeParse({ fileName: "cover.png", mimeType: "image/png", size: 512 }).success,
+    ).toBe(true);
+    // MIME match is case-insensitive.
+    expect(
+      metadataSchema.safeParse({ fileName: "cover.jpg", mimeType: "IMAGE/JPEG", size: 512 }).success,
+    ).toBe(true);
+    expect(
+      metadataSchema.safeParse({ fileName: "cover.gif", mimeType: "image/gif", size: 512 }).success,
+    ).toBe(false);
+    expect(
+      metadataSchema.safeParse({ fileName: "cover.png", mimeType: "image/png", size: 2048 }).success,
+    ).toBe(false);
+    expect(
+      metadataSchema.safeParse({ fileName: " ", mimeType: "image/png", size: 512 }).success,
+    ).toBe(false);
   });
 });

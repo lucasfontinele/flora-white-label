@@ -127,6 +127,41 @@ describe("Product", () => {
     expect(product.isActive).toBe(false);
   });
 
+  it("manages the cover image storage key and preserves it across catalog updates", () => {
+    const product = Product.create(baseProps, "product-1");
+    expect(product.coverImageStorageKey).toBeNull();
+
+    product.setCoverImage("  organizations/org-1/products/product-1/cover-images/1-cover.png  ");
+    expect(product.coverImageStorageKey).toBe(
+      "organizations/org-1/products/product-1/cover-images/1-cover.png",
+    );
+
+    product.updateCatalogData({
+      name: "CBD Oil 1500mg",
+      description: null,
+      category: ProductCategory.Oil,
+      type: ProductType.Cbd,
+      strainType: null,
+      thcPercentage: 0,
+      cbdPercentage: 15,
+      unit: ProductUnit.Milliliter,
+      price: MoneyInCents.create(18900),
+    });
+    expect(product.coverImageStorageKey).toBe(
+      "organizations/org-1/products/product-1/cover-images/1-cover.png",
+    );
+
+    product.removeCoverImage();
+    expect(product.coverImageStorageKey).toBeNull();
+  });
+
+  it("normalizes a provided cover image key and rejects a blank one", () => {
+    expect(Product.create({ ...baseProps, coverImageStorageKey: "  " }).coverImageStorageKey).toBeNull();
+
+    const product = Product.create(baseProps);
+    expect(() => product.setCoverImage("   ")).toThrow(DomainValidationError);
+  });
+
   it("activates, deactivates and soft deletes idempotently", () => {
     const product = Product.create(baseProps);
 

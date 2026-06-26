@@ -65,6 +65,20 @@ const envSchema = z.object({
         .filter((mimeType) => mimeType.length > 0),
     )
     .refine((value) => value.length > 0, "At least one document upload MIME type is required."),
+  // Product cover images share the R2 credentials/bucket above (keys are
+  // namespaced per organization/product), but allow only image MIME types and a
+  // tighter size limit than documents.
+  MAX_PRODUCT_IMAGE_UPLOAD_SIZE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+  PRODUCT_IMAGE_UPLOAD_ALLOWED_MIME_TYPES: z
+    .string()
+    .default("image/jpeg,image/png,image/webp")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((mimeType) => mimeType.trim().toLowerCase())
+        .filter((mimeType) => mimeType.length > 0),
+    )
+    .refine((value) => value.length > 0, "At least one product image MIME type is required."),
   // AbacatePay payment gateway. The API key is required in production and falls
   // back to a non-functional dev placeholder locally; the secret is never
   // exposed in responses or logs.

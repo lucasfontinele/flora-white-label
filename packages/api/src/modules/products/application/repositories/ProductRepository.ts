@@ -16,6 +16,7 @@ export interface ProductReadModel {
   cbdPercentage: number | null;
   unit: ProductUnit;
   priceInCents: number;
+  coverImageStorageKey: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -11,6 +11,11 @@ import { ProductCategory } from "../../domain/enums/ProductCategory.js";
 import { ProductType } from "../../domain/enums/ProductType.js";
 import { ProductUnit } from "../../domain/enums/ProductUnit.js";
 import type { ProductReadModel, ProductRepository } from "../repositories/ProductRepository.js";
+import type {
+  ProductImageStorageService,
+  UploadProductImageInput,
+  UploadProductImageOutput,
+} from "../services/ProductImageStorageService.js";
 
 export const fixedNow = new Date("2026-06-23T12:00:00.000Z");
 
@@ -44,6 +49,7 @@ function productFromReadModel(readModel: ProductReadModel): Product {
       cbdPercentage: readModel.cbdPercentage,
       unit: readModel.unit,
       price: MoneyInCents.create(readModel.priceInCents),
+      coverImageStorageKey: readModel.coverImageStorageKey,
       isActive: readModel.isActive,
     },
     readModel.id,
@@ -63,6 +69,7 @@ export function toProductReadModel(product: Product): ProductReadModel {
     cbdPercentage: product.cbdPercentage,
     unit: product.unit,
     priceInCents: product.priceInCents,
+    coverImageStorageKey: product.coverImageStorageKey,
     isActive: product.isActive,
     createdAt: fixedNow,
     updatedAt: fixedNow,
@@ -125,6 +132,29 @@ export class InMemoryProductRepository implements ProductRepository {
     this.products.set(readModel.id, readModel);
 
     return readModel;
+  }
+}
+
+export class InMemoryProductImageStorageService implements ProductImageStorageService {
+  readonly uploads: UploadProductImageInput[] = [];
+  readonly deleted: string[] = [];
+
+  async upload(input: UploadProductImageInput): Promise<UploadProductImageOutput> {
+    this.uploads.push(input);
+
+    return {
+      storageKey: input.storageKey,
+      mimeType: input.mimeType,
+      size: input.size,
+    };
+  }
+
+  async getImageUrl(storageKey: string): Promise<string> {
+    return `https://cdn.test/${storageKey}`;
+  }
+
+  async delete(storageKey: string): Promise<void> {
+    this.deleted.push(storageKey);
   }
 }
 

@@ -142,6 +142,8 @@ export const productResponseSchema = {
     "cbdPercentage",
     "unit",
     "priceInCents",
+    "coverImageStorageKey",
+    "coverImageUrl",
     "isActive",
     "createdAt",
     "updatedAt",
@@ -158,11 +160,45 @@ export const productResponseSchema = {
     cbdPercentage: { type: ["number", "null"], minimum: 0 },
     unit: { type: "string", enum: productUnitValues },
     priceInCents: { type: "integer", minimum: 0 },
+    coverImageStorageKey: { type: ["string", "null"] },
+    coverImageUrl: { type: ["string", "null"] },
     isActive: { type: "boolean" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
 } as const;
+
+// Documentation-only body for the multipart cover-image upload, so Swagger
+// renders a file picker. The handler reads the file via `request.file()` and
+// skips JSON-schema body validation.
+export const uploadProductCoverImageBodyJsonSchema = {
+  type: "object",
+  required: ["file"],
+  properties: {
+    file: { type: "string", format: "binary" },
+  },
+} as const;
+
+export function createProductImageMetadataSchema(options: {
+  allowedMimeTypes: string[];
+  maxSizeBytes: number;
+}) {
+  const allowed = options.allowedMimeTypes.map((mimeType) => mimeType.toLowerCase());
+
+  return z.object({
+    fileName: nonBlankString("fileName"),
+    mimeType: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .refine((value) => allowed.includes(value), "Unsupported image type."),
+    size: z
+      .number()
+      .int()
+      .positive()
+      .max(options.maxSizeBytes, "Image size exceeds the configured limit."),
+  });
+}
 
 export const productListResponseSchema = {
   type: "object",

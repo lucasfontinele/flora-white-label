@@ -1,8 +1,12 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { env } from "../../../../config/env.js";
+import type { ProductReadModel } from "../../application/repositories/ProductRepository.js";
+import type { ProductImageStorageService } from "../../application/services/ProductImageStorageService.js";
 import { makeProductUseCases } from "../../infrastructure/create-product-use-cases.factory.js";
-import { ProductPresenter } from "./product-presenter.js";
+import { ProductPresenter, type ProductResponse } from "./product-presenter.js";
 import {
   createProductBodySchema,
+  createProductImageMetadataSchema,
   errorResponseSchema,
   listProductsQueryJsonSchema,
   listProductsQuerySchema,
@@ -14,17 +18,69 @@ import {
   productResponseSchema,
   productWriteBodyJsonSchema,
   updateProductBodySchema,
+  uploadProductCoverImageBodyJsonSchema,
 } from "./product-schemas.js";
 
-function sendValidationError(reply: FastifyReply, message: string): FastifyReply {
-  return reply.status(400).send({
+function sendValidationError(
+  reply: FastifyReply,
+  message: string,
+  statusCode = 400,
+): FastifyReply {
+  return reply.status(statusCode).send({
     error: "ValidationError",
     message,
   });
 }
 
+async function resolveCoverImageUrl(
+  storage: ProductImageStorageService,
+  storageKey: string | null,
+): Promise<string | null> {
+  if (!storageKey) {
+    return null;
+  }
+
+  try {
+    return await storage.getImageUrl(storageKey);
+  } catch {
+    return null;
+  }
+}
+
+function isFileTooLargeError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE"
+  );
+}
+
+/**
+ * Upload routes consume multipart/form-data and read the file via
+ * `request.file()`, so `request.body` stays undefined and JSON-schema body
+ * validation would always fail. The body schema is documentation-only (it makes
+ * Swagger render a file field); we skip Fastify validation and re-validate
+ * params/file with zod inside the handler.
+ */
+const skipSchemaValidationForMultipart = () => () => true;
+
 export async function productRoutes(app: FastifyInstance): Promise<void> {
   const useCases = makeProductUseCases(app.prisma);
+
+  /**
+   * Builds a product response, resolving a fresh presigned URL for the stored
+   * cover image key. Failing to resolve the URL must not break the response, so
+   * the product is still returned (without a URL) when storage is unreachable.
+   */
+  async function presentProduct(product: ProductReadModel): Promise<ProductResponse> {
+    const coverImageUrl = await resolveCoverImageUrl(
+      useCases.coverImageStorage,
+      product.coverImageStorageKey,
+    );
+
+    return ProductPresenter.toHttp(product, coverImageUrl);
+  }
 
   app.post(
     "/organizations/:organizationId/products",
@@ -59,7 +115,7 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
         ...body.data,
       });
 
-      return reply.status(201).send(ProductPresenter.toHttp(output));
+      return reply.status(201).send(await presentProduct(output));
     },
   );
 
@@ -92,7 +148,7 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
       const output = await useCases.listProductsUseCase.execute(params.data);
 
       return {
-        data: output.data.map((product) => ProductPresenter.toHttp(product)),
+        data: await Promise.all(output.data.map((product) => presentProduct(product))),
       };
     },
   );
@@ -120,7 +176,7 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
 
       const output = await useCases.getProductByIdUseCase.execute(params.data);
 
-      return ProductPresenter.toHttp(output);
+      return presentProduct(output);
     },
   );
 
@@ -157,7 +213,7 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
         ...body.data,
       });
 
-      return ProductPresenter.toHttp(output);
+      return presentProduct(output);
     },
   );
 
@@ -184,7 +240,7 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
 
       const output = await useCases.deleteProductUseCase.execute(params.data);
 
-      return ProductPresenter.toHttp(output);
+      return presentProduct(output);
     },
   );
 
@@ -211,7 +267,7 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
 
       const output = await useCases.activateProductUseCase.execute(params.data);
 
-      return ProductPresenter.toHttp(output);
+      return presentProduct(output);
     },
   );
 
@@ -238,7 +294,110 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
 
       const output = await useCases.deactivateProductUseCase.execute(params.data);
 
-      return ProductPresenter.toHttp(output);
+      return presentProduct(output);
+    },
+  );
+
+  app.put(
+    "/organizations/:organizationId/products/:productId/cover-image",
+    {
+      schema: {
+        tags: ["Organization Products"],
+        summary: "Envia (ou substitui) a imagem de capa do produto.",
+        consumes: ["multipart/form-data"],
+        params: productParamsJsonSchema,
+        body: uploadProductCoverImageBodyJsonSchema,
+        response: {
+          200: productResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          413: errorResponseSchema,
+          415: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+      validatorCompiler: skipSchemaValidationForMultipart,
+    },
+    async (request, reply) => {
+      const params = productParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const file = await request.file();
+      if (!file) {
+        return sendValidationError(reply, "File is required.");
+      }
+
+      let content: Buffer;
+      try {
+        content = await file.toBuffer();
+      } catch (error) {
+        if (isFileTooLargeError(error)) {
+          return sendValidationError(reply, "Image size exceeds the configured limit.", 413);
+        }
+
+        throw error;
+      }
+
+      const metadataSchema = createProductImageMetadataSchema({
+        allowedMimeTypes: env.PRODUCT_IMAGE_UPLOAD_ALLOWED_MIME_TYPES,
+        maxSizeBytes: env.MAX_PRODUCT_IMAGE_UPLOAD_SIZE_BYTES,
+      });
+      const metadata = metadataSchema.safeParse({
+        fileName: file.filename,
+        mimeType: file.mimetype,
+        size: content.byteLength,
+      });
+      if (!metadata.success) {
+        const hasUnsupportedMime = metadata.error.issues.some((issue) =>
+          issue.path.includes("mimeType"),
+        );
+        const hasOversize = metadata.error.issues.some((issue) => issue.path.includes("size"));
+
+        return sendValidationError(
+          reply,
+          "Invalid image file.",
+          hasOversize ? 413 : hasUnsupportedMime ? 415 : 400,
+        );
+      }
+
+      const output = await useCases.uploadProductCoverImageUseCase.execute({
+        ...params.data,
+        fileName: metadata.data.fileName,
+        mimeType: metadata.data.mimeType,
+        size: metadata.data.size,
+        content,
+      });
+
+      return presentProduct(output);
+    },
+  );
+
+  app.delete(
+    "/organizations/:organizationId/products/:productId/cover-image",
+    {
+      schema: {
+        tags: ["Organization Products"],
+        summary: "Remove a imagem de capa do produto.",
+        params: productParamsJsonSchema,
+        response: {
+          200: productResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = productParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.removeProductCoverImageUseCase.execute(params.data);
+
+      return presentProduct(output);
     },
   );
 }

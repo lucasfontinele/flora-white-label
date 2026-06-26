@@ -16,13 +16,20 @@ export interface ProductResponse {
   cbdPercentage: number | null;
   unit: ProductUnit;
   priceInCents: number;
+  coverImageStorageKey: string | null;
+  coverImageUrl: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export class ProductPresenter {
-  static toHttp(product: ProductReadModel): ProductResponse {
+  /**
+   * Maps a product to its HTTP representation. The cover image is exposed as the
+   * stable `coverImageStorageKey` plus a freshly resolved `coverImageUrl`
+   * (presigned), which the caller resolves from the storage port and passes in.
+   */
+  static toHttp(product: ProductReadModel, coverImageUrl: string | null = null): ProductResponse {
     return {
       id: product.id,
       organizationId: product.organizationId,
@@ -35,6 +42,8 @@ export class ProductPresenter {
       cbdPercentage: product.cbdPercentage,
       unit: product.unit,
       priceInCents: product.priceInCents,
+      coverImageStorageKey: product.coverImageStorageKey,
+      coverImageUrl: product.coverImageStorageKey ? coverImageUrl : null,
       isActive: product.isActive,
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString(),

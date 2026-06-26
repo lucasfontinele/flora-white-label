@@ -17,6 +17,7 @@ export interface ProductProps {
   cbdPercentage?: number | null;
   unit: ProductUnit;
   price: MoneyInCents;
+  coverImageStorageKey?: string | null;
   isActive?: boolean;
 }
 
@@ -57,6 +58,19 @@ export class Product extends AggregateRoot<ProductProps> {
     this.props.cbdPercentage = normalized.cbdPercentage;
     this.props.unit = normalized.unit;
     this.props.price = normalized.price;
+  }
+
+  setCoverImage(storageKey: string): void {
+    const normalized = storageKey.trim();
+    if (normalized.length === 0) {
+      throw new DomainValidationError("Product cover image storage key is required.");
+    }
+
+    this.props.coverImageStorageKey = normalized;
+  }
+
+  removeCoverImage(): void {
+    this.props.coverImageStorageKey = null;
   }
 
   activate(): void {
@@ -102,6 +116,7 @@ export class Product extends AggregateRoot<ProductProps> {
       strainType: props.strainType ?? null,
       thcPercentage,
       cbdPercentage,
+      coverImageStorageKey: Product.normalizeOptionalText(props.coverImageStorageKey),
       isActive: props.isActive ?? true,
     };
   }
@@ -183,6 +198,10 @@ export class Product extends AggregateRoot<ProductProps> {
 
   get priceInCents(): number {
     return this.props.price.value;
+  }
+
+  get coverImageStorageKey(): string | null {
+    return this.props.coverImageStorageKey ?? null;
   }
 
   get isActive(): boolean {

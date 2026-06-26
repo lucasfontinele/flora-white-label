@@ -263,6 +263,9 @@ model Product {
   cbdPercentage  Float?
   unit           ProductUnit
   priceInCents   Int
+  // Cloudflare R2 object key of the product cover image. The public/presigned
+  // URL is derived from this key on read; never the other way around.
+  coverImageStorageKey String?
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt

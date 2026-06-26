@@ -21,6 +21,7 @@ export class ProductMapper {
         cbdPercentage: record.cbdPercentage,
         unit: record.unit as ProductUnit,
         price: MoneyInCents.create(record.priceInCents),
+        coverImageStorageKey: record.coverImageStorageKey,
         isActive: record.isActive,
       },
       record.id,
@@ -40,6 +41,7 @@ export class ProductMapper {
       cbdPercentage: record.cbdPercentage,
       unit: record.unit as ProductUnit,
       priceInCents: record.priceInCents,
+      coverImageStorageKey: record.coverImageStorageKey,
       isActive: record.isActive,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
@@ -59,6 +61,7 @@ export class ProductMapper {
       cbdPercentage: product.cbdPercentage,
       unit: product.unit,
       priceInCents: product.priceInCents,
+      coverImageStorageKey: product.coverImageStorageKey,
       isActive: product.isActive,
     };
   }
@@ -74,6 +77,7 @@ export class ProductMapper {
       cbdPercentage: product.cbdPercentage,
       unit: product.unit,
       priceInCents: product.priceInCents,
+      coverImageStorageKey: product.coverImageStorageKey,
       isActive: product.isActive,
     };
   }
