@@ -5,6 +5,10 @@ import type {
 } from "../../../patients/application/repositories/PatientRepository.js";
 import type { Product } from "../../../products/domain/entities/Product.js";
 import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
+import type {
+  PatientPrescriptionReadModel,
+  PatientPrescriptionRepository,
+} from "../../../prescriptions/application/repositories/PatientPrescriptionRepository.js";
 import type { Order } from "../../domain/entities/Order.js";
 import type { OrderPayment } from "../../domain/entities/OrderPayment.js";
 import type { OrderStatus } from "../../domain/enums/OrderStatus.js";
@@ -93,6 +97,9 @@ export function toOrderPaymentReadModel(
 
 export class InMemoryOrderRepository implements OrderRepository {
   readonly orders = new Map<string, Order>();
+  // Pre-recorded consumption per product, used to drive posology enforcement
+  // tests without modelling the full order date window.
+  readonly consumptionByProduct = new Map<string, number>();
   createCalls = 0;
   saveCalls = 0;
 
@@ -125,6 +132,19 @@ export class InMemoryOrderRepository implements OrderRepository {
     return [...this.orders.values()].some(
       (order) => order.organizationId === organizationId && order.token === token,
     );
+  }
+
+  async sumProductQuantityInRange(
+    _organizationId: string,
+    _patientId: string,
+    productId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    // The window is irrelevant to this fake; tests drive consumption directly.
+    void from;
+    void to;
+    return this.consumptionByProduct.get(productId) ?? 0;
   }
 
   async create(order: Order): Promise<OrderReadModel> {
@@ -243,6 +263,45 @@ export class FakeProductRepository implements ProductRepository {
   }
 
   async save(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+}
+
+export class FakePrescriptionRepository implements PatientPrescriptionRepository {
+  private readonly byPatient = new Map<string, PatientPrescriptionReadModel>();
+
+  seedDetails(prescription: PatientPrescriptionReadModel): void {
+    this.byPatient.set(`${prescription.organizationId}:${prescription.patientId}`, prescription);
+  }
+
+  async findDetailsByPatient(
+    organizationId: string,
+    patientId: string,
+  ): Promise<PatientPrescriptionReadModel | null> {
+    return this.byPatient.get(`${organizationId}:${patientId}`) ?? null;
+  }
+
+  async findByPatient(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async findAllByOrganization(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async create(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async save(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async replaceItems(): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+
+  async delete(): Promise<void> {
     throw new Error("Method not implemented.");
   }
 }

@@ -5,6 +5,7 @@ import type {
   PatientReadModel,
   PatientRepository,
 } from "../../../patients/application/repositories/PatientRepository.js";
+import type { PatientPrescriptionRepository } from "../../../prescriptions/application/repositories/PatientPrescriptionRepository.js";
 import { DocumentApprovalStatus } from "../../domain/enums/DocumentApprovalStatus.js";
 import type { OrganizationDocumentPatientApprovalRepository } from "../repositories/OrganizationDocumentPatientApprovalRepository.js";
 import type { OrganizationRequiredDocumentRepository } from "../repositories/OrganizationRequiredDocumentRepository.js";
@@ -18,6 +19,7 @@ export interface ApprovePatientRegistrationDependencies {
   patientRepository: PatientRepository;
   requiredDocumentRepository: OrganizationRequiredDocumentRepository;
   approvalRepository: OrganizationDocumentPatientApprovalRepository;
+  prescriptionRepository: PatientPrescriptionRepository;
   unitOfWork: UnitOfWork;
 }
 
@@ -53,6 +55,31 @@ export class ApprovePatientRegistrationUseCase {
     if (!everyDocumentApproved) {
       throw new ConflictError(
         "All required documents must be approved before approving the registration.",
+      );
+    }
+
+    // A patient cannot be approved without a transcribed, still-valid receita
+    // that carries at least one posology line (the purchase allowances).
+    const prescription = await this.deps.prescriptionRepository.findDetailsByPatient(
+      input.organizationId,
+      input.patientId,
+    );
+
+    if (!prescription) {
+      throw new ConflictError(
+        "The patient's prescription must be transcribed before approving the registration.",
+      );
+    }
+
+    if (prescription.validUntil.getTime() <= Date.now()) {
+      throw new ConflictError(
+        "The patient's prescription has expired; transcribe a current receita before approving.",
+      );
+    }
+
+    if (prescription.items.length === 0) {
+      throw new ConflictError(
+        "The prescription posology must have at least one product before approving the registration.",
       );
     }
 

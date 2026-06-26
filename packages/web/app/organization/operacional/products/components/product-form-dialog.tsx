@@ -3,13 +3,16 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCentsAsCurrency, parseCurrencyToCents } from "@/lib/money";
 import { productFormSchema, type ProductFormValues } from "../schemas/product-schema";
 import {
+  COVER_IMAGE_ACCEPTED_TYPES,
+  COVER_IMAGE_MAX_SIZE_BYTES,
   PRODUCT_CATEGORIES,
   PRODUCT_CATEGORY_LABELS,
   PRODUCT_TYPE_LABELS,
@@ -24,6 +27,8 @@ type ProductFormDialogProps = {
   open: boolean;
   mode: "create" | "edit";
   initialValues?: ProductFormValues;
+  /** Signed URL of the product's currently stored cover image (edit mode). */
+  existingCoverUrl?: string | null;
   pending: boolean;
   onSubmit: (values: ProductFormValues) => void;
   onCancel: () => void;
@@ -39,6 +44,8 @@ const EMPTY_VALUES: ProductFormValues = {
   cbdPercentage: "",
   unit: "UNIT",
   price: "",
+  coverImage: null,
+  removeCoverImage: false,
 };
 
 const selectClassName =
@@ -55,29 +62,39 @@ export function ProductFormDialog({
   open,
   mode,
   initialValues,
+  existingCoverUrl = null,
   pending,
   onSubmit,
   onCancel,
 }: ProductFormDialogProps) {
   const titleId = React.useId();
   const [mounted, setMounted] = React.useState(false);
+  const [imageError, setImageError] = React.useState<string | null>(null);
   const {
     register,
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: EMPTY_VALUES,
   });
 
+  // Whether the operator cleared the stored cover image without picking a new
+  // one; drives which preview the dropzone shows.
+  const removeCover = useWatch({ control, name: "removeCoverImage" });
+
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
   React.useEffect(() => {
-    if (open) reset(initialValues ?? EMPTY_VALUES);
+    if (open) {
+      reset(initialValues ?? EMPTY_VALUES);
+      setImageError(null);
+    }
   }, [open, initialValues, reset]);
 
   React.useEffect(() => {
@@ -143,6 +160,53 @@ export function ProductFormDialog({
             />
             {errors.description ? (
               <p className="text-sm text-error">{errors.description.message}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={labelClassName} htmlFor="product-cover-image">
+              Imagem de capa {optionalHint}
+            </label>
+            <Controller
+              control={control}
+              name="coverImage"
+              render={({ field }) => {
+                const showExisting = Boolean(existingCoverUrl) && !removeCover;
+
+                return (
+                  <FileDropzone
+                    id="product-cover-image"
+                    value={field.value}
+                    existingPreviewUrl={showExisting ? existingCoverUrl : null}
+                    accept={COVER_IMAGE_ACCEPTED_TYPES}
+                    maxSizeBytes={COVER_IMAGE_MAX_SIZE_BYTES}
+                    disabled={pending}
+                    onRejected={setImageError}
+                    onChange={(file) => {
+                      setImageError(null);
+
+                      if (file) {
+                        // A new selection always supersedes a pending removal.
+                        field.onChange(file);
+                        setValue("removeCoverImage", false);
+                        return;
+                      }
+
+                      // Cleared: if we were showing the stored image (no new file
+                      // picked), mark it for deletion on save.
+                      if (!field.value && existingCoverUrl && !removeCover) {
+                        setValue("removeCoverImage", true);
+                      }
+                      field.onChange(null);
+                    }}
+                  />
+                );
+              }}
+            />
+            {imageError ? (
+              <p className="text-sm text-error">{imageError}</p>
+            ) : errors.coverImage ? (
+              <p className="text-sm text-error">{errors.coverImage.message}</p>
             ) : null}
           </div>
 

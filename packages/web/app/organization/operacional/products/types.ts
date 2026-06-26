@@ -77,10 +77,19 @@ export type Product = {
   cbdPercentage: number | null;
   unit: ProductUnit;
   priceInCents: number;
+  // Stable R2 object key of the cover image (null when none).
+  coverImageStorageKey: string | null;
+  // Freshly signed URL for the cover image (null when none); rendered directly.
+  coverImageUrl: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+// Cover image upload constraints, mirrored from the API env defaults so the form
+// validates before sending and the dropzone can advertise accepted formats.
+export const COVER_IMAGE_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const COVER_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
 // GET /organizations/:organizationId/products
 export type ListProductsResponse = {

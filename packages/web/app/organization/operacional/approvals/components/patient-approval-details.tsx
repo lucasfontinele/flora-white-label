@@ -10,11 +10,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { formatCpf } from "@/lib/masks";
+import { PrescriptionEditor, prescriptionToFormValues } from "@/components/domain/prescription-editor";
+import { useProducts } from "../../products/queries/use-products";
+import { PRODUCT_UNIT_LABELS } from "../../products/types";
 import { RejectReasonDialog } from "./reject-reason-dialog";
 import {
   usePatientApprovalDetails,
   usePatientApprovalMutations,
 } from "../queries/use-patient-approval-details";
+import {
+  usePatientPrescription,
+  useUpsertPatientPrescription,
+} from "../queries/use-patient-prescription";
+import type { PrescriptionWriteBody } from "../../prescriptions/types";
 import { documentStatusMeta, genderLabel, patientStatusMeta } from "../status-meta";
 import type { PatientDocumentApproval, RequiredDocument } from "../types";
 
@@ -35,6 +43,9 @@ type DetailsProps = {
 export function PatientApprovalDetails({ organizationId, patientId, organizationUserId }: DetailsProps) {
   const { toast } = useToast();
   const query = usePatientApprovalDetails(organizationId, patientId);
+  const prescriptionQuery = usePatientPrescription(organizationId, patientId);
+  const productsQuery = useProducts(organizationId);
+  const upsertPrescription = useUpsertPatientPrescription(organizationId, patientId);
   const { approveDocument, rejectDocument, approveRegistration, rejectRegistration } =
     usePatientApprovalMutations(organizationId, patientId);
 
@@ -77,6 +88,31 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
   const isPending =
     patient.patientStatus === "WAITING_DOCUMENTS" || patient.patientStatus === "WAITING_APPROVAL";
   const decisionPending = approveRegistration.isPending || rejectRegistration.isPending;
+
+  const prescription = prescriptionQuery.data?.prescription ?? null;
+  const prescriptionValid =
+    prescription !== null && new Date(prescription.validUntil).getTime() > Date.now();
+  const hasPosology = prescription !== null && prescription.items.length > 0;
+  const prescriptionReady = prescriptionValid && hasPosology;
+
+  const productOptions = (productsQuery.data?.data ?? [])
+    .filter((product) => product.isActive)
+    .map((product) => ({
+      id: product.id,
+      name: product.name,
+      unitLabel: PRODUCT_UNIT_LABELS[product.unit],
+    }));
+
+  function handleSavePrescription(body: PrescriptionWriteBody) {
+    upsertPrescription.mutate(body, {
+      onSuccess: () =>
+        toast({
+          variant: "success",
+          title: "Receita salva",
+          description: `Posologia atualizada para ${patient.name}.`,
+        }),
+    });
+  }
 
   function handleApproveDocument(approvalId: string, documentName: string) {
     approveDocument.mutate(
@@ -184,6 +220,39 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
               </div>
             )}
           </Card>
+
+          <Card className="overflow-hidden">
+            <div className="border-b border-border p-5 md:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-heading">Receita médica & Posologia</h3>
+                {prescription ? (
+                  <Badge tone={prescriptionValid ? "success" : "error"} size="sm" dot>
+                    {prescriptionValid ? "Receita válida" : "Receita vencida"}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                Transcreva a data de emissão (validade = +6 meses) e os limites de compra por produto.
+              </p>
+            </div>
+            <div className="p-5 md:p-6">
+              {prescriptionQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-11 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : (
+                <PrescriptionEditor
+                  key={prescription?.updatedAt ?? "new"}
+                  products={productOptions}
+                  productsLoading={productsQuery.isLoading}
+                  defaultValues={prescription ? prescriptionToFormValues(prescription) : undefined}
+                  pending={upsertPrescription.isPending}
+                  onSubmit={handleSavePrescription}
+                />
+              )}
+            </div>
+          </Card>
         </div>
 
         <div className="space-y-5">
@@ -200,8 +269,21 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
                     Aprove todos os documentos exigidos antes de aprovar o cadastro.
                   </p>
                 ) : null}
+                {!prescriptionReady ? (
+                  <p className="mt-3 flex items-start gap-2 rounded-md bg-warning-subtle p-3 text-xs text-[var(--warning-600)]">
+                    <Icon name="alert-triangle" size={15} className="mt-0.5 shrink-0" />
+                    {!prescription
+                      ? "Transcreva a receita e a posologia antes de aprovar o cadastro."
+                      : !prescriptionValid
+                        ? "A receita está vencida. Transcreva uma receita vigente."
+                        : "Adicione ao menos um produto na posologia antes de aprovar."}
+                  </p>
+                ) : null}
                 <div className="mt-5 grid gap-3">
-                  <Button disabled={!allApproved || decisionPending} onClick={handleApproveRegistration}>
+                  <Button
+                    disabled={!allApproved || !prescriptionReady || decisionPending}
+                    onClick={handleApproveRegistration}
+                  >
                     <Icon name="check" size={18} />
                     {approveRegistration.isPending ? "Aprovando..." : "Aprovar cadastro"}
                   </Button>

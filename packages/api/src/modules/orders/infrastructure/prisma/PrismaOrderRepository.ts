@@ -4,7 +4,7 @@ import type {
   OrderRepository,
 } from "../../application/repositories/OrderRepository.js";
 import type { Order } from "../../domain/entities/Order.js";
-import type { OrderStatus } from "../../domain/enums/OrderStatus.js";
+import { OrderStatus } from "../../domain/enums/OrderStatus.js";
 import { OrderMapper } from "./OrderMapper.js";
 
 // Relations needed to build an OrderReadModel: items (with the product display
@@ -63,6 +63,29 @@ export class PrismaOrderRepository implements OrderRepository {
     });
 
     return count > 0;
+  }
+
+  async sumProductQuantityInRange(
+    organizationId: string,
+    patientId: string,
+    productId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    const result = await this.prisma.getClient().orderItem.aggregate({
+      _sum: { quantity: true },
+      where: {
+        productId,
+        order: {
+          organizationId,
+          patientId,
+          status: { not: OrderStatus.Cancelled },
+          createdAt: { gte: from, lt: to },
+        },
+      },
+    });
+
+    return result._sum.quantity ?? 0;
   }
 
   async create(order: Order): Promise<OrderReadModel> {

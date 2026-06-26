@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PrescriptionPeriod } from "../../domain/enums/PrescriptionPeriod.js";
 
 const nonBlankString = (field: string) => z.string().trim().min(1, `${field} is required.`);
 
@@ -14,11 +15,22 @@ export const patientPrescriptionParamsSchema = prescriptionListParamsSchema
   })
   .strict();
 
+const upsertPrescriptionItemSchema = z
+  .object({
+    productId: nonBlankString("productId"),
+    allowedQuantity: z.number().int().min(1, "allowedQuantity must be at least 1."),
+    period: z.nativeEnum(PrescriptionPeriod),
+    notes: z.string().trim().nullish(),
+  })
+  .strict();
+
 export const upsertPrescriptionBodySchema = z
   .object({
-    // Accepts an ISO date-time or a "YYYY-MM-DD" date; coerced to a Date.
-    validUntil: z.coerce.date(),
+    // Emission date of the receita (ISO date-time or "YYYY-MM-DD"); validUntil
+    // is derived server-side as issuedAt + 6 months.
+    issuedAt: z.coerce.date(),
     observations: z.string().trim().nullish(),
+    items: z.array(upsertPrescriptionItemSchema),
   })
   .strict();
 
@@ -49,10 +61,24 @@ export const patientPrescriptionParamsJsonSchema = {
 export const upsertPrescriptionBodyJsonSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["validUntil"],
+  required: ["issuedAt", "items"],
   properties: {
-    validUntil: { type: "string", minLength: 1 },
+    issuedAt: { type: "string", minLength: 1 },
     observations: { type: ["string", "null"] },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["productId", "allowedQuantity", "period"],
+        properties: {
+          productId: idParamJsonProperty,
+          allowedQuantity: { type: "integer", minimum: 1 },
+          period: { type: "string", enum: ["MONTHLY", "ANNUAL"] },
+          notes: { type: ["string", "null"] },
+        },
+      },
+    },
   },
 } as const;
 
@@ -66,6 +92,21 @@ export const errorResponseSchema = {
   },
 } as const;
 
+const prescriptionItemResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "productId", "productName", "productUnit", "allowedQuantity", "period", "notes"],
+  properties: {
+    id: idParamJsonProperty,
+    productId: idParamJsonProperty,
+    productName: { type: "string" },
+    productUnit: { type: "string" },
+    allowedQuantity: { type: "integer" },
+    period: { type: "string" },
+    notes: { type: ["string", "null"] },
+  },
+} as const;
+
 export const prescriptionResponseSchema = {
   type: "object",
   additionalProperties: false,
@@ -74,8 +115,10 @@ export const prescriptionResponseSchema = {
     "organizationId",
     "patientId",
     "patientName",
+    "issuedAt",
     "validUntil",
     "observations",
+    "items",
     "createdAt",
     "updatedAt",
   ],
@@ -84,8 +127,10 @@ export const prescriptionResponseSchema = {
     organizationId: idParamJsonProperty,
     patientId: idParamJsonProperty,
     patientName: { type: "string" },
+    issuedAt: { type: "string", format: "date-time" },
     validUntil: { type: "string", format: "date-time" },
     observations: { type: ["string", "null"] },
+    items: { type: "array", items: prescriptionItemResponseSchema },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
@@ -109,6 +154,44 @@ export const patientPrescriptionResponseSchema = {
   required: ["prescription"],
   properties: {
     prescription: { ...prescriptionResponseSchema, type: ["object", "null"] },
+  },
+} as const;
+
+const purchaseLimitItemResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "productId",
+    "productName",
+    "unit",
+    "period",
+    "allowedQuantity",
+    "used",
+    "remaining",
+    "notes",
+  ],
+  properties: {
+    productId: idParamJsonProperty,
+    productName: { type: "string" },
+    unit: { type: "string" },
+    period: { type: "string" },
+    allowedQuantity: { type: "integer" },
+    used: { type: "integer" },
+    remaining: { type: "integer" },
+    notes: { type: ["string", "null"] },
+  },
+} as const;
+
+export const purchaseLimitsResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["hasPrescription", "issuedAt", "validUntil", "isExpired", "items"],
+  properties: {
+    hasPrescription: { type: "boolean" },
+    issuedAt: { type: ["string", "null"], format: "date-time" },
+    validUntil: { type: ["string", "null"], format: "date-time" },
+    isExpired: { type: "boolean" },
+    items: { type: "array", items: purchaseLimitItemResponseSchema },
   },
 } as const;
 

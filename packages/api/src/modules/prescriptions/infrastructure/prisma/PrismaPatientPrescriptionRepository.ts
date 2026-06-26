@@ -4,9 +4,16 @@ import type {
   PatientPrescriptionRepository,
 } from "../../application/repositories/PatientPrescriptionRepository.js";
 import type { PatientPrescription } from "../../domain/entities/PatientPrescription.js";
+import type { PrescriptionItem } from "../../domain/entities/PrescriptionItem.js";
 import { PatientPrescriptionMapper } from "./PatientPrescriptionMapper.js";
 
-const withPatientName = { patient: { select: { name: true } } } as const;
+const readModelInclude = {
+  patient: { select: { name: true } },
+  items: {
+    include: { product: { select: { name: true, unit: true } } },
+    orderBy: { createdAt: "asc" },
+  },
+} as const;
 
 export class PrismaPatientPrescriptionRepository implements PatientPrescriptionRepository {
   constructor(private readonly prisma: TransactionalPrisma) {}
@@ -28,7 +35,7 @@ export class PrismaPatientPrescriptionRepository implements PatientPrescriptionR
   ): Promise<PatientPrescriptionReadModel | null> {
     const record = await this.prisma.getClient().patientPrescription.findFirst({
       where: { organizationId, patientId },
-      include: withPatientName,
+      include: readModelInclude,
     });
 
     return record ? PatientPrescriptionMapper.toReadModel(record) : null;
@@ -39,7 +46,7 @@ export class PrismaPatientPrescriptionRepository implements PatientPrescriptionR
   ): Promise<PatientPrescriptionReadModel[]> {
     const records = await this.prisma.getClient().patientPrescription.findMany({
       where: { organizationId },
-      include: withPatientName,
+      include: readModelInclude,
       orderBy: { updatedAt: "desc" },
     });
 
@@ -49,7 +56,7 @@ export class PrismaPatientPrescriptionRepository implements PatientPrescriptionR
   async create(prescription: PatientPrescription): Promise<PatientPrescriptionReadModel> {
     const record = await this.prisma.getClient().patientPrescription.create({
       data: PatientPrescriptionMapper.toPersistence(prescription),
-      include: withPatientName,
+      include: readModelInclude,
     });
 
     return PatientPrescriptionMapper.toReadModel(record);
@@ -59,10 +66,22 @@ export class PrismaPatientPrescriptionRepository implements PatientPrescriptionR
     const record = await this.prisma.getClient().patientPrescription.update({
       where: { id: prescription.id },
       data: PatientPrescriptionMapper.toUpdatePersistence(prescription),
-      include: withPatientName,
+      include: readModelInclude,
     });
 
     return PatientPrescriptionMapper.toReadModel(record);
+  }
+
+  async replaceItems(prescriptionId: string, items: PrescriptionItem[]): Promise<void> {
+    const client = this.prisma.getClient();
+
+    await client.prescriptionItem.deleteMany({ where: { prescriptionId } });
+
+    if (items.length > 0) {
+      await client.prescriptionItem.createMany({
+        data: items.map((item) => PatientPrescriptionMapper.itemToPersistence(item)),
+      });
+    }
   }
 
   async delete(prescriptionId: string): Promise<void> {

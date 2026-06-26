@@ -80,16 +80,37 @@ model PatientPrescription {
   id             String   @id @default(uuid())
   organizationId String
   patientId      String   @unique
+  issuedAt       DateTime
   validUntil     DateTime
   observations   String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  patient      Patient      @relation(fields: [patientId], references: [id])
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  patient      Patient            @relation(fields: [patientId], references: [id])
+  items        PrescriptionItem[]
 
   @@index([organizationId])
   @@map("patient_prescriptions")
+}
+
+model PrescriptionItem {
+  id              String             @id @default(uuid())
+  prescriptionId  String
+  productId       String
+  allowedQuantity Int
+  period          PrescriptionPeriod
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  prescription PatientPrescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  product      Product             @relation(fields: [productId], references: [id])
+
+  @@unique([prescriptionId, productId])
+  @@index([prescriptionId])
+  @@index([productId])
+  @@map("prescription_items")
 }
 
 model PatientAssessment {
@@ -152,18 +173,18 @@ model Organization {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  currentPlan       SubscriptionPlan                      @relation(fields: [currentPlanId], references: [id])
-  address           Address                               @relation(fields: [addressId], references: [id])
-  settings          OrganizationSettings?
-  employees         OrganizationEmployee[]
-  requiredDocuments OrganizationRequiredDocument[]
-  documentApprovals OrganizationDocumentPatientApproval[]
-  products          Product[]
-  inventoryItems    InventoryItem[]
-  orders            Order[]
-  roles             Role[]
+  currentPlan         SubscriptionPlan                      @relation(fields: [currentPlanId], references: [id])
+  address             Address                               @relation(fields: [addressId], references: [id])
+  settings            OrganizationSettings?
+  employees           OrganizationEmployee[]
+  requiredDocuments   OrganizationRequiredDocument[]
+  documentApprovals   OrganizationDocumentPatientApproval[]
+  products            Product[]
+  inventoryItems      InventoryItem[]
+  orders              Order[]
+  roles               Role[]
   employeeInvitations EmployeeInvitation[]
-  prescriptions     PatientPrescription[]
+  prescriptions       PatientPrescription[]
 
   @@map("organizations")
 }
@@ -252,27 +273,28 @@ model OrganizationDocumentApprovalLog {
 }
 
 model Product {
-  id             String          @id @default(uuid())
-  organizationId String
-  name           String
-  description    String?
-  category       ProductCategory
-  type           ProductType
-  strainType     StrainType?
-  thcPercentage  Float?
-  cbdPercentage  Float?
-  unit           ProductUnit
-  priceInCents   Int
+  id                   String          @id @default(uuid())
+  organizationId       String
+  name                 String
+  description          String?
+  category             ProductCategory
+  type                 ProductType
+  strainType           StrainType?
+  thcPercentage        Float?
+  cbdPercentage        Float?
+  unit                 ProductUnit
+  priceInCents         Int
   // Cloudflare R2 object key of the product cover image. The public/presigned
   // URL is derived from this key on read; never the other way around.
   coverImageStorageKey String?
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  isActive             Boolean         @default(true)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  inventoryItems InventoryItem[]
-  orderItems     OrderItem[]
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  inventoryItems    InventoryItem[]
+  orderItems        OrderItem[]
+  prescriptionItems PrescriptionItem[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
@@ -458,6 +480,11 @@ enum PatientStatus {
   WAITING_APPROVAL
   APPROVAL
   REJECTED
+}
+
+enum PrescriptionPeriod {
+  MONTHLY
+  ANNUAL
 }
 
 enum ProductCategory {

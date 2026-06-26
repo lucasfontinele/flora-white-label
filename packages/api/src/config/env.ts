@@ -68,7 +68,7 @@ const envSchema = z.object({
   // Product cover images share the R2 credentials/bucket above (keys are
   // namespaced per organization/product), but allow only image MIME types and a
   // tighter size limit than documents.
-  MAX_PRODUCT_IMAGE_UPLOAD_SIZE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+  MAX_PRODUCT_IMAGE_UPLOAD_SIZE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   PRODUCT_IMAGE_UPLOAD_ALLOWED_MIME_TYPES: z
     .string()
     .default("image/jpeg,image/png,image/webp")

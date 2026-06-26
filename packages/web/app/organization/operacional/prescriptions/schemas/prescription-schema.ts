@@ -1,10 +1,25 @@
 import { z } from "zod";
 
-export const prescriptionFormSchema = z.object({
-  validUntil: z.string().trim().min(1, "Informe a data limite da receita."),
-  // Optional free-text note; an empty value is normalized to null before it
-  // reaches the API.
-  observations: z.string().trim().max(500, "Máximo de 500 caracteres."),
+export const prescriptionItemFormSchema = z.object({
+  productId: z.string().trim().min(1, "Selecione um produto."),
+  // Kept as a string for the number input; coerced/validated as a positive int.
+  allowedQuantity: z
+    .string()
+    .trim()
+    .min(1, "Informe a quantidade.")
+    .refine((value) => {
+      const parsed = Number(value);
+      return Number.isInteger(parsed) && parsed >= 1;
+    }, "Quantidade deve ser um número inteiro ≥ 1."),
+  period: z.enum(["MONTHLY", "ANNUAL"]),
+  notes: z.string().trim().max(300, "Máximo de 300 caracteres."),
 });
 
+export const prescriptionFormSchema = z.object({
+  issuedAt: z.string().trim().min(1, "Informe a data de emissão da receita."),
+  observations: z.string().trim().max(500, "Máximo de 500 caracteres."),
+  items: z.array(prescriptionItemFormSchema),
+});
+
+export type PrescriptionItemFormValues = z.infer<typeof prescriptionItemFormSchema>;
 export type PrescriptionFormValues = z.infer<typeof prescriptionFormSchema>;

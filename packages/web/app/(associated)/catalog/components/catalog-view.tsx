@@ -50,9 +50,6 @@ function CatalogBrowser() {
         <Input placeholder="Buscar produto ou strain" leadingIcon={<Icon name="search" size={18} />} />
         <Tabs tabs={tabs} value={filter} onChange={setFilter} />
       </div>
-      <div className="rounded-md border-l-4 border-info bg-info-subtle p-4 text-[var(--text-secondary)]">
-        As informações são educativas e não substituem orientação médica.
-      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => (
           <CatalogCard key={item.name} item={item} />

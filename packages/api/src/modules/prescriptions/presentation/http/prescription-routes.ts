@@ -10,6 +10,7 @@ import {
   prescriptionListParamsSchema,
   prescriptionListResponseSchema,
   prescriptionResponseSchema,
+  purchaseLimitsResponseSchema,
   upsertPrescriptionBodyJsonSchema,
   upsertPrescriptionBodySchema,
 } from "./prescription-schemas.js";
@@ -112,11 +113,39 @@ export async function prescriptionRoutes(app: FastifyInstance): Promise<void> {
       const output = await useCases.upsertPatientPrescriptionUseCase.execute({
         organizationId: params.data.organizationId,
         patientId: params.data.patientId,
-        validUntil: body.data.validUntil,
+        issuedAt: body.data.issuedAt,
         observations: body.data.observations,
+        items: body.data.items,
       });
 
       return PrescriptionPresenter.toHttp(output);
+    },
+  );
+
+  app.get(
+    "/organizations/:organizationId/patients/:patientId/purchase-limits",
+    {
+      schema: {
+        tags: ["Patient Prescriptions"],
+        summary:
+          "Consulta os limites de compra do paciente (posologia) com o consumo do período.",
+        params: patientPrescriptionParamsJsonSchema,
+        response: {
+          200: purchaseLimitsResponseSchema,
+          400: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientPrescriptionParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.getPatientPurchaseLimitsUseCase.execute(params.data);
+
+      return PrescriptionPresenter.limitsToHttp(output);
     },
   );
 

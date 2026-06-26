@@ -1,11 +1,11 @@
-import { purchaseLimits } from "@/lib/data";
+import { apiFetch } from "@/lib/http";
+import type { PurchaseLimits } from "../types";
 
-// Limites são por associação (portal white-label) + por paciente. A receita só
-// vale na organização que a importou, então filtramos por `organizationId`.
-// TODO(api): substituir pelo endpoint de limites (receita validada da associação
-// + pedidos já realizados no período). Hoje lê o mock co-localizado em lib/data.
-export async function getLimits(organizationId: string, patientId?: string) {
-  return purchaseLimits.filter(
-    (limit) => limit.organizationId === organizationId && (!patientId || limit.patientId === patientId),
+// Limits are per association (white-label portal) + per patient. The receita
+// only applies in the organization that transcribed it, so both ids are scoped.
+export async function getLimits(organizationId: string, patientId: string) {
+  return apiFetch<PurchaseLimits>(
+    `/organizations/${organizationId}/patients/${patientId}/purchase-limits`,
+    { method: "GET", skipMasterHeaders: true },
   );
 }

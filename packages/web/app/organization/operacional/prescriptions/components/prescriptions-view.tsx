@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { prescriptionToFormValues } from "@/components/domain/prescription-editor";
 import { usePatients } from "../../approvals/queries/use-patients";
+import { useProducts } from "../../products/queries/use-products";
+import { PRODUCT_UNIT_LABELS } from "../../products/types";
 import { PrescriptionFormDialog } from "./prescription-form-dialog";
 import { PrescriptionsTable } from "./prescriptions-table";
 import {
@@ -17,9 +20,22 @@ import type { PrescriptionRow, PrescriptionWriteBody } from "../types";
 export function PrescriptionsView({ organizationId }: { organizationId: string }) {
   const patientsQuery = usePatients(organizationId, "APPROVAL");
   const prescriptionsQuery = usePrescriptions(organizationId);
+  const productsQuery = useProducts(organizationId);
   const upsertMutation = useUpsertPrescription(organizationId);
   const deleteMutation = useDeletePrescription(organizationId);
   const { toast } = useToast();
+
+  const productOptions = useMemo(
+    () =>
+      (productsQuery.data?.data ?? [])
+        .filter((product) => product.isActive)
+        .map((product) => ({
+          id: product.id,
+          name: product.name,
+          unitLabel: PRODUCT_UNIT_LABELS[product.unit],
+        })),
+    [productsQuery.data],
+  );
 
   const [formRow, setFormRow] = useState<PrescriptionRow | null>(null);
   const [rowToClear, setRowToClear] = useState<PrescriptionRow | null>(null);
@@ -53,10 +69,7 @@ export function PrescriptionsView({ organizationId }: { organizationId: string }
   // Stable across background refetches so the open form is not reset mid-edit.
   const formInitialValues = useMemo<PrescriptionFormValues | undefined>(() => {
     if (!formRow?.prescription) return undefined;
-    return {
-      validUntil: formRow.prescription.validUntil.slice(0, 10),
-      observations: formRow.prescription.observations ?? "",
-    };
+    return prescriptionToFormValues(formRow.prescription);
   }, [formRow]);
 
   function openSetDate(row: PrescriptionRow) {
@@ -69,14 +82,8 @@ export function PrescriptionsView({ organizationId }: { organizationId: string }
     setFormRow(null);
   }
 
-  function submitForm(values: PrescriptionFormValues) {
+  function submitForm(body: PrescriptionWriteBody) {
     if (!formRow) return;
-
-    const observations = values.observations.trim();
-    const body: PrescriptionWriteBody = {
-      validUntil: values.validUntil,
-      observations: observations.length > 0 ? observations : null,
-    };
 
     upsertMutation.mutate(
       { patientId: formRow.patientId, body },
@@ -86,7 +93,7 @@ export function PrescriptionsView({ organizationId }: { organizationId: string }
           toast({
             variant: "success",
             title: "Receita atualizada",
-            description: `Data limite definida para ${formRow.patientName}.`,
+            description: `Receita e posologia definidas para ${formRow.patientName}.`,
           });
         },
       },
@@ -146,9 +153,12 @@ export function PrescriptionsView({ organizationId }: { organizationId: string }
       />
 
       <PrescriptionFormDialog
+        key={formRow?.patientId ?? "none"}
         open={formRow !== null}
         patientName={formRow?.patientName ?? ""}
         hasExisting={formRow?.prescription !== null && formRow?.prescription !== undefined}
+        products={productOptions}
+        productsLoading={productsQuery.isLoading}
         initialValues={formInitialValues}
         pending={upsertMutation.isPending}
         onSubmit={submitForm}

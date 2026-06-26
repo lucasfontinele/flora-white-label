@@ -2,37 +2,37 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  prescriptionFormSchema,
-  type PrescriptionFormValues,
-} from "../schemas/prescription-schema";
+  PrescriptionEditor,
+  type ProductOption,
+} from "@/components/domain/prescription-editor";
+import type { PrescriptionFormValues } from "../schemas/prescription-schema";
+import type { PrescriptionWriteBody } from "../types";
 
 type PrescriptionFormDialogProps = {
   open: boolean;
   patientName: string;
   hasExisting: boolean;
+  products: ProductOption[];
+  productsLoading?: boolean;
   initialValues?: PrescriptionFormValues;
   pending: boolean;
-  onSubmit: (values: PrescriptionFormValues) => void;
+  onSubmit: (body: PrescriptionWriteBody) => void;
   onCancel: () => void;
 };
 
-const EMPTY_VALUES: PrescriptionFormValues = { validUntil: "", observations: "" };
-
 /**
- * Modal to set/update the prescription validity date for a single patient.
- * Mirrors the RequiredDocumentFormDialog shell (portal, Escape, backdrop
- * dismissal disabled while pending) with its own react-hook-form state.
+ * Modal to transcribe a patient's receita (emission date + posology) for a
+ * single patient. Hosts the shared {@link PrescriptionEditor} in the same modal
+ * shell as the other CRUD dialogs (portal, Escape, backdrop dismissal disabled
+ * while pending).
  */
 export function PrescriptionFormDialog({
   open,
   patientName,
   hasExisting,
+  products,
+  productsLoading,
   initialValues,
   pending,
   onSubmit,
@@ -40,23 +40,10 @@ export function PrescriptionFormDialog({
 }: PrescriptionFormDialogProps) {
   const titleId = React.useId();
   const [mounted, setMounted] = React.useState(false);
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<PrescriptionFormValues>({
-    resolver: zodResolver(prescriptionFormSchema),
-    defaultValues: EMPTY_VALUES,
-  });
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
-
-  React.useEffect(() => {
-    if (open) reset(initialValues ?? EMPTY_VALUES);
-  }, [open, initialValues, reset]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -90,57 +77,26 @@ export function PrescriptionFormDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg"
+        className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg"
       >
         <h2 id={titleId} className="font-heading text-lg text-[var(--text-primary)]">
-          {hasExisting ? "Editar data limite da receita" : "Definir data limite da receita"}
+          {hasExisting ? "Editar receita" : "Definir receita"}
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Paciente <strong className="text-[var(--text-primary)]">{patientName}</strong>. A partir do
-          dia seguinte a esta data a receita é considerada vencida.
+          Paciente <strong className="text-[var(--text-primary)]">{patientName}</strong>. A validade
+          é calculada como emissão + 6 meses.
         </p>
 
-        <form className="mt-5 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <div className="space-y-1.5">
-            <label
-              className="text-sm font-bold text-[var(--text-primary)]"
-              htmlFor="prescription-valid-until"
-            >
-              Válida até
-            </label>
-            <Input id="prescription-valid-until" type="date" autoFocus {...register("validUntil")} />
-            {errors.validUntil ? (
-              <p className="text-sm text-error">{errors.validUntil.message}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-1.5">
-            <label
-              className="text-sm font-bold text-[var(--text-primary)]"
-              htmlFor="prescription-observations"
-            >
-              Observações{" "}
-              <span className="font-normal text-[var(--text-tertiary)]">(opcional)</span>
-            </label>
-            <Textarea
-              id="prescription-observations"
-              placeholder="Origem da receita, médico responsável..."
-              {...register("observations")}
-            />
-            {errors.observations ? (
-              <p className="text-sm text-error">{errors.observations.message}</p>
-            ) : null}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
-        </form>
+        <div className="mt-5">
+          <PrescriptionEditor
+            products={products}
+            productsLoading={productsLoading}
+            defaultValues={initialValues}
+            pending={pending}
+            onSubmit={onSubmit}
+            onCancel={onCancel}
+          />
+        </div>
       </div>
     </div>,
     document.body,

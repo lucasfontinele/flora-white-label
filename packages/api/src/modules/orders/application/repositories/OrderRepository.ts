@@ -39,6 +39,17 @@ export interface OrderRepository {
     patientId?: string,
   ): Promise<OrderReadModel[]>;
   existsByToken(organizationId: string, token: string): Promise<boolean>;
+  /**
+   * Sums the quantity of a product ordered by a patient within `[from, to)`,
+   * excluding cancelled orders. Used to enforce posology purchase limits.
+   */
+  sumProductQuantityInRange(
+    organizationId: string,
+    patientId: string,
+    productId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number>;
   create(order: Order): Promise<OrderReadModel>;
   save(order: Order): Promise<OrderReadModel>;
 }

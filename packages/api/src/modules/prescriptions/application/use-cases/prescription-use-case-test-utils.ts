@@ -8,10 +8,15 @@ import type {
 import { Patient } from "../../../patients/domain/entities/Patient.js";
 import { Gender } from "../../../../shared/domain/enums/Gender.js";
 import { Document } from "../../../../shared/domain/value-objects/Document.js";
+import type { Product } from "../../../products/domain/entities/Product.js";
+import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
+import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
 import { PatientPrescription } from "../../domain/entities/PatientPrescription.js";
+import type { PrescriptionItem } from "../../domain/entities/PrescriptionItem.js";
 import type {
   PatientPrescriptionReadModel,
   PatientPrescriptionRepository,
+  PrescriptionItemReadModel,
 } from "../repositories/PatientPrescriptionRepository.js";
 
 const now = new Date("2026-06-25T12:00:00.000Z");
@@ -113,26 +118,79 @@ export class InMemoryPatientRepository implements PatientRepository {
   }
 }
 
+export class InMemoryProductRepository implements ProductRepository {
+  readonly products = new Map<string, { name: string; unit: ProductUnit; isActive: boolean }>();
+
+  add(
+    productId: string,
+    options?: { name?: string; unit?: ProductUnit; isActive?: boolean },
+  ): void {
+    this.products.set(productId, {
+      name: options?.name ?? `Produto ${productId}`,
+      unit: options?.unit ?? ProductUnit.Unit,
+      isActive: options?.isActive ?? true,
+    });
+  }
+
+  async findByIdInOrganization(
+    _organizationId: string,
+    productId: string,
+  ): Promise<Product | null> {
+    const product = this.products.get(productId);
+    return product
+      ? ({ id: productId, name: product.name, unit: product.unit, isActive: product.isActive } as unknown as Product)
+      : null;
+  }
+
+  async findDetailsByIdInOrganization(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async findAllByOrganization(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async create(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+
+  async save(): Promise<never> {
+    throw new Error("Method not implemented.");
+  }
+}
+
 export class InMemoryPatientPrescriptionRepository implements PatientPrescriptionRepository {
   readonly prescriptions = new Map<string, PatientPrescriptionReadModel>();
   readonly patientNames = new Map<string, string>();
+  // Product display info used to build item read models on replaceItems.
+  readonly products = new Map<string, { name: string; unit: ProductUnit }>();
   deleteCalls = 0;
+
+  registerProduct(productId: string, name: string, unit: ProductUnit): void {
+    this.products.set(productId, { name, unit });
+  }
 
   seed(input: {
     id: string;
     organizationId: string;
     patientId: string;
     patientName?: string;
+    issuedAt?: Date;
     validUntil: Date;
     observations?: string | null;
+    items?: PrescriptionItemReadModel[];
   }): void {
     this.prescriptions.set(input.id, {
       id: input.id,
       organizationId: input.organizationId,
       patientId: input.patientId,
       patientName: input.patientName ?? this.nameFor(input.patientId),
+      // Derive a plausible emission date from validity when not provided so the
+      // legacy validity-only seed callers keep working.
+      issuedAt: input.issuedAt ?? new Date(input.validUntil.getTime() - 1),
       validUntil: input.validUntil,
       observations: input.observations ?? null,
+      items: input.items ?? [],
       createdAt: now,
       updatedAt: now,
     });
@@ -172,8 +230,10 @@ export class InMemoryPatientPrescriptionRepository implements PatientPrescriptio
       organizationId: prescription.organizationId,
       patientId: prescription.patientId,
       patientName: this.nameFor(prescription.patientId),
+      issuedAt: prescription.issuedAt,
       validUntil: prescription.validUntil,
       observations: prescription.observations,
+      items: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -188,13 +248,33 @@ export class InMemoryPatientPrescriptionRepository implements PatientPrescriptio
       organizationId: prescription.organizationId,
       patientId: prescription.patientId,
       patientName: previous?.patientName ?? this.nameFor(prescription.patientId),
+      issuedAt: prescription.issuedAt,
       validUntil: prescription.validUntil,
       observations: prescription.observations,
+      items: previous?.items ?? [],
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
     };
     this.prescriptions.set(record.id, record);
     return record;
+  }
+
+  async replaceItems(prescriptionId: string, items: PrescriptionItem[]): Promise<void> {
+    const record = this.prescriptions.get(prescriptionId);
+    if (!record) return;
+
+    record.items = items.map((item) => {
+      const product = this.products.get(item.productId);
+      return {
+        id: item.id,
+        productId: item.productId,
+        productName: product?.name ?? "Produto Teste",
+        productUnit: product?.unit ?? ("UNIT" as ProductUnit),
+        allowedQuantity: item.allowedQuantity,
+        period: item.period,
+        notes: item.notes,
+      };
+    });
   }
 
   async delete(prescriptionId: string): Promise<void> {

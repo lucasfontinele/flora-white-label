@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CreateOrderUseCase } from "./CreateOrderUseCase.js";
 import {
   FakePatientRepository,
+  FakePrescriptionRepository,
   FakeProductRepository,
   InMemoryOrderRepository,
   fakeProduct,
@@ -10,13 +11,54 @@ import {
 import { ConflictError } from "../../../../shared/application/errors/ConflictError.js";
 import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
+import type { PatientPrescriptionReadModel } from "../../../prescriptions/application/repositories/PatientPrescriptionRepository.js";
+import { PrescriptionPeriod } from "../../../prescriptions/domain/enums/PrescriptionPeriod.js";
+import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
 import { OrderDeliveryType } from "../../domain/enums/OrderDeliveryType.js";
 import { OrderStatus } from "../../domain/enums/OrderStatus.js";
+
+interface FakePosologyItem {
+  productId: string;
+  allowedQuantity: number;
+  period?: PrescriptionPeriod;
+}
+
+function buildPrescription(options?: {
+  expired?: boolean;
+  items?: FakePosologyItem[];
+}): PatientPrescriptionReadModel {
+  const validUntil = options?.expired
+    ? new Date("2020-01-01T00:00:00.000Z")
+    : new Date("2999-01-01T00:00:00.000Z");
+  const items = options?.items ?? [{ productId: "product-1", allowedQuantity: 100 }];
+
+  return {
+    id: "presc-1",
+    organizationId: "org-1",
+    patientId: "patient-1",
+    patientName: "Patient patient-1",
+    issuedAt: new Date("2026-06-01T00:00:00.000Z"),
+    validUntil,
+    observations: null,
+    items: items.map((item, index) => ({
+      id: `item-${index}`,
+      productId: item.productId,
+      productName: `Product ${item.productId}`,
+      productUnit: ProductUnit.Unit,
+      allowedQuantity: item.allowedQuantity,
+      period: item.period ?? PrescriptionPeriod.Monthly,
+      notes: null,
+    })),
+    createdAt: new Date("2026-06-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-01T00:00:00.000Z"),
+  };
+}
 
 function buildUseCase(options?: {
   products?: ReturnType<typeof fakeProduct>[];
   patients?: { id: string; guardianId?: string | null }[];
   orderRepository?: InMemoryOrderRepository;
+  prescription?: PatientPrescriptionReadModel | null;
 }) {
   const orderRepository = options?.orderRepository ?? new InMemoryOrderRepository();
   const productRepository = new FakeProductRepository(
@@ -25,15 +67,22 @@ function buildUseCase(options?: {
   const patientRepository = new FakePatientRepository(
     options?.patients ?? [{ id: "patient-1", guardianId: null }],
   );
+  const prescriptionRepository = new FakePrescriptionRepository();
+  const prescription =
+    options?.prescription === undefined ? buildPrescription() : options.prescription;
+  if (prescription) {
+    prescriptionRepository.seedDetails(prescription);
+  }
 
   const useCase = new CreateOrderUseCase({
     orderRepository,
     productRepository,
     patientRepository,
+    prescriptionRepository,
     unitOfWork: immediateUnitOfWork,
   });
 
-  return { useCase, orderRepository, productRepository, patientRepository };
+  return { useCase, orderRepository, productRepository, patientRepository, prescriptionRepository };
 }
 
 describe("CreateOrderUseCase", () => {
@@ -137,5 +186,90 @@ describe("CreateOrderUseCase", () => {
         items: [{ productId: "product-1", quantity: 1 }],
       }),
     ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("rejects an order when the patient has no prescription", async () => {
+    const { useCase } = buildUseCase({ prescription: null });
+
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        deliveryType: OrderDeliveryType.Correios,
+        items: [{ productId: "product-1", quantity: 1 }],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("rejects an order when the prescription is expired", async () => {
+    const { useCase } = buildUseCase({ prescription: buildPrescription({ expired: true }) });
+
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        deliveryType: OrderDeliveryType.Correios,
+        items: [{ productId: "product-1", quantity: 1 }],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("rejects a product that is not in the posology", async () => {
+    const { useCase } = buildUseCase({
+      products: [fakeProduct({ id: "product-2", priceInCents: 5000 })],
+      prescription: buildPrescription({ items: [{ productId: "product-1", allowedQuantity: 10 }] }),
+    });
+
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        deliveryType: OrderDeliveryType.Correios,
+        items: [{ productId: "product-2", quantity: 1 }],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("rejects when the requested quantity exceeds the period allowance", async () => {
+    const { useCase } = buildUseCase({
+      prescription: buildPrescription({ items: [{ productId: "product-1", allowedQuantity: 3 }] }),
+    });
+
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        deliveryType: OrderDeliveryType.Correios,
+        items: [{ productId: "product-1", quantity: 4 }],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("counts previous consumption against the allowance", async () => {
+    const orderRepository = new InMemoryOrderRepository();
+    orderRepository.consumptionByProduct.set("product-1", 3);
+    const { useCase } = buildUseCase({
+      orderRepository,
+      prescription: buildPrescription({ items: [{ productId: "product-1", allowedQuantity: 4 }] }),
+    });
+
+    // 3 already used + 2 requested = 5 > 4 allowed.
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        deliveryType: OrderDeliveryType.Correios,
+        items: [{ productId: "product-1", quantity: 2 }],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+
+    // 3 already used + 1 requested = 4 == 4 allowed → allowed.
+    const order = await useCase.execute({
+      organizationId: "org-1",
+      patientId: "patient-1",
+      deliveryType: OrderDeliveryType.Correios,
+      items: [{ productId: "product-1", quantity: 1 }],
+    });
+    expect(order.itemsAmount).toBe(1);
   });
 });

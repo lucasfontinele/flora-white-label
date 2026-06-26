@@ -4,6 +4,7 @@ import { DomainValidationError } from "../../../../shared/domain/errors/DomainVa
 export interface PatientPrescriptionProps {
   organizationId: string;
   patientId: string;
+  issuedAt: Date;
   validUntil: Date;
   observations?: string | null;
 }
@@ -24,6 +25,10 @@ export class PatientPrescription extends Entity<PatientPrescriptionProps> {
       throw new DomainValidationError("Prescription requires a patientId.");
     }
 
+    if (!(props.issuedAt instanceof Date) || Number.isNaN(props.issuedAt.getTime())) {
+      throw new DomainValidationError("Prescription requires a valid issuedAt date.");
+    }
+
     if (!(props.validUntil instanceof Date) || Number.isNaN(props.validUntil.getTime())) {
       throw new DomainValidationError("Prescription requires a valid validUntil date.");
     }
@@ -35,7 +40,13 @@ export class PatientPrescription extends Entity<PatientPrescriptionProps> {
       trimmedObservations && trimmedObservations.length > 0 ? trimmedObservations : null;
 
     return new PatientPrescription(
-      { organizationId, patientId, validUntil: props.validUntil, observations },
+      {
+        organizationId,
+        patientId,
+        issuedAt: props.issuedAt,
+        validUntil: props.validUntil,
+        observations,
+      },
       id,
     );
   }
@@ -48,8 +59,19 @@ export class PatientPrescription extends Entity<PatientPrescriptionProps> {
     return this.props.patientId;
   }
 
+  get issuedAt(): Date {
+    return this.props.issuedAt;
+  }
+
   get validUntil(): Date {
     return this.props.validUntil;
+  }
+
+  /**
+   * Whether the receita is still valid at the given moment (defaults to now).
+   */
+  isValidAt(reference: Date = new Date()): boolean {
+    return this.props.validUntil.getTime() > reference.getTime();
   }
 
   get observations(): string | null {

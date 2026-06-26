@@ -3,6 +3,7 @@ import { PrismaTransactionManager } from "../../../shared/infrastructure/databas
 import { env } from "../../../config/env.js";
 import { PrismaOrganizationRepository } from "../../organizations/infrastructure/prisma/PrismaOrganizationRepository.js";
 import { PrismaPatientRepository } from "../../patients/infrastructure/prisma/PrismaPatientRepository.js";
+import { PrismaPatientPrescriptionRepository } from "../../prescriptions/infrastructure/prisma/PrismaPatientPrescriptionRepository.js";
 import { ApprovePatientDocumentUseCase } from "../application/use-cases/ApprovePatientDocumentUseCase.js";
 import { CreateOrganizationRequiredDocumentUseCase } from "../application/use-cases/CreateOrganizationRequiredDocumentUseCase.js";
 import { CreatePatientDocumentApprovalUseCase } from "../application/use-cases/CreatePatientDocumentApprovalUseCase.js";
@@ -56,6 +57,7 @@ export function makeOrganizationDocumentUseCases(
     transactionManager,
   );
   const logRepository = new PrismaOrganizationDocumentApprovalLogRepository(transactionManager);
+  const prescriptionRepository = new PrismaPatientPrescriptionRepository(transactionManager);
   const storageService = new CloudflareR2DocumentStorageService({
     accountId: env.R2_ACCOUNT_ID,
     accessKeyId: env.R2_ACCESS_KEY_ID,
@@ -137,6 +139,7 @@ export function makeOrganizationDocumentUseCases(
       patientRepository,
       requiredDocumentRepository,
       approvalRepository,
+      prescriptionRepository,
       unitOfWork: transactionManager,
     }),
     rejectPatientRegistrationUseCase: new RejectPatientRegistrationUseCase({

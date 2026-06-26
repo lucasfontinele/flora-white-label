@@ -4,8 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createProduct } from "../requests/create-product";
 import { deleteProduct } from "../requests/delete-product";
 import { listProducts } from "../requests/list-products";
+import { removeProductCoverImage } from "../requests/remove-product-cover-image";
 import { setProductStatus } from "../requests/set-product-status";
 import { updateProduct } from "../requests/update-product";
+import { uploadProductCoverImage } from "../requests/upload-product-cover-image";
 import type { ProductWriteBody } from "../types";
 
 export const productsQueryKey = (organizationId: string) =>
@@ -45,6 +47,27 @@ export function useDeleteProduct(organizationId: string) {
 
   return useMutation({
     mutationFn: (productId: string) => deleteProduct(organizationId, productId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: productsQueryKey(organizationId) }),
+  });
+}
+
+export function useUploadProductCoverImage(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ productId, file }: { productId: string; file: File }) =>
+      uploadProductCoverImage(organizationId, productId, file),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: productsQueryKey(organizationId) }),
+  });
+}
+
+export function useRemoveProductCoverImage(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (productId: string) => removeProductCoverImage(organizationId, productId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: productsQueryKey(organizationId) }),
   });

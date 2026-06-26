@@ -114,9 +114,15 @@ export function PrescriptionsTable({
                 </td>
                 <td className="px-5 py-4">
                   {prescription ? (
-                    <Badge tone={expired ? "error" : "success"}>
-                      {expired ? "Vencida em" : "Válida até"} {formatDate(prescription.validUntil)}
-                    </Badge>
+                    <>
+                      <Badge tone={expired ? "error" : "success"}>
+                        {expired ? "Vencida em" : "Válida até"} {formatDate(prescription.validUntil)}
+                      </Badge>
+                      <div className="mt-1 text-xs text-[var(--text-tertiary)]">
+                        {prescription.items.length}{" "}
+                        {prescription.items.length === 1 ? "produto" : "produtos"} na posologia
+                      </div>
+                    </>
                   ) : (
                     <Badge tone="neutral">Não definida</Badge>
                   )}
@@ -131,13 +137,13 @@ export function PrescriptionsTable({
                 <td className="px-5 py-4">
                   <div className="flex justify-end gap-2">
                     <Button
-                      aria-label={`${prescription ? "Editar" : "Definir"} data da receita de ${row.patientName}`}
+                      aria-label={`${prescription ? "Editar" : "Definir"} receita de ${row.patientName}`}
                       onClick={() => onSetDate?.(row)}
                       size="sm"
                       type="button"
                       variant="secondary"
                     >
-                      {prescription ? "Editar data" : "Definir data"}
+                      {prescription ? "Editar receita" : "Definir receita"}
                     </Button>
                     {prescription ? (
                       <Button

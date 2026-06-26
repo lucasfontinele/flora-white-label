@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsAsCurrency } from "@/lib/money";
 import {
@@ -91,12 +92,17 @@ export function ProductsTable({
           {products.map((product) => (
             <tr key={product.id} className="bg-card align-top">
               <td className="px-5 py-4">
-                <div className="font-semibold text-[var(--text-primary)]">{product.name}</div>
-                {product.description ? (
-                  <p className="mt-0.5 line-clamp-1 text-sm text-[var(--text-secondary)]">
-                    {product.description}
-                  </p>
-                ) : null}
+                <div className="flex items-start gap-3">
+                  <ProductThumbnail product={product} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-[var(--text-primary)]">{product.name}</div>
+                    {product.description ? (
+                      <p className="mt-0.5 line-clamp-1 text-sm text-[var(--text-secondary)]">
+                        {product.description}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </td>
               <td className="px-5 py-4 text-[var(--text-secondary)]">
                 {PRODUCT_CATEGORY_LABELS[product.category]}
@@ -157,6 +163,25 @@ export function ProductsTable({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ProductThumbnail({ product }: { product: Product }) {
+  if (product.coverImageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={product.coverImageUrl}
+        alt={`Capa de ${product.name}`}
+        className="size-10 shrink-0 rounded-md border border-border object-cover"
+      />
+    );
+  }
+
+  return (
+    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-[var(--text-tertiary)]">
+      <Icon name="image" size={18} />
+    </span>
   );
 }
 

@@ -14,8 +14,10 @@ import {
   useCreateProduct,
   useDeleteProduct,
   useProducts,
+  useRemoveProductCoverImage,
   useSetProductStatus,
   useUpdateProduct,
+  useUploadProductCoverImage,
 } from "../queries/use-products";
 import type { ProductFormValues } from "../schemas/product-schema";
 import type { Product, ProductWriteBody } from "../types";
@@ -46,13 +48,19 @@ export function ProductsView({ organizationId }: { organizationId: string }) {
   const updateMutation = useUpdateProduct(organizationId);
   const deleteMutation = useDeleteProduct(organizationId);
   const statusMutation = useSetProductStatus(organizationId);
+  const uploadCoverMutation = useUploadProductCoverImage(organizationId);
+  const removeCoverMutation = useRemoveProductCoverImage(organizationId);
   const { toast } = useToast();
 
   const [formState, setFormState] = useState<FormState | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const products = query.data?.data ?? [];
-  const isSavingForm = createMutation.isPending || updateMutation.isPending;
+  const isSavingForm =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    uploadCoverMutation.isPending ||
+    removeCoverMutation.isPending;
   const pendingStatusId = statusMutation.isPending
     ? (statusMutation.variables?.productId ?? null)
     : null;
@@ -73,6 +81,8 @@ export function ProductsView({ organizationId }: { organizationId: string }) {
       cbdPercentage: product.cbdPercentage !== null ? String(product.cbdPercentage) : "",
       unit: product.unit,
       price: formatCentsAsCurrency(product.priceInCents),
+      coverImage: null,
+      removeCoverImage: false,
     };
   }, [formState]);
 
@@ -86,11 +96,15 @@ export function ProductsView({ organizationId }: { organizationId: string }) {
 
   function openCreate() {
     createMutation.reset();
+    uploadCoverMutation.reset();
+    removeCoverMutation.reset();
     setFormState({ mode: "create", product: null });
   }
 
   function openEdit(product: Product) {
     updateMutation.reset();
+    uploadCoverMutation.reset();
+    removeCoverMutation.reset();
     setFormState({ mode: "edit", product });
   }
 
@@ -99,38 +113,42 @@ export function ProductsView({ organizationId }: { organizationId: string }) {
     setFormState(null);
   }
 
-  function submitForm(values: ProductFormValues) {
-    const body = buildWriteBody(values);
-
-    if (formState?.mode === "edit" && formState.product) {
-      updateMutation.mutate(
-        { productId: formState.product.id, body },
-        {
-          onSuccess: () => {
-            setFormState(null);
-            toast({
-              variant: "success",
-              title: "Produto atualizado",
-              description: `${body.name} foi atualizado com sucesso.`,
-            });
-          },
-          onError: notifyError,
-        },
-      );
-      return;
+  /**
+   * Applies the optional cover-image change for a saved product. The image lives
+   * behind a separate multipart endpoint, so it is uploaded/removed after the
+   * product itself is persisted. A failure here is surfaced but does not undo the
+   * already-saved product.
+   */
+  async function applyCoverImage(productId: string, values: ProductFormValues) {
+    if (values.coverImage) {
+      await uploadCoverMutation.mutateAsync({ productId, file: values.coverImage });
+    } else if (values.removeCoverImage) {
+      await removeCoverMutation.mutateAsync(productId);
     }
+  }
 
-    createMutation.mutate(body, {
-      onSuccess: () => {
-        setFormState(null);
-        toast({
-          variant: "success",
-          title: "Produto cadastrado",
-          description: `${body.name} foi adicionado ao catálogo.`,
-        });
-      },
-      onError: notifyError,
-    });
+  async function submitForm(values: ProductFormValues) {
+    const body = buildWriteBody(values);
+    const isEdit = formState?.mode === "edit" && formState.product;
+
+    try {
+      const saved = isEdit
+        ? await updateMutation.mutateAsync({ productId: formState!.product!.id, body })
+        : await createMutation.mutateAsync(body);
+
+      await applyCoverImage(saved.id, values);
+
+      setFormState(null);
+      toast({
+        variant: "success",
+        title: isEdit ? "Produto atualizado" : "Produto cadastrado",
+        description: isEdit
+          ? `${body.name} foi atualizado com sucesso.`
+          : `${body.name} foi adicionado ao catálogo.`,
+      });
+    } catch (error) {
+      notifyError(error);
+    }
   }
 
   function toggleStatus(product: Product) {
@@ -214,6 +232,7 @@ export function ProductsView({ organizationId }: { organizationId: string }) {
         open={formState !== null}
         mode={formState?.mode ?? "create"}
         initialValues={formInitialValues}
+        existingCoverUrl={formState?.product?.coverImageUrl ?? null}
         pending={isSavingForm}
         onSubmit={submitForm}
         onCancel={closeForm}

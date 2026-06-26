@@ -2,6 +2,7 @@ import { env } from "../../../config/env.js";
 import type { PrismaService } from "../../../shared/infrastructure/database/prisma/PrismaService.js";
 import { PrismaTransactionManager } from "../../../shared/infrastructure/database/prisma/PrismaTransactionManager.js";
 import { PrismaPatientRepository } from "../../patients/infrastructure/prisma/PrismaPatientRepository.js";
+import { PrismaPatientPrescriptionRepository } from "../../prescriptions/infrastructure/prisma/PrismaPatientPrescriptionRepository.js";
 import { PrismaProductRepository } from "../../products/infrastructure/prisma/PrismaProductRepository.js";
 import type { PaymentGatewayService } from "../application/gateway/PaymentGatewayService.js";
 import { CancelOrderUseCase } from "../application/use-cases/CancelOrderUseCase.js";
@@ -42,6 +43,7 @@ export function makeOrderUseCases(prisma: PrismaService): OrderUseCases {
   const orderPaymentRepository = new PrismaOrderPaymentRepository(transactionManager);
   const productRepository = new PrismaProductRepository(transactionManager);
   const patientRepository = new PrismaPatientRepository(transactionManager);
+  const prescriptionRepository = new PrismaPatientPrescriptionRepository(transactionManager);
   const paymentGateway = makePaymentGateway();
 
   return {
@@ -49,6 +51,7 @@ export function makeOrderUseCases(prisma: PrismaService): OrderUseCases {
       orderRepository,
       productRepository,
       patientRepository,
+      prescriptionRepository,
       unitOfWork: transactionManager,
     }),
     listOrdersUseCase: new ListOrdersUseCase(orderRepository),
