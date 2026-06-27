@@ -15,7 +15,6 @@ import { Can } from "../../../permissions/can";
 import {
   useOrder,
   useOrderPayments,
-  usePatientDocuments,
   useUpdateOrderStatus,
 } from "../queries/use-order";
 import {
@@ -60,7 +59,6 @@ export function OrderDetailView({
   const order = orderQuery.data;
 
   const paymentsQuery = useOrderPayments(organizationId, orderId);
-  const documentsQuery = usePatientDocuments(organizationId, order?.patientId);
 
   if (orderQuery.isLoading) {
     return <OrderDetailSkeleton />;
@@ -109,12 +107,6 @@ export function OrderDetailView({
         <div className="space-y-5">
           <PatientCard order={order} />
           <ItemsCard order={order} />
-          <PatientDocumentsCard
-            isLoading={documentsQuery.isLoading}
-            error={documentsQuery.error instanceof Error ? documentsQuery.error : null}
-            documents={documentsQuery.data?.data ?? []}
-            onRetry={() => void documentsQuery.refetch()}
-          />
         </div>
 
         <div className="space-y-5">
@@ -197,80 +189,6 @@ function ItemsCard({ order }: { order: Order }) {
         <span className="text-sm font-bold text-[var(--text-secondary)]">Total dos itens</span>
         <span className="font-mono text-base font-extrabold">{formatCentsAsCurrency(total)}</span>
       </div>
-    </Card>
-  );
-}
-
-function PatientDocumentsCard({
-  documents,
-  isLoading,
-  error,
-  onRetry,
-}: {
-  documents: PatientDocumentApproval[];
-  isLoading: boolean;
-  error: Error | null;
-  onRetry: () => void;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <div className="border-b border-border p-5 md:p-6">
-        <h3 className="font-heading">Documentos do paciente</h3>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Abra os documentos enviados para conferir a posologia.
-        </p>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3 p-5 md:p-6">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      ) : error ? (
-        <div className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between md:p-6">
-          <p className="text-sm text-[var(--text-secondary)]">
-            Não foi possível carregar os documentos.
-          </p>
-          <Button onClick={onRetry} size="sm" type="button" variant="secondary">
-            Tentar novamente
-          </Button>
-        </div>
-      ) : documents.length === 0 ? (
-        <p className="p-5 text-sm text-[var(--text-secondary)] md:p-6">
-          Nenhum documento enviado por este paciente.
-        </p>
-      ) : (
-        <div className="divide-y divide-border">
-          {documents.map((document) => (
-            <div
-              key={document.id}
-              className="flex flex-wrap items-center justify-between gap-3 p-4 md:px-6"
-            >
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-sm bg-muted text-[var(--text-secondary)]">
-                  <Icon name="file-text" size={18} />
-                </span>
-                <div>
-                  <p className="font-bold">{document.fileName ?? "Documento"}</p>
-                  <Badge size="sm" tone={DOCUMENT_STATUS_TONE[document.status]}>
-                    {DOCUMENT_STATUS_LABELS[document.status]}
-                  </Badge>
-                </div>
-              </div>
-              {document.fileUrl ? (
-                <Button asChild size="sm" variant="secondary">
-                  <a href={document.fileUrl} target="_blank" rel="noreferrer">
-                    <Icon name="download" size={16} />
-                    Abrir
-                  </a>
-                </Button>
-              ) : (
-                <span className="text-sm text-[var(--text-tertiary)]">Sem arquivo</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </Card>
   );
 }
