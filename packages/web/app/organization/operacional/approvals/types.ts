@@ -41,3 +41,13 @@ export type PatientApprovalDetails = {
   requiredDocuments: RequiredDocument[];
   approvals: PatientDocumentApproval[];
 };
+
+// GET /organizations/:orgId/patients/:patientId/prescribers
+export type Prescriber = {
+  id: string;
+  fullName: string;
+  crm: string;
+  crmState: string;
+};
+
+export type ListPrescribersResponse = { data: Prescriber[] };

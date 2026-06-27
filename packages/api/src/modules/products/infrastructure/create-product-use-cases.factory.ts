@@ -2,8 +2,11 @@ import { env } from "../../../config/env.js";
 import type { PrismaService } from "../../../shared/infrastructure/database/prisma/PrismaService.js";
 import { PrismaTransactionManager } from "../../../shared/infrastructure/database/prisma/PrismaTransactionManager.js";
 import { PrismaOrganizationRepository } from "../../organizations/infrastructure/prisma/PrismaOrganizationRepository.js";
+import { PrismaPatientRepository } from "../../patients/infrastructure/prisma/PrismaPatientRepository.js";
+import { PrismaPatientPrescriptionRepository } from "../../prescriptions/infrastructure/prisma/PrismaPatientPrescriptionRepository.js";
 import type { ProductImageStorageService } from "../application/services/ProductImageStorageService.js";
 import { ActivateProductUseCase } from "../application/use-cases/ActivateProductUseCase.js";
+import { GetPatientCatalogUseCase } from "../application/use-cases/GetPatientCatalogUseCase.js";
 import { CreateProductUseCase } from "../application/use-cases/CreateProductUseCase.js";
 import { DeactivateProductUseCase } from "../application/use-cases/DeactivateProductUseCase.js";
 import { DeleteProductUseCase } from "../application/use-cases/DeleteProductUseCase.js";
@@ -18,6 +21,7 @@ import { CloudflareR2ProductImageStorageService } from "./storage/CloudflareR2Pr
 export interface ProductUseCases {
   createProductUseCase: CreateProductUseCase;
   listProductsUseCase: ListProductsUseCase;
+  getPatientCatalogUseCase: GetPatientCatalogUseCase;
   getProductByIdUseCase: GetProductByIdUseCase;
   updateProductUseCase: UpdateProductUseCase;
   deleteProductUseCase: DeleteProductUseCase;
@@ -34,6 +38,8 @@ export function makeProductUseCases(prisma: PrismaService): ProductUseCases {
   const transactionManager = new PrismaTransactionManager(prisma);
   const organizationRepository = new PrismaOrganizationRepository(transactionManager);
   const productRepository = new PrismaProductRepository(transactionManager);
+  const patientRepository = new PrismaPatientRepository(transactionManager);
+  const prescriptionRepository = new PrismaPatientPrescriptionRepository(transactionManager);
   const coverImageStorage = new CloudflareR2ProductImageStorageService({
     accountId: env.R2_ACCOUNT_ID,
     accessKeyId: env.R2_ACCESS_KEY_ID,
@@ -49,6 +55,11 @@ export function makeProductUseCases(prisma: PrismaService): ProductUseCases {
       unitOfWork: transactionManager,
     }),
     listProductsUseCase: new ListProductsUseCase(productRepository),
+    getPatientCatalogUseCase: new GetPatientCatalogUseCase({
+      productRepository,
+      patientRepository,
+      catalogAccessRepository: prescriptionRepository,
+    }),
     getProductByIdUseCase: new GetProductByIdUseCase(productRepository),
     updateProductUseCase: new UpdateProductUseCase({
       productRepository,

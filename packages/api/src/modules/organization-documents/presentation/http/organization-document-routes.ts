@@ -710,4 +710,31 @@ export async function organizationDocumentRoutes(app: FastifyInstance): Promise<
       return OrganizationDocumentPresenter.patientToHttp(output);
     },
   );
+
+  app.post(
+    "/organizations/:organizationId/patients/:patientId/revoke-access",
+    {
+      schema: {
+        tags: ["Patient Registration Approvals"],
+        summary: "Revoga o acesso do paciente (volta para WAITING_DOCUMENTS, bloqueia o catálogo).",
+        params: patientDocumentApprovalsParamsJsonSchema,
+        response: {
+          200: patientResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientDocumentApprovalsParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.revokePatientAccessUseCase.execute(params.data);
+
+      return OrganizationDocumentPresenter.patientToHttp(output);
+    },
+  );
 }

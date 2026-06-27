@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BRAZILIAN_UFS, isValidUf } from "@/lib/brazilian-ufs";
 import type { ApiGender, PatientRegistrationBody } from "../types";
 
 const digits = (value: string) => value.replace(/\D/g, "");
@@ -19,6 +20,12 @@ const isValidCpf = (value: string) => {
 
 const emailSchema = z.string().email("Informe um e-mail válido.");
 const petSpeciesValues = ["Canina", "Felina", "Equina", "Aviária", "Exótica", "Silvestre", "Outras"] as const;
+
+const prescriberFieldSchema = z.object({
+  name: z.string().trim(),
+  crm: z.string().trim(),
+  uf: z.string().trim(),
+});
 
 const registrationBaseSchema = z.object({
   role: z.enum(["pet_tutor", "legal_guardian", "patient"], {
@@ -73,6 +80,9 @@ const registrationBaseSchema = z.object({
   petBreed: z.string().max(100, "A raça deve ter no máximo 100 caracteres.").optional(),
   petBirthDate: z.string().optional(),
   petDiagnosis: z.string().optional(),
+  // Prescritores (médicos) atrelados ao paciente. Obrigatório para os perfis
+  // que criam um paciente (paciente e responsável legal); ignorado para tutor.
+  prescribers: z.array(prescriberFieldSchema).default([{ name: "", crm: "", uf: "" }]),
 });
 
 export const registrationSchema = registrationBaseSchema.superRefine((data, context) => {
@@ -88,6 +98,29 @@ export const registrationSchema = registrationBaseSchema.superRefine((data, cont
 
   if (data.password && data.password !== data.passwordConfirmation) {
     addIssue("passwordConfirmation", "As senhas não conferem.");
+  }
+
+  // Prescritor é obrigatório quando o cadastro cria um paciente.
+  if (data.role === "patient" || data.role === "legal_guardian") {
+    if (data.prescribers.length === 0) {
+      context.addIssue({ code: "custom", message: "Adicione ao menos um prescritor.", path: ["prescribers"] });
+    }
+
+    data.prescribers.forEach((prescriber, index) => {
+      if (!prescriber.name || prescriber.name.trim().length < 3) {
+        context.addIssue({
+          code: "custom",
+          message: "Informe o nome do médico prescritor.",
+          path: ["prescribers", index, "name"],
+        });
+      }
+      if (!prescriber.crm || prescriber.crm.trim().length === 0) {
+        context.addIssue({ code: "custom", message: "Informe o CRM.", path: ["prescribers", index, "crm"] });
+      }
+      if (!isValidUf(prescriber.uf)) {
+        context.addIssue({ code: "custom", message: "Selecione a UF do CRM.", path: ["prescribers", index, "uf"] });
+      }
+    });
   }
 
   if (data.role === "pet_tutor") {
@@ -203,6 +236,11 @@ export function toPatientRegistrationBody(data: RegistrationSchema): PatientRegi
   }
 
   const patient = { ...toPerson(mainPerson), underPrivileged: data.underPrivileged };
+  const prescribers = data.prescribers.map((prescriber) => ({
+    fullName: prescriber.name.trim(),
+    crm: prescriber.crm.trim(),
+    crmState: prescriber.uf.trim().toUpperCase(),
+  }));
 
   if (data.role === "legal_guardian") {
     return {
@@ -215,8 +253,9 @@ export function toPatientRegistrationBody(data: RegistrationSchema): PatientRegi
         gender: data.guardianGender,
       }),
       patient,
+      prescribers,
     };
   }
 
-  return { registrationType: "Patient", user, patient };
+  return { registrationType: "Patient", user, patient, prescribers };
 }

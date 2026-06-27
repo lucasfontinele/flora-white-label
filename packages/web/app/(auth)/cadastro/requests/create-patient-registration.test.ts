@@ -12,6 +12,7 @@ const body: PatientRegistrationBody = {
     gender: "F",
     underPrivileged: false,
   },
+  prescribers: [{ fullName: "Dra. Helena Costa", crm: "123456", crmState: "SP" }],
 };
 
 const response = {

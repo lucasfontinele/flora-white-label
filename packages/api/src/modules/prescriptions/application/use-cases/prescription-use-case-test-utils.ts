@@ -10,10 +10,13 @@ import { Gender } from "../../../../shared/domain/enums/Gender.js";
 import { Document } from "../../../../shared/domain/value-objects/Document.js";
 import type { Product } from "../../../products/domain/entities/Product.js";
 import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
+import type { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
 import { PatientPrescription } from "../../domain/entities/PatientPrescription.js";
 import type { PrescriptionItem } from "../../domain/entities/PrescriptionItem.js";
+import { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import type {
+  PatientCatalogAccess,
   PatientPrescriptionReadModel,
   PatientPrescriptionRepository,
   PrescriptionItemReadModel,
@@ -264,17 +267,39 @@ export class InMemoryPatientPrescriptionRepository implements PatientPrescriptio
     if (!record) return;
 
     record.items = items.map((item) => {
-      const product = this.products.get(item.productId);
+      const product = item.productId ? this.products.get(item.productId) : undefined;
       return {
         id: item.id,
+        scope: item.scope,
         productId: item.productId,
-        productName: product?.name ?? "Produto Teste",
-        productUnit: product?.unit ?? ("UNIT" as ProductUnit),
+        productName: item.productId ? (product?.name ?? "Produto Teste") : null,
+        productUnit: item.productId ? (product?.unit ?? ("UNIT" as ProductUnit)) : null,
+        category: item.category,
         allowedQuantity: item.allowedQuantity,
         period: item.period,
         notes: item.notes,
       };
     });
+  }
+
+  async findAccessByPatient(
+    organizationId: string,
+    patientId: string,
+  ): Promise<PatientCatalogAccess | null> {
+    const record = this.findRecord(organizationId, patientId);
+    if (!record) return null;
+
+    const productIds: string[] = [];
+    const categories: ProductCategory[] = [];
+    for (const item of record.items) {
+      if (item.scope === PrescriptionItemScope.Product && item.productId) {
+        productIds.push(item.productId);
+      } else if (item.scope === PrescriptionItemScope.Category && item.category) {
+        categories.push(item.category);
+      }
+    }
+
+    return { productIds, categories };
   }
 
   async delete(prescriptionId: string): Promise<void> {

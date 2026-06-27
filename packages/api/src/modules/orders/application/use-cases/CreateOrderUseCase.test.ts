@@ -12,13 +12,17 @@ import { ConflictError } from "../../../../shared/application/errors/ConflictErr
 import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
 import type { PatientPrescriptionReadModel } from "../../../prescriptions/application/repositories/PatientPrescriptionRepository.js";
+import { PrescriptionItemScope } from "../../../prescriptions/domain/enums/PrescriptionItemScope.js";
 import { PrescriptionPeriod } from "../../../prescriptions/domain/enums/PrescriptionPeriod.js";
+import { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
 import { OrderDeliveryType } from "../../domain/enums/OrderDeliveryType.js";
 import { OrderStatus } from "../../domain/enums/OrderStatus.js";
 
 interface FakePosologyItem {
-  productId: string;
+  scope?: PrescriptionItemScope;
+  productId?: string;
+  category?: ProductCategory;
   allowedQuantity: number;
   period?: PrescriptionPeriod;
 }
@@ -40,15 +44,22 @@ function buildPrescription(options?: {
     issuedAt: new Date("2026-06-01T00:00:00.000Z"),
     validUntil,
     observations: null,
-    items: items.map((item, index) => ({
-      id: `item-${index}`,
-      productId: item.productId,
-      productName: `Product ${item.productId}`,
-      productUnit: ProductUnit.Unit,
-      allowedQuantity: item.allowedQuantity,
-      period: item.period ?? PrescriptionPeriod.Monthly,
-      notes: null,
-    })),
+    items: items.map((item, index) => {
+      const scope = item.scope ?? PrescriptionItemScope.Product;
+      const isProduct = scope === PrescriptionItemScope.Product;
+      const productId = item.productId ?? "product-1";
+      return {
+        id: `item-${index}`,
+        scope,
+        productId: isProduct ? productId : null,
+        productName: isProduct ? `Product ${productId}` : null,
+        productUnit: isProduct ? ProductUnit.Unit : null,
+        category: isProduct ? null : (item.category ?? null),
+        allowedQuantity: item.allowedQuantity,
+        period: item.period ?? PrescriptionPeriod.Monthly,
+        notes: null,
+      };
+    }),
     createdAt: new Date("2026-06-01T00:00:00.000Z"),
     updatedAt: new Date("2026-06-01T00:00:00.000Z"),
   };
@@ -241,6 +252,58 @@ describe("CreateOrderUseCase", () => {
         patientId: "patient-1",
         deliveryType: OrderDeliveryType.Correios,
         items: [{ productId: "product-1", quantity: 4 }],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("allows a product covered by a category-scoped posology line", async () => {
+    const { useCase } = buildUseCase({
+      products: [
+        fakeProduct({ id: "oleo-1", priceInCents: 8000, category: ProductCategory.Oil }),
+      ],
+      prescription: buildPrescription({
+        items: [
+          { scope: PrescriptionItemScope.Category, category: ProductCategory.Oil, allowedQuantity: 10 },
+        ],
+      }),
+    });
+
+    const order = await useCase.execute({
+      organizationId: "org-1",
+      patientId: "patient-1",
+      deliveryType: OrderDeliveryType.Correios,
+      items: [{ productId: "oleo-1", quantity: 2 }],
+    });
+
+    expect(order.itemsAmount).toBe(2);
+  });
+
+  it("rejects when the category allowance is exceeded across the category", async () => {
+    const orderRepository = new InMemoryOrderRepository();
+    orderRepository.consumptionByCategory.set(ProductCategory.Oil, 8);
+    const { useCase } = buildUseCase({
+      orderRepository,
+      products: [
+        fakeProduct({ id: "oleo-1", priceInCents: 8000, category: ProductCategory.Oil }),
+        fakeProduct({ id: "oleo-2", priceInCents: 9000, category: ProductCategory.Oil }),
+      ],
+      prescription: buildPrescription({
+        items: [
+          { scope: PrescriptionItemScope.Category, category: ProductCategory.Oil, allowedQuantity: 10 },
+        ],
+      }),
+    });
+
+    // 8 already used + (2 + 1) requested across the category = 11 > 10 allowed.
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        deliveryType: OrderDeliveryType.Correios,
+        items: [
+          { productId: "oleo-1", quantity: 2 },
+          { productId: "oleo-2", quantity: 1 },
+        ],
       }),
     ).rejects.toBeInstanceOf(ConflictError);
   });

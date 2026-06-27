@@ -3,6 +3,7 @@ import { ConflictError } from "../../../../shared/application/errors/ConflictErr
 import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
 import { PatientStatus } from "../../../patients/domain/enums/PatientStatus.js";
 import { InMemoryPatientPrescriptionRepository } from "../../../prescriptions/application/use-cases/prescription-use-case-test-utils.js";
+import { PrescriptionItemScope } from "../../../prescriptions/domain/enums/PrescriptionItemScope.js";
 import { PrescriptionPeriod } from "../../../prescriptions/domain/enums/PrescriptionPeriod.js";
 import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
 import { DocumentApprovalStatus } from "../../domain/enums/DocumentApprovalStatus.js";
@@ -39,9 +40,11 @@ function makeSut(variant: PrescriptionVariant = "valid") {
           : [
               {
                 id: "item-1",
+                scope: PrescriptionItemScope.Product,
                 productId: "product-1",
                 productName: "Flor CBD",
                 productUnit: ProductUnit.Gram,
+                category: null,
                 allowedQuantity: 120,
                 period: PrescriptionPeriod.Annual,
                 notes: null,

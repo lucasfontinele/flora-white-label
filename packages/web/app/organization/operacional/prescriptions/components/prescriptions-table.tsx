@@ -120,7 +120,7 @@ export function PrescriptionsTable({
                       </Badge>
                       <div className="mt-1 text-xs text-[var(--text-tertiary)]">
                         {prescription.items.length}{" "}
-                        {prescription.items.length === 1 ? "produto" : "produtos"} na posologia
+                        {prescription.items.length === 1 ? "item" : "itens"} na posologia
                       </div>
                     </>
                   ) : (

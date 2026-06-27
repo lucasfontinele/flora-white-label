@@ -5,7 +5,9 @@ import type {
 } from "../../../patients/application/repositories/PatientRepository.js";
 import type { Product } from "../../../products/domain/entities/Product.js";
 import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
+import { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import type {
+  PatientCatalogAccess,
   PatientPrescriptionReadModel,
   PatientPrescriptionRepository,
 } from "../../../prescriptions/application/repositories/PatientPrescriptionRepository.js";
@@ -35,11 +37,15 @@ export function fakeProduct(input: {
   id: string;
   priceInCents: number;
   isActive?: boolean;
+  name?: string;
+  category?: ProductCategory;
 }): Product {
   return {
     id: input.id,
+    name: input.name ?? `Product ${input.id}`,
     priceInCents: input.priceInCents,
     isActive: input.isActive ?? true,
+    category: input.category ?? ProductCategory.Flower,
   } as unknown as Product;
 }
 
@@ -100,6 +106,7 @@ export class InMemoryOrderRepository implements OrderRepository {
   // Pre-recorded consumption per product, used to drive posology enforcement
   // tests without modelling the full order date window.
   readonly consumptionByProduct = new Map<string, number>();
+  readonly consumptionByCategory = new Map<string, number>();
   createCalls = 0;
   saveCalls = 0;
 
@@ -145,6 +152,18 @@ export class InMemoryOrderRepository implements OrderRepository {
     void from;
     void to;
     return this.consumptionByProduct.get(productId) ?? 0;
+  }
+
+  async sumCategoryQuantityInRange(
+    _organizationId: string,
+    _patientId: string,
+    category: ProductCategory,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    void from;
+    void to;
+    return this.consumptionByCategory.get(category) ?? 0;
   }
 
   async create(order: Order): Promise<OrderReadModel> {
@@ -279,6 +298,10 @@ export class FakePrescriptionRepository implements PatientPrescriptionRepository
     patientId: string,
   ): Promise<PatientPrescriptionReadModel | null> {
     return this.byPatient.get(`${organizationId}:${patientId}`) ?? null;
+  }
+
+  async findAccessByPatient(): Promise<PatientCatalogAccess | null> {
+    throw new Error("Method not implemented.");
   }
 
   async findByPatient(): Promise<never> {

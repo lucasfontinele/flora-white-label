@@ -12,6 +12,9 @@ import {
   listProductsQuerySchema,
   organizationProductParamsJsonSchema,
   organizationProductParamsSchema,
+  patientCatalogParamsJsonSchema,
+  patientCatalogParamsSchema,
+  patientCatalogResponseSchema,
   productListResponseSchema,
   productParamsJsonSchema,
   productParamsSchema,
@@ -149,6 +152,36 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
 
       return {
         data: await Promise.all(output.data.map((product) => presentProduct(product))),
+      };
+    },
+  );
+
+  app.get(
+    "/organizations/:organizationId/patients/:patientId/catalog",
+    {
+      schema: {
+        tags: ["Organization Products"],
+        summary:
+          "Catálogo visível ao paciente (produtos liberados pela posologia) + categorias para filtro.",
+        params: patientCatalogParamsJsonSchema,
+        response: {
+          200: patientCatalogResponseSchema,
+          400: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = patientCatalogParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return sendValidationError(reply, "Invalid request params.");
+      }
+
+      const output = await useCases.getPatientCatalogUseCase.execute(params.data);
+
+      return {
+        categories: output.categories,
+        products: await Promise.all(output.products.map((product) => presentProduct(product))),
       };
     },
   );

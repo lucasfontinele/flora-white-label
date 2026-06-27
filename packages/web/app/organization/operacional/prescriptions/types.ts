@@ -7,11 +7,15 @@ export const PRESCRIPTION_PERIOD_LABELS: Record<PrescriptionPeriod, string> = {
   ANNUAL: "Anual",
 };
 
+export type PrescriptionItemScope = "PRODUCT" | "CATEGORY";
+
 export type PrescriptionItem = {
   id: string;
-  productId: string;
-  productName: string;
-  productUnit: string;
+  scope: PrescriptionItemScope;
+  productId: string | null;
+  productName: string | null;
+  productUnit: string | null;
+  category: string | null;
   allowedQuantity: number;
   period: PrescriptionPeriod;
   notes: string | null;
@@ -40,9 +44,12 @@ export type GetPrescriptionResponse = {
   prescription: Prescription | null;
 };
 
-// One posology line of the write body.
+// One posology line of the write body. A line is scoped either to a specific
+// product (productId) or to a whole category (category).
 export type PrescriptionItemWriteBody = {
-  productId: string;
+  scope: PrescriptionItemScope;
+  productId: string | null;
+  category: string | null;
   allowedQuantity: number;
   period: PrescriptionPeriod;
   notes: string | null;

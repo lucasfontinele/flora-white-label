@@ -7,6 +7,8 @@ import { genderFromCode } from "../../../../shared/domain/enums/Gender.js";
 import type { GuardianRepository } from "../../../guardians/application/repositories/GuardianRepository.js";
 import { Guardian } from "../../../guardians/domain/entities/Guardian.js";
 import type { OrganizationRepository } from "../../../organizations/application/repositories/OrganizationRepository.js";
+import { Prescriber } from "../../../prescribers/domain/entities/Prescriber.js";
+import type { PrescriberRepository } from "../../../prescribers/application/repositories/PrescriberRepository.js";
 import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import { User } from "../../../users/domain/entities/User.js";
 import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
@@ -38,12 +40,19 @@ export interface PatientRegistrationPatientInput {
   underPrivileged: boolean;
 }
 
+export interface PatientRegistrationPrescriberInput {
+  fullName: string;
+  crm: string;
+  crmState: string;
+}
+
 export type CreatePatientRegistrationInput =
   | {
       organizationId: string;
       registrationType: RegistrationType.Patient;
       user: PatientRegistrationUserInput;
       patient: PatientRegistrationPatientInput;
+      prescribers: PatientRegistrationPrescriberInput[];
     }
   | {
       organizationId: string;
@@ -51,6 +60,7 @@ export type CreatePatientRegistrationInput =
       user: PatientRegistrationUserInput;
       guardian: PatientRegistrationGuardianInput;
       patient: PatientRegistrationPatientInput;
+      prescribers: PatientRegistrationPrescriberInput[];
     }
   | {
       organizationId: string;
@@ -71,6 +81,7 @@ export interface CreatePatientRegistrationDependencies {
   userRepository: UserRepository;
   guardianRepository: GuardianRepository;
   patientRepository: PatientRepository;
+  prescriberRepository: PrescriberRepository;
   hashService: HashService;
   unitOfWork: UnitOfWork;
 }
@@ -108,6 +119,7 @@ export class CreatePatientRegistrationUseCase {
   ): Promise<CreatePatientRegistrationOutput> {
     const patientDocument = await this.ensureUniquePatientDocument(organizationId, input.patient.document);
     const patient = this.makePatient(organizationId, input.patient, patientDocument);
+    const prescribers = this.makePrescribers(organizationId, patient.id, input.prescribers);
     const user = await this.makeUser({
       organizationId,
       email,
@@ -118,6 +130,7 @@ export class CreatePatientRegistrationUseCase {
 
     await this.deps.unitOfWork.execute(async () => {
       await this.deps.patientRepository.create(patient);
+      await this.createPrescribers(prescribers);
       await this.deps.userRepository.create(user);
     });
 
@@ -144,6 +157,7 @@ export class CreatePatientRegistrationUseCase {
     const patientDocument = await this.ensureUniquePatientDocument(organizationId, input.patient.document);
     const guardian = this.makeGuardian(organizationId, input.guardian, guardianDocument);
     const patient = this.makePatient(organizationId, input.patient, patientDocument, guardian.id);
+    const prescribers = this.makePrescribers(organizationId, patient.id, input.prescribers);
     const user = await this.makeUser({
       organizationId,
       email,
@@ -155,6 +169,7 @@ export class CreatePatientRegistrationUseCase {
     await this.deps.unitOfWork.execute(async () => {
       await this.deps.guardianRepository.create(guardian);
       await this.deps.patientRepository.create(patient);
+      await this.createPrescribers(prescribers);
       await this.deps.userRepository.create(user);
     });
 
@@ -236,6 +251,28 @@ export class CreatePatientRegistrationUseCase {
       gender: genderFromCode(input.gender),
       underPrivileged: input.underPrivileged,
     });
+  }
+
+  private makePrescribers(
+    organizationId: string,
+    patientId: string,
+    inputs: PatientRegistrationPrescriberInput[],
+  ): Prescriber[] {
+    return inputs.map((prescriber) =>
+      Prescriber.create({
+        organizationId,
+        patientId,
+        fullName: prescriber.fullName,
+        crm: prescriber.crm,
+        crmState: prescriber.crmState,
+      }),
+    );
+  }
+
+  private async createPrescribers(prescribers: Prescriber[]): Promise<void> {
+    for (const prescriber of prescribers) {
+      await this.deps.prescriberRepository.create(prescriber);
+    }
   }
 
   private makeGuardian(

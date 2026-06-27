@@ -5,6 +5,7 @@ export const associatedNav: Array<{ label: string; href: string; icon: IconName 
   { label: "Pedidos", href: "/orders", icon: "package" },
   { label: "Catálogo", href: "/catalog", icon: "book-open" },
   { label: "Limites", href: "/limites", icon: "gauge" },
+  { label: "Prescritores", href: "/prescritores", icon: "id-card" },
   { label: "Documentos", href: "/documents", icon: "file-text" },
   { label: "Perfil", href: "/profile", icon: "user" },
 ];

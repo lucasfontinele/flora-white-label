@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
+import { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import { PrescriptionPeriod } from "../../domain/enums/PrescriptionPeriod.js";
 import type { OrderConsumptionRepository } from "../repositories/OrderConsumptionRepository.js";
 import { GetPatientPurchaseLimitsUseCase } from "./GetPatientPurchaseLimitsUseCase.js";
@@ -7,9 +9,14 @@ import { InMemoryPatientPrescriptionRepository } from "./prescription-use-case-t
 
 class FakeOrderConsumptionRepository implements OrderConsumptionRepository {
   readonly consumption = new Map<string, number>();
+  readonly categoryConsumption = new Map<string, number>();
 
   set(productId: string, value: number): void {
     this.consumption.set(productId, value);
+  }
+
+  setCategory(category: ProductCategory, value: number): void {
+    this.categoryConsumption.set(category, value);
   }
 
   async sumProductQuantityInRange(
@@ -18,6 +25,14 @@ class FakeOrderConsumptionRepository implements OrderConsumptionRepository {
     productId: string,
   ): Promise<number> {
     return this.consumption.get(productId) ?? 0;
+  }
+
+  async sumCategoryQuantityInRange(
+    _organizationId: string,
+    _patientId: string,
+    category: ProductCategory,
+  ): Promise<number> {
+    return this.categoryConsumption.get(category) ?? 0;
   }
 }
 
@@ -53,9 +68,11 @@ describe("GetPatientPurchaseLimitsUseCase", () => {
       items: [
         {
           id: "item-1",
+          scope: PrescriptionItemScope.Product,
           productId: "flor-1",
           productName: "Flor CBD",
           productUnit: ProductUnit.Gram,
+          category: null,
           allowedQuantity: 120,
           period: PrescriptionPeriod.Annual,
           notes: "Vaporizar",
@@ -79,6 +96,41 @@ describe("GetPatientPurchaseLimitsUseCase", () => {
     });
   });
 
+  it("computes used from category consumption for category-scoped items", async () => {
+    const { prescriptionRepository, orderConsumptionRepository, useCase } = makeSut();
+    prescriptionRepository.seed({
+      id: "presc-1",
+      organizationId: "org-1",
+      patientId: "patient-1",
+      validUntil: new Date("2999-01-01T00:00:00.000Z"),
+      items: [
+        {
+          id: "item-1",
+          scope: PrescriptionItemScope.Category,
+          productId: null,
+          productName: null,
+          productUnit: null,
+          category: ProductCategory.Oil,
+          allowedQuantity: 12,
+          period: PrescriptionPeriod.Annual,
+          notes: null,
+        },
+      ],
+    });
+    orderConsumptionRepository.setCategory(ProductCategory.Oil, 4);
+
+    const output = await useCase.execute({ organizationId: "org-1", patientId: "patient-1" });
+
+    expect(output.items[0]).toMatchObject({
+      scope: PrescriptionItemScope.Category,
+      category: ProductCategory.Oil,
+      productId: null,
+      allowedQuantity: 12,
+      used: 4,
+      remaining: 8,
+    });
+  });
+
   it("never returns a negative remaining and flags expired prescriptions", async () => {
     const { prescriptionRepository, orderConsumptionRepository, useCase } = makeSut();
     prescriptionRepository.seed({
@@ -89,9 +141,11 @@ describe("GetPatientPurchaseLimitsUseCase", () => {
       items: [
         {
           id: "item-1",
+          scope: PrescriptionItemScope.Product,
           productId: "oleo-1",
           productName: "Óleo",
           productUnit: ProductUnit.Milliliter,
+          category: null,
           allowedQuantity: 2,
           period: PrescriptionPeriod.Monthly,
           notes: null,

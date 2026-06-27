@@ -18,6 +18,11 @@ import type {
 import { Organization } from "../../../organizations/domain/entities/Organization.js";
 import { Cnae } from "../../../organizations/domain/value-objects/Cnae.js";
 import { Cnpj } from "../../../organizations/domain/value-objects/Cnpj.js";
+import type {
+  PrescriberReadModel,
+  PrescriberRepository,
+} from "../../../prescribers/application/repositories/PrescriberRepository.js";
+import type { Prescriber } from "../../../prescribers/domain/entities/Prescriber.js";
 import type { UserRepository } from "../../../users/application/repositories/UserRepository.js";
 import type { User } from "../../../users/domain/entities/User.js";
 import { UserProfile } from "../../../users/domain/enums/UserProfile.js";
@@ -206,6 +211,60 @@ class InMemoryPatientRepository implements PatientRepository {
   }
 }
 
+class InMemoryPrescriberRepository implements PrescriberRepository {
+  readonly prescribers: Prescriber[] = [];
+
+  constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
+
+  async findById(): Promise<Prescriber | null> {
+    throw new Error("Method not implemented.");
+  }
+
+  async findByPatient(
+    organizationId: string,
+    patientId: string,
+  ): Promise<PrescriberReadModel[]> {
+    return this.prescribers
+      .filter(
+        (prescriber) =>
+          prescriber.organizationId === organizationId && prescriber.patientId === patientId,
+      )
+      .map((prescriber) => ({
+        id: prescriber.id,
+        organizationId: prescriber.organizationId,
+        patientId: prescriber.patientId,
+        fullName: prescriber.fullName,
+        crm: prescriber.crm,
+        crmState: prescriber.crmState,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+  }
+
+  async create(prescriber: Prescriber): Promise<PrescriberReadModel> {
+    expect(this.unitOfWork.inTransaction).toBe(true);
+    this.prescribers.push(prescriber);
+    return {
+      id: prescriber.id,
+      organizationId: prescriber.organizationId,
+      patientId: prescriber.patientId,
+      fullName: prescriber.fullName,
+      crm: prescriber.crm,
+      crmState: prescriber.crmState,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
+  async save(): Promise<PrescriberReadModel> {
+    throw new Error("Method not implemented.");
+  }
+
+  async delete(): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+}
+
 class FakeHashService implements HashService {
   readonly hashCalls: string[] = [];
 
@@ -226,12 +285,14 @@ function makeSut() {
   const userRepository = new InMemoryUserRepository(unitOfWork);
   const guardianRepository = new InMemoryGuardianRepository(unitOfWork);
   const patientRepository = new InMemoryPatientRepository(unitOfWork);
+  const prescriberRepository = new InMemoryPrescriberRepository(unitOfWork);
 
   const useCase = new CreatePatientRegistrationUseCase({
     organizationRepository,
     userRepository,
     guardianRepository,
     patientRepository,
+    prescriberRepository,
     hashService,
     unitOfWork,
   });
@@ -244,6 +305,7 @@ function makeSut() {
     userRepository,
     guardianRepository,
     patientRepository,
+    prescriberRepository,
   };
 }
 
@@ -271,6 +333,7 @@ function patientInput(
       underPrivileged: false,
       ...overrides,
     },
+    prescribers: [{ fullName: "Dra. Helena Costa", crm: "12345", crmState: "SP" }],
   };
 }
 
@@ -304,6 +367,7 @@ function legalGuardianInput(
       underPrivileged: true,
       ...overrides.patient,
     },
+    prescribers: [{ fullName: "Dr. Paulo Lima", crm: "98765", crmState: "RJ" }],
   };
 }
 
@@ -350,6 +414,11 @@ describe("CreatePatientRegistrationUseCase", () => {
     expect(JSON.stringify(output)).not.toContain("secret123");
     expect(sut.hashService.hashCalls).toEqual(["secret123"]);
     expect(sut.unitOfWork.executions).toBe(1);
+
+    const prescriber = first(sut.prescriberRepository.prescribers);
+    expect(prescriber.patientId).toBe(patient.id);
+    expect(prescriber.crm).toBe("12345");
+    expect(prescriber.crmState).toBe("SP");
   });
 
   it("fails Patient registration when email already exists in the same organization", async () => {
@@ -395,6 +464,10 @@ describe("CreatePatientRegistrationUseCase", () => {
     expect(patient.guardianId).toBe(guardian.id);
     expect(patient.underPrivileged).toBe(true);
     expect(sut.unitOfWork.executions).toBe(1);
+
+    const prescriber = first(sut.prescriberRepository.prescribers);
+    expect(prescriber.patientId).toBe(patient.id);
+    expect(prescriber.crmState).toBe("RJ");
   });
 
   it("fails LegalGuardian registration when guardian document already exists", async () => {

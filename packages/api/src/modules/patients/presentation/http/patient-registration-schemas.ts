@@ -1,7 +1,24 @@
 import { z } from "zod";
+import { isValidBrazilianState } from "../../../addresses/domain/brazilian-states.js";
 import { RegistrationType } from "../../domain/enums/RegistrationType.js";
 
 const genderCodeSchema = z.enum(["M", "F", "O", "N/A"]);
+
+const prescriberSchema = z
+  .object({
+    fullName: z.string().trim().min(1, "prescriber fullName is required."),
+    crm: z.string().trim().min(1, "prescriber crm is required."),
+    crmState: z
+      .string()
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .refine((value) => isValidBrazilianState(value), "prescriber crmState must be a valid UF."),
+  })
+  .strict();
+
+const prescribersSchema = z
+  .array(prescriberSchema)
+  .min(1, "At least one prescriber is required.");
 
 const userSchema = z
   .object({
@@ -30,6 +47,7 @@ const patientRegistrationBodySchema = z
     registrationType: z.literal(RegistrationType.Patient),
     user: userSchema,
     patient: patientSchema,
+    prescribers: prescribersSchema,
   })
   .strict();
 
@@ -39,6 +57,7 @@ const legalGuardianRegistrationBodySchema = z
     user: userSchema,
     guardian: personSchema,
     patient: patientSchema,
+    prescribers: prescribersSchema,
   })
   .strict();
 
@@ -97,6 +116,23 @@ const patientJsonSchema = {
   },
 } as const;
 
+const prescriberJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["fullName", "crm", "crmState"],
+  properties: {
+    fullName: { type: "string", minLength: 1 },
+    crm: { type: "string", minLength: 1 },
+    crmState: { type: "string", minLength: 2, maxLength: 2 },
+  },
+} as const;
+
+const prescribersJsonSchema = {
+  type: "array",
+  minItems: 1,
+  items: prescriberJsonSchema,
+} as const;
+
 export const patientRegistrationParamsJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -117,21 +153,23 @@ export const patientRegistrationBodyJsonSchema = {
   oneOf: [
     {
       type: "object",
-      required: ["registrationType", "user", "patient"],
+      required: ["registrationType", "user", "patient", "prescribers"],
       properties: {
         registrationType: { const: RegistrationType.Patient },
         user: userJsonSchema,
         patient: patientJsonSchema,
+        prescribers: prescribersJsonSchema,
       },
     },
     {
       type: "object",
-      required: ["registrationType", "user", "guardian", "patient"],
+      required: ["registrationType", "user", "guardian", "patient", "prescribers"],
       properties: {
         registrationType: { const: RegistrationType.LegalGuardian },
         user: userJsonSchema,
         guardian: personJsonSchema,
         patient: patientJsonSchema,
+        prescribers: prescribersJsonSchema,
       },
     },
     {

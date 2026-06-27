@@ -4,6 +4,7 @@ import { Argon2HashService } from "../../../shared/infrastructure/cryptography/A
 import { PrismaUserRepository } from "../../users/infrastructure/prisma/PrismaUserRepository.js";
 import { PrismaGuardianRepository } from "../../guardians/infrastructure/prisma/PrismaGuardianRepository.js";
 import { PrismaOrganizationRepository } from "../../organizations/infrastructure/prisma/PrismaOrganizationRepository.js";
+import { PrismaPrescriberRepository } from "../../prescribers/infrastructure/prisma/PrismaPrescriberRepository.js";
 import { PrismaPatientRepository } from "./prisma/PrismaPatientRepository.js";
 import { CreatePatientRegistrationUseCase } from "../application/use-cases/CreatePatientRegistrationUseCase.js";
 
@@ -23,6 +24,7 @@ export function makeCreatePatientRegistrationUseCase(
     userRepository: new PrismaUserRepository(transactionManager),
     guardianRepository: new PrismaGuardianRepository(transactionManager),
     patientRepository: new PrismaPatientRepository(transactionManager),
+    prescriberRepository: new PrismaPrescriberRepository(transactionManager),
     hashService: new Argon2HashService(),
     unitOfWork: transactionManager,
   });

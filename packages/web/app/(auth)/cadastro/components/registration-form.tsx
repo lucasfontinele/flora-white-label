@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm, type FieldErrors, type UseFormRegisterReturn } from "react-hook-form";
+import {
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldErrors,
+  type UseFormRegisterReturn,
+} from "react-hook-form";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,10 +21,19 @@ import { getApiErrorMessage } from "@/lib/http";
 import { cn } from "@/lib/utils";
 import { createPatientRegistration } from "../requests/create-patient-registration";
 import { getAddressByCep } from "../requests/get-address-by-cep";
+import { BRAZILIAN_UFS } from "@/lib/brazilian-ufs";
 import { registrationSchema, toPatientRegistrationBody, type RegistrationSchema } from "../schemas/registration-schema";
 import { useRegistrationDraftStore } from "../stores/registration-draft-store";
 
-type StepKind = "profile" | "personal" | "access" | "pet" | "contact" | "address" | "legalGuardian";
+type StepKind =
+  | "profile"
+  | "personal"
+  | "prescriber"
+  | "access"
+  | "pet"
+  | "contact"
+  | "address"
+  | "legalGuardian";
 
 type RegistrationStep = {
   description: string;
@@ -36,6 +51,7 @@ const personalStepFields: Array<keyof RegistrationSchema> = [
   "gender",
   "underPrivileged",
 ];
+const prescriberStepFields: Array<keyof RegistrationSchema> = ["prescribers"];
 const accessStepFields: Array<keyof RegistrationSchema> = ["email", "password", "passwordConfirmation"];
 const contactStepFields: Array<keyof RegistrationSchema> = ["phone"];
 const addressStepFields: Array<keyof RegistrationSchema> = [
@@ -87,6 +103,12 @@ const patientSteps: RegistrationStep[] = [
     title: "Dados pessoais",
     description: "Identificação inicial do cadastro.",
     fields: personalStepFields,
+  },
+  {
+    kind: "prescriber",
+    title: "Prescritor",
+    description: "Médico(s) responsável(is) pela prescrição do paciente.",
+    fields: prescriberStepFields,
   },
   accessStep,
   { kind: "contact", title: "Contato", description: "Canais usados pela associação.", fields: contactStepFields },
@@ -224,6 +246,7 @@ const defaultValues: RegistrationFormData = {
   petBreed: "",
   petBirthDate: "",
   petDiagnosis: "",
+  prescribers: [{ name: "", crm: "", uf: "" }],
 };
 
 function getStepCountForRole(role: RegistrationFormData["role"]) {
@@ -257,6 +280,7 @@ export function RegistrationForm({ organizationId }: { organizationId?: string }
   const persistStep = useRegistrationDraftStore((state) => state.setStep);
 
   const {
+    control,
     formState: { errors, isSubmitting },
     handleSubmit,
     register,
@@ -541,6 +565,10 @@ export function RegistrationForm({ organizationId }: { organizationId?: string }
         />
       ) : null}
 
+      {currentStep.kind === "prescriber" ? (
+        <PrescriberStep control={control} errors={errors} register={register} />
+      ) : null}
+
       {currentStep.kind === "access" ? <AccessStep errors={errors} register={register} /> : null}
 
       {currentStep.kind === "pet" ? (
@@ -798,6 +826,93 @@ function AccessStep({
             {...register("passwordConfirmation")}
           />
         </Field>
+      </div>
+    </Card>
+  );
+}
+
+function PrescriberStep({
+  control,
+  errors,
+  register,
+}: {
+  control: Control<RegistrationFormData>;
+  errors: FieldErrors<RegistrationFormData>;
+  register: ReturnType<typeof useForm<RegistrationFormData>>["register"];
+}) {
+  const { fields, append, remove } = useFieldArray({ control, name: "prescribers" });
+  const prescriberErrors = errors.prescribers;
+  const rootError = Array.isArray(prescriberErrors) ? undefined : prescriberErrors?.message;
+
+  return (
+    <Card className="p-5 md:p-6">
+      <div className="mb-5 flex items-start gap-3 rounded-md bg-primary-subtle p-4">
+        <Icon name="id-card" size={20} className="text-primary" />
+        <div>
+          <h3 className="font-heading">Médico prescritor</h3>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Informe o(s) médico(s) que prescreve(m) o tratamento do paciente. Cada paciente pode ter
+            mais de um prescritor.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4">
+        {fields.map((field, index) => {
+          const rowError = Array.isArray(prescriberErrors) ? prescriberErrors[index] : undefined;
+
+          return (
+            <div key={field.id} className="rounded-md border border-border bg-card p-4">
+              <div className="grid gap-4 md:grid-cols-12">
+                <Field
+                  className="md:col-span-6"
+                  error={rowError?.name?.message}
+                  label="Nome completo do médico"
+                  required
+                >
+                  <Input placeholder="Ex.: Dra. Helena Costa" {...register(`prescribers.${index}.name`)} />
+                </Field>
+                <Field className="md:col-span-4" error={rowError?.crm?.message} label="CRM" required>
+                  <Input placeholder="Número do CRM" {...register(`prescribers.${index}.crm`)} />
+                </Field>
+                <Field className="md:col-span-2" error={rowError?.uf?.message} label="UF" required>
+                  <select
+                    className="h-11 w-full rounded-md border border-input bg-card px-4 text-base shadow-xs focus:border-[var(--border-focus)]"
+                    {...register(`prescribers.${index}.uf`)}
+                  >
+                    <option value="">UF</option>
+                    {BRAZILIAN_UFS.map((uf) => (
+                      <option key={uf} value={uf}>
+                        {uf}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              {fields.length > 1 ? (
+                <div className="mt-3 flex justify-end">
+                  <Button type="button" variant="ghost" onClick={() => remove(index)}>
+                    <Icon name="trash-2" size={16} />
+                    Remover
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      {rootError ? (
+        <div className="mt-3">
+          <ErrorMessage>{rootError}</ErrorMessage>
+        </div>
+      ) : null}
+
+      <div className="mt-4">
+        <Button type="button" variant="secondary" onClick={() => append({ name: "", crm: "", uf: "" })}>
+          <Icon name="user-plus" size={16} />
+          Adicionar prescritor
+        </Button>
       </div>
     </Card>
   );

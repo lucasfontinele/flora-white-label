@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BecomePatientCallout } from "@/components/associated/become-patient-callout";
 import { PatientSelector } from "@/components/associated/patient-selector";
+import { SessionSync } from "@/components/associated/session-sync";
 import { usePatientSelection } from "@/components/associated/patient-context";
 import { OrderCard } from "@/components/domain/order-card";
 import { OrderTimeline } from "@/components/domain/order-timeline";
@@ -80,6 +81,7 @@ export function AssociatedDashboard({ organizationId }: { organizationId: string
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
+      <SessionSync />
       <PatientSelector />
 
       <BecomePatientCallout variant="banner" />

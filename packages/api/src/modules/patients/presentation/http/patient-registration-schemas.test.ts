@@ -27,15 +27,40 @@ const patient = {
   underPrivileged: false,
 };
 
+const prescribers = [{ fullName: "Dra. Helena Costa", crm: "123456", crmState: "SP" }];
+
 describe("patient registration schemas", () => {
   it("accepts Patient payloads without guardian data", () => {
     const result = patientRegistrationBodySchemaDiscriminated.safeParse({
       registrationType: RegistrationType.Patient,
       user,
       patient,
+      prescribers,
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("rejects Patient payloads without a prescriber", () => {
+    const result = patientRegistrationBodySchemaDiscriminated.safeParse({
+      registrationType: RegistrationType.Patient,
+      user,
+      patient,
+      prescribers: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a prescriber with an invalid UF", () => {
+    const result = patientRegistrationBodySchemaDiscriminated.safeParse({
+      registrationType: RegistrationType.Patient,
+      user,
+      patient,
+      prescribers: [{ fullName: "Dr. X", crm: "1", crmState: "XX" }],
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("rejects Patient payloads with guardian data", () => {
@@ -55,6 +80,7 @@ describe("patient registration schemas", () => {
       user,
       guardian,
       patient: { ...patient, underPrivileged: true },
+      prescribers,
     });
 
     expect(result.success).toBe(true);
@@ -118,13 +144,22 @@ describe("patient registration body JSON schema (Fastify/AJV layer)", () => {
         user,
         guardian,
         patient: { ...patient, underPrivileged: true },
+        prescribers,
       }),
     ).resolves.toBe(200);
   });
 
   it("accepts Patient and PetTutor bodies", async () => {
-    await expect(validate({ registrationType: RegistrationType.Patient, user, patient })).resolves.toBe(200);
+    await expect(
+      validate({ registrationType: RegistrationType.Patient, user, patient, prescribers }),
+    ).resolves.toBe(200);
     await expect(validate({ registrationType: RegistrationType.PetTutor, user, guardian })).resolves.toBe(200);
+  });
+
+  it("rejects a Patient body without prescribers", async () => {
+    await expect(
+      validate({ registrationType: RegistrationType.Patient, user, patient }),
+    ).resolves.toBe(400);
   });
 
   it("rejects a LegalGuardian body missing the guardian", async () => {

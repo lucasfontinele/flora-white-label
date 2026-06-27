@@ -19,7 +19,9 @@ import { UploadPatientRequiredDocumentUseCase } from "../application/use-cases/U
 import { ListOrganizationPatientsUseCase } from "../application/use-cases/ListOrganizationPatientsUseCase.js";
 import { GetPatientApprovalDetailsUseCase } from "../application/use-cases/GetPatientApprovalDetailsUseCase.js";
 import { ApprovePatientRegistrationUseCase } from "../application/use-cases/ApprovePatientRegistrationUseCase.js";
+import { RefreshPatientRegistrationStatusUseCase } from "../application/use-cases/RefreshPatientRegistrationStatusUseCase.js";
 import { RejectPatientRegistrationUseCase } from "../application/use-cases/RejectPatientRegistrationUseCase.js";
+import { RevokePatientAccessUseCase } from "../application/use-cases/RevokePatientAccessUseCase.js";
 import { PrismaOrganizationDocumentApprovalLogRepository } from "./prisma/PrismaOrganizationDocumentApprovalLogRepository.js";
 import { PrismaOrganizationDocumentPatientApprovalRepository } from "./prisma/PrismaOrganizationDocumentPatientApprovalRepository.js";
 import { PrismaOrganizationRequiredDocumentRepository } from "./prisma/PrismaOrganizationRequiredDocumentRepository.js";
@@ -42,6 +44,8 @@ export interface OrganizationDocumentUseCases {
   getPatientApprovalDetailsUseCase: GetPatientApprovalDetailsUseCase;
   approvePatientRegistrationUseCase: ApprovePatientRegistrationUseCase;
   rejectPatientRegistrationUseCase: RejectPatientRegistrationUseCase;
+  revokePatientAccessUseCase: RevokePatientAccessUseCase;
+  refreshPatientRegistrationStatusUseCase: RefreshPatientRegistrationStatusUseCase;
 }
 
 export function makeOrganizationDocumentUseCases(
@@ -144,6 +148,17 @@ export function makeOrganizationDocumentUseCases(
     }),
     rejectPatientRegistrationUseCase: new RejectPatientRegistrationUseCase({
       patientRepository,
+      unitOfWork: transactionManager,
+    }),
+    revokePatientAccessUseCase: new RevokePatientAccessUseCase({
+      patientRepository,
+      unitOfWork: transactionManager,
+    }),
+    refreshPatientRegistrationStatusUseCase: new RefreshPatientRegistrationStatusUseCase({
+      patientRepository,
+      prescriptionRepository,
+      requiredDocumentRepository,
+      approvalRepository,
       unitOfWork: transactionManager,
     }),
   };

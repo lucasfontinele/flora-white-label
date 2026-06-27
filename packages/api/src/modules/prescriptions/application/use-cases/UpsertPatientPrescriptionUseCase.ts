@@ -5,8 +5,10 @@ import type { UnitOfWork } from "../../../../shared/application/transaction/Unit
 import type { OrganizationRepository } from "../../../organizations/application/repositories/OrganizationRepository.js";
 import type { PatientRepository } from "../../../patients/application/repositories/PatientRepository.js";
 import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
+import type { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import { PatientPrescription } from "../../domain/entities/PatientPrescription.js";
 import { PrescriptionItem } from "../../domain/entities/PrescriptionItem.js";
+import { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import type { PrescriptionPeriod } from "../../domain/enums/PrescriptionPeriod.js";
 import { computePrescriptionValidUntil } from "../../domain/prescription-validity.js";
 import type {
@@ -15,7 +17,9 @@ import type {
 } from "../repositories/PatientPrescriptionRepository.js";
 
 export interface UpsertPatientPrescriptionItemInput {
-  productId: string;
+  scope: PrescriptionItemScope;
+  productId?: string | null;
+  category?: ProductCategory | null;
   allowedQuantity: number;
   period: PrescriptionPeriod;
   notes?: string | null;
@@ -62,7 +66,7 @@ export class UpsertPatientPrescriptionUseCase {
       throw new NotFoundError("Patient not found.");
     }
 
-    this.ensureNoDuplicateProducts(input.items);
+    this.ensureNoDuplicates(input.items);
     await this.ensureProductsAreSellable(input.organizationId, input.items);
 
     const existing = await this.deps.prescriptionRepository.findByPatient(
@@ -84,7 +88,9 @@ export class UpsertPatientPrescriptionUseCase {
     const items = input.items.map((item) =>
       PrescriptionItem.create({
         prescriptionId: prescription.id,
+        scope: item.scope,
         productId: item.productId,
+        category: item.category,
         allowedQuantity: item.allowedQuantity,
         period: item.period,
         notes: item.notes,
@@ -111,16 +117,27 @@ export class UpsertPatientPrescriptionUseCase {
     return saved;
   }
 
-  private ensureNoDuplicateProducts(items: UpsertPatientPrescriptionItemInput[]): void {
-    const seen = new Set<string>();
+  private ensureNoDuplicates(items: UpsertPatientPrescriptionItemInput[]): void {
+    const seenProducts = new Set<string>();
+    const seenCategories = new Set<string>();
+
     for (const item of items) {
-      const productId = item.productId.trim();
-      if (seen.has(productId)) {
-        throw new DomainValidationError(
-          "The posology cannot list the same product more than once.",
-        );
+      if (item.scope === PrescriptionItemScope.Product) {
+        const productId = item.productId?.trim() ?? "";
+        if (seenProducts.has(productId)) {
+          throw new DomainValidationError(
+            "The posology cannot list the same product more than once.",
+          );
+        }
+        seenProducts.add(productId);
+      } else if (item.category) {
+        if (seenCategories.has(item.category)) {
+          throw new DomainValidationError(
+            "The posology cannot list the same category more than once.",
+          );
+        }
+        seenCategories.add(item.category);
       }
-      seen.add(productId);
     }
   }
 
@@ -129,6 +146,10 @@ export class UpsertPatientPrescriptionUseCase {
     items: UpsertPatientPrescriptionItemInput[],
   ): Promise<void> {
     for (const item of items) {
+      if (item.scope !== PrescriptionItemScope.Product || !item.productId) {
+        continue;
+      }
+
       const product = await this.deps.productRepository.findByIdInOrganization(
         organizationId,
         item.productId,

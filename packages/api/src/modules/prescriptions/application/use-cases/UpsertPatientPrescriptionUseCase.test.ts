@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { ConflictError } from "../../../../shared/application/errors/ConflictError.js";
 import { NotFoundError } from "../../../../shared/application/errors/NotFoundError.js";
 import { DomainValidationError } from "../../../../shared/domain/errors/DomainValidationError.js";
+import { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
+import { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import { PrescriptionPeriod } from "../../domain/enums/PrescriptionPeriod.js";
 import { UpsertPatientPrescriptionUseCase } from "./UpsertPatientPrescriptionUseCase.js";
 import {
@@ -38,6 +40,7 @@ function makeSut() {
 
 const onePosologyItem = [
   {
+    scope: PrescriptionItemScope.Product,
     productId: "product-1",
     allowedQuantity: 120,
     period: PrescriptionPeriod.Annual,
@@ -122,6 +125,55 @@ describe("UpsertPatientPrescriptionUseCase", () => {
     expect(output.items).toHaveLength(0);
   });
 
+  it("creates a category-scoped posology line", async () => {
+    const { useCase } = makeSut();
+
+    const output = await useCase.execute({
+      organizationId: "org-1",
+      patientId: "patient-1",
+      issuedAt: new Date("2026-06-26T00:00:00.000Z"),
+      items: [
+        {
+          scope: PrescriptionItemScope.Category,
+          category: ProductCategory.Oil,
+          allowedQuantity: 12,
+          period: PrescriptionPeriod.Annual,
+        },
+      ],
+    });
+
+    expect(output.items).toHaveLength(1);
+    expect(output.items[0]?.scope).toBe(PrescriptionItemScope.Category);
+    expect(output.items[0]?.category).toBe(ProductCategory.Oil);
+    expect(output.items[0]?.productId).toBeNull();
+  });
+
+  it("rejects duplicate categories in the posology", async () => {
+    const { useCase } = makeSut();
+
+    await expect(
+      useCase.execute({
+        organizationId: "org-1",
+        patientId: "patient-1",
+        issuedAt: new Date("2026-06-26T00:00:00.000Z"),
+        items: [
+          {
+            scope: PrescriptionItemScope.Category,
+            category: ProductCategory.Oil,
+            allowedQuantity: 5,
+            period: PrescriptionPeriod.Monthly,
+          },
+          {
+            scope: PrescriptionItemScope.Category,
+            category: ProductCategory.Oil,
+            allowedQuantity: 10,
+            period: PrescriptionPeriod.Annual,
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(DomainValidationError);
+  });
+
   it("rejects duplicate products in the posology", async () => {
     const { useCase } = makeSut();
 
@@ -131,8 +183,18 @@ describe("UpsertPatientPrescriptionUseCase", () => {
         patientId: "patient-1",
         issuedAt: new Date("2026-06-26T00:00:00.000Z"),
         items: [
-          { productId: "product-1", allowedQuantity: 10, period: PrescriptionPeriod.Monthly },
-          { productId: "product-1", allowedQuantity: 20, period: PrescriptionPeriod.Annual },
+          {
+            scope: PrescriptionItemScope.Product,
+            productId: "product-1",
+            allowedQuantity: 10,
+            period: PrescriptionPeriod.Monthly,
+          },
+          {
+            scope: PrescriptionItemScope.Product,
+            productId: "product-1",
+            allowedQuantity: 20,
+            period: PrescriptionPeriod.Annual,
+          },
         ],
       }),
     ).rejects.toBeInstanceOf(DomainValidationError);
@@ -146,7 +208,14 @@ describe("UpsertPatientPrescriptionUseCase", () => {
         organizationId: "org-1",
         patientId: "patient-1",
         issuedAt: new Date("2026-06-26T00:00:00.000Z"),
-        items: [{ productId: "missing", allowedQuantity: 10, period: PrescriptionPeriod.Monthly }],
+        items: [
+          {
+            scope: PrescriptionItemScope.Product,
+            productId: "missing",
+            allowedQuantity: 10,
+            period: PrescriptionPeriod.Monthly,
+          },
+        ],
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
@@ -160,7 +229,14 @@ describe("UpsertPatientPrescriptionUseCase", () => {
         organizationId: "org-1",
         patientId: "patient-1",
         issuedAt: new Date("2026-06-26T00:00:00.000Z"),
-        items: [{ productId: "product-2", allowedQuantity: 10, period: PrescriptionPeriod.Monthly }],
+        items: [
+          {
+            scope: PrescriptionItemScope.Product,
+            productId: "product-2",
+            allowedQuantity: 10,
+            period: PrescriptionPeriod.Monthly,
+          },
+        ],
       }),
     ).rejects.toBeInstanceOf(ConflictError);
   });

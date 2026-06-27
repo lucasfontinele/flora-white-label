@@ -1,3 +1,4 @@
+import type { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import type { Order } from "../../domain/entities/Order.js";
 import type { OrderDeliveryType } from "../../domain/enums/OrderDeliveryType.js";
 import type { OrderStatus } from "../../domain/enums/OrderStatus.js";
@@ -47,6 +48,18 @@ export interface OrderRepository {
     organizationId: string,
     patientId: string,
     productId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number>;
+  /**
+   * Sums the quantity ordered by a patient across all products of a category
+   * within `[from, to)`, excluding cancelled orders. Used to enforce
+   * category-scoped posology limits.
+   */
+  sumCategoryQuantityInRange(
+    organizationId: string,
+    patientId: string,
+    category: ProductCategory,
     from: Date,
     to: Date,
   ): Promise<number>;

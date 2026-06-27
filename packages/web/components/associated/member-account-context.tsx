@@ -10,7 +10,7 @@ export type PatientApplicationStatus = "none" | "pending" | "approved";
 
 export type PatientApplicationDraft = {
   condition: string;
-  prescriber?: string;
+  prescriber?: { name?: string; crm?: string; uf?: string };
   hasPrescription: "sim" | "nao";
   notes?: string;
 };

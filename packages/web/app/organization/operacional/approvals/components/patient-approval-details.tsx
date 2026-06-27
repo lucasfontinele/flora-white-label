@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { formatCpf } from "@/lib/masks";
 import { PrescriptionEditor, prescriptionToFormValues } from "@/components/domain/prescription-editor";
 import { useProducts } from "../../products/queries/use-products";
-import { PRODUCT_UNIT_LABELS } from "../../products/types";
+import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABELS, PRODUCT_UNIT_LABELS } from "../../products/types";
 import { RejectReasonDialog } from "./reject-reason-dialog";
 import {
   usePatientApprovalDetails,
@@ -22,9 +22,10 @@ import {
   usePatientPrescription,
   useUpsertPatientPrescription,
 } from "../queries/use-patient-prescription";
+import { usePatientPrescribers } from "../queries/use-patient-prescribers";
 import type { PrescriptionWriteBody } from "../../prescriptions/types";
 import { documentStatusMeta, genderLabel, patientStatusMeta } from "../status-meta";
-import type { PatientDocumentApproval, RequiredDocument } from "../types";
+import type { PatientDocumentApproval, Prescriber, RequiredDocument } from "../types";
 
 type RejectTarget =
   | { kind: "registration" }
@@ -44,12 +45,16 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
   const { toast } = useToast();
   const query = usePatientApprovalDetails(organizationId, patientId);
   const prescriptionQuery = usePatientPrescription(organizationId, patientId);
+  const prescribersQuery = usePatientPrescribers(organizationId, patientId);
   const productsQuery = useProducts(organizationId);
   const upsertPrescription = useUpsertPatientPrescription(organizationId, patientId);
-  const { approveDocument, rejectDocument, approveRegistration, rejectRegistration } =
+  const { approveDocument, rejectDocument, approveRegistration, rejectRegistration, revokeAccess } =
     usePatientApprovalMutations(organizationId, patientId);
 
   const [rejectTarget, setRejectTarget] = useState<RejectTarget | null>(null);
+  // Business rule: the operator can only decide (approve/reject) after confirming
+  // they checked who prescribed the receita (the patient's prescribers).
+  const [prescriberConfirmed, setPrescriberConfirmed] = useState(false);
 
   if (query.isLoading) {
     return <DetailsSkeleton />;
@@ -95,6 +100,8 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
   const hasPosology = prescription !== null && prescription.items.length > 0;
   const prescriptionReady = prescriptionValid && hasPosology;
 
+  const prescribers = prescribersQuery.data?.data ?? [];
+
   const productOptions = (productsQuery.data?.data ?? [])
     .filter((product) => product.isActive)
     .map((product) => ({
@@ -102,6 +109,11 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
       name: product.name,
       unitLabel: PRODUCT_UNIT_LABELS[product.unit],
     }));
+
+  const categoryOptions = PRODUCT_CATEGORIES.map((category) => ({
+    value: category,
+    label: PRODUCT_CATEGORY_LABELS[category],
+  }));
 
   function handleSavePrescription(body: PrescriptionWriteBody) {
     upsertPrescription.mutate(body, {
@@ -158,6 +170,17 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
     });
   }
 
+  function handleRevokeAccess() {
+    revokeAccess.mutate(undefined, {
+      onSuccess: () =>
+        toast({
+          variant: "success",
+          title: "Acesso revogado",
+          description: `${patient.name} perdeu o acesso aos produtos e precisará reenviar a receita.`,
+        }),
+    });
+  }
+
   return (
     <div className="space-y-5 pb-20 lg:pb-0">
       <div className="flex flex-wrap items-center gap-3">
@@ -185,6 +208,31 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
               <Info label="Responsável" value={patient.guardianName ?? "Sem responsável"} />
               <Info label="Cadastrado em" value={formatDate(patient.createdAt)} />
             </dl>
+          </Card>
+
+          <Card className="p-5 md:p-6">
+            <h3 className="font-heading">Prescritor(es) da receita</h3>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Confira o(s) médico(s) que prescreveu(ram) o tratamento — nome, CRM e UF — antes de
+              decidir o cadastro.
+            </p>
+            {prescribersQuery.isLoading ? (
+              <div className="mt-4">
+                <Skeleton className="h-14 w-full" />
+              </div>
+            ) : prescribers.length === 0 ? (
+              <p className="mt-4 flex items-start gap-2 rounded-md bg-warning-subtle p-3 text-xs text-[var(--warning-600)]">
+                <Icon name="alert-triangle" size={15} className="mt-0.5 shrink-0" />
+                Nenhum prescritor cadastrado para este paciente. Verifique os dados diretamente na
+                receita antes de decidir.
+              </p>
+            ) : (
+              <ul className="mt-4 divide-y divide-border overflow-hidden rounded-md border border-border">
+                {prescribers.map((prescriber) => (
+                  <PrescriberRow key={prescriber.id} prescriber={prescriber} />
+                ))}
+              </ul>
+            )}
           </Card>
 
           <Card className="overflow-hidden">
@@ -245,6 +293,7 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
                 <PrescriptionEditor
                   key={prescription?.updatedAt ?? "new"}
                   products={productOptions}
+                  categories={categoryOptions}
                   productsLoading={productsQuery.isLoading}
                   defaultValues={prescription ? prescriptionToFormValues(prescription) : undefined}
                   pending={upsertPrescription.isPending}
@@ -279,9 +328,29 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
                         : "Adicione ao menos um produto na posologia antes de aprovar."}
                   </p>
                 ) : null}
+
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--green-600)]"
+                    checked={prescriberConfirmed}
+                    onChange={(event) => setPrescriberConfirmed(event.target.checked)}
+                  />
+                  <span className="text-sm text-[var(--text-secondary)]">
+                    Confirmo que conferi os dados do(s) prescritor(es) na receita
+                    {prescribers.length > 0 ? ` (${prescribers.length})` : ""}.
+                  </span>
+                </label>
+                {!prescriberConfirmed ? (
+                  <p className="mt-3 flex items-start gap-2 rounded-md bg-warning-subtle p-3 text-xs text-[var(--warning-600)]">
+                    <Icon name="alert-triangle" size={15} className="mt-0.5 shrink-0" />
+                    Confira e confirme os dados do prescritor antes de aprovar ou recusar o cadastro.
+                  </p>
+                ) : null}
+
                 <div className="mt-5 grid gap-3">
                   <Button
-                    disabled={!allApproved || !prescriptionReady || decisionPending}
+                    disabled={!allApproved || !prescriptionReady || !prescriberConfirmed || decisionPending}
                     onClick={handleApproveRegistration}
                   >
                     <Icon name="check" size={18} />
@@ -289,7 +358,7 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
                   </Button>
                   <Button
                     variant="danger"
-                    disabled={decisionPending}
+                    disabled={!prescriberConfirmed || decisionPending}
                     onClick={() => setRejectTarget({ kind: "registration" })}
                   >
                     <Icon name="x" size={18} />
@@ -315,6 +384,24 @@ export function PatientApprovalDetails({ organizationId, patientId, organization
                 </p>
               </div>
             )}
+
+            {patient.patientStatus === "APPROVAL" ? (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Revogar o acesso envia o paciente de volta para envio de documentos e bloqueia o
+                  catálogo até uma nova aprovação.
+                </p>
+                <Button
+                  variant="danger"
+                  className="mt-3"
+                  disabled={revokeAccess.isPending}
+                  onClick={handleRevokeAccess}
+                >
+                  <Icon name="lock" size={18} />
+                  {revokeAccess.isPending ? "Revogando..." : "Revogar acesso"}
+                </Button>
+              </div>
+            ) : null}
           </Card>
 
           <Card className="p-5 md:p-6">
@@ -412,6 +499,22 @@ function DocumentRow({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function PrescriberRow({ prescriber }: { prescriber: Prescriber }) {
+  return (
+    <li className="flex items-center gap-3 p-3">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-muted text-[var(--text-secondary)]">
+        <Icon name="id-card" size={18} />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate font-bold">{prescriber.fullName}</p>
+        <p className="text-sm text-[var(--text-secondary)]">
+          CRM {prescriber.crm}/{prescriber.crmState}
+        </p>
+      </div>
+    </li>
   );
 }
 

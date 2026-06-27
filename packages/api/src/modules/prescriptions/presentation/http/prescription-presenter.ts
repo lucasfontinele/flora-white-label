@@ -6,9 +6,11 @@ import type {
 
 export interface PrescriptionItemResponse {
   id: string;
-  productId: string;
-  productName: string;
-  productUnit: string;
+  scope: string;
+  productId: string | null;
+  productName: string | null;
+  productUnit: string | null;
+  category: string | null;
   allowedQuantity: number;
   period: string;
   notes: string | null;
@@ -28,9 +30,11 @@ export interface PrescriptionResponse {
 }
 
 export interface PurchaseLimitItemResponse {
-  productId: string;
-  productName: string;
-  unit: string;
+  scope: string;
+  productId: string | null;
+  productName: string | null;
+  category: string | null;
+  unit: string | null;
   period: string;
   allowedQuantity: number;
   used: number;
@@ -65,9 +69,11 @@ export class PrescriptionPresenter {
   static itemToHttp(item: PrescriptionItemReadModel): PrescriptionItemResponse {
     return {
       id: item.id,
+      scope: item.scope,
       productId: item.productId,
       productName: item.productName,
       productUnit: item.productUnit,
+      category: item.category,
       allowedQuantity: item.allowedQuantity,
       period: item.period,
       notes: item.notes,
@@ -81,8 +87,10 @@ export class PrescriptionPresenter {
       validUntil: limits.validUntil ? limits.validUntil.toISOString() : null,
       isExpired: limits.isExpired,
       items: limits.items.map((item) => ({
+        scope: item.scope,
         productId: item.productId,
         productName: item.productName,
+        category: item.category,
         unit: item.unit,
         period: item.period,
         allowedQuantity: item.allowedQuantity,

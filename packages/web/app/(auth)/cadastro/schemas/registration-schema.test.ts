@@ -39,6 +39,7 @@ const baseData: RegistrationSchema = {
   petBreed: "",
   petBirthDate: "",
   petDiagnosis: "",
+  prescribers: [{ name: "Dra. Helena Costa", crm: "123456", uf: "SP" }],
 };
 
 describe("toPatientRegistrationBody", () => {
@@ -55,6 +56,7 @@ describe("toPatientRegistrationBody", () => {
         gender: "F",
         underPrivileged: true,
       },
+      prescribers: [{ fullName: "Dra. Helena Costa", crm: "123456", crmState: "SP" }],
     });
   });
 
@@ -80,6 +82,7 @@ describe("toPatientRegistrationBody", () => {
         gender: "F",
         underPrivileged: false,
       },
+      prescribers: [{ fullName: "Dra. Helena Costa", crm: "123456", crmState: "SP" }],
     });
   });
 
@@ -113,9 +116,43 @@ describe("registrationSchema defaults", () => {
       neighborhood: "Centro",
       state: "TO",
       city: "Palmas",
+      prescribers: [{ name: "Dra. Helena Costa", crm: "123456", uf: "SP" }],
     });
 
     expect(parsed.underPrivileged).toBe(false);
     expect(parsed.guardianGender).toBe("prefiro_nao_informar");
+  });
+});
+
+describe("registrationSchema prescriber validation", () => {
+  // baseData carries a not-yet-normalized email (trailing space) that the mapper
+  // tests pass through directly; safeParse runs email validation, so use a clean one.
+  const parseable = { ...baseData, email: "maria@example.com" };
+
+  it("rejects a patient registration without a valid prescriber", () => {
+    const result = registrationSchema.safeParse({ ...parseable, prescribers: [{ name: "", crm: "", uf: "" }] });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a prescriber with an invalid UF", () => {
+    const result = registrationSchema.safeParse({
+      ...parseable,
+      prescribers: [{ name: "Dra. Helena Costa", crm: "123456", uf: "XX" }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("does not require a prescriber for a pet tutor", () => {
+    const result = registrationSchema.safeParse({
+      ...parseable,
+      role: "pet_tutor",
+      petName: "Totó",
+      petSpecies: "Canina",
+      prescribers: [{ name: "", crm: "", uf: "" }],
+    });
+
+    expect(result.success).toBe(true);
   });
 });

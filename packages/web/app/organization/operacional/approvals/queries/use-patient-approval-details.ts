@@ -6,6 +6,7 @@ import { getPatientApprovalDetails } from "../requests/get-patient-approval-deta
 import {
   approvePatientRegistration,
   rejectPatientRegistration,
+  revokePatientAccess,
 } from "../requests/registration-actions";
 
 export const patientApprovalDetailsQueryKey = (organizationId: string, patientId: string) =>
@@ -60,5 +61,10 @@ export function usePatientApprovalMutations(organizationId: string, patientId: s
     onSuccess: invalidate,
   });
 
-  return { approveDocument, rejectDocument, approveRegistration, rejectRegistration };
+  const revokeAccess = useMutation({
+    mutationFn: () => revokePatientAccess(organizationId, patientId),
+    onSuccess: invalidate,
+  });
+
+  return { approveDocument, rejectDocument, approveRegistration, rejectRegistration, revokeAccess };
 }

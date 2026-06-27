@@ -118,4 +118,14 @@ export class Patient extends AggregateRoot<PatientProps> {
     this.props.patientStatus = PatientStatus.Rejected;
     this.props.rejectionReason = trimmed;
   }
+
+  /**
+   * Reverts the patient to WAITING_DOCUMENTS — used when access is lost: the
+   * receita expired, a required document is missing, or an operator revoked
+   * access. Idempotent and clears any stale rejection reason.
+   */
+  revertToWaitingDocuments(): void {
+    this.props.patientStatus = PatientStatus.WaitingDocuments;
+    this.props.rejectionReason = null;
+  }
 }

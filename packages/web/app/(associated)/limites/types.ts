@@ -4,10 +4,14 @@ export type PurchaseLimitPeriod = "MONTHLY" | "ANNUAL";
 
 export type PurchaseLimitUnit = "GRAM" | "MILLILITER" | "UNIT";
 
+export type PurchaseLimitScope = "PRODUCT" | "CATEGORY";
+
 export type PurchaseLimitItem = {
-  productId: string;
-  productName: string;
-  unit: PurchaseLimitUnit;
+  scope: PurchaseLimitScope;
+  productId: string | null;
+  productName: string | null;
+  category: string | null;
+  unit: PurchaseLimitUnit | null;
   period: PurchaseLimitPeriod;
   allowedQuantity: number;
   used: number;

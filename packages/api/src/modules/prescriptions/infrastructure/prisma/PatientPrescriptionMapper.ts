@@ -3,14 +3,16 @@ import type {
   PrescriptionItem as PrismaPrescriptionItem,
   Prisma,
 } from "@prisma/client";
+import type { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import type { ProductUnit } from "../../../products/domain/enums/ProductUnit.js";
 import type { PatientPrescriptionReadModel } from "../../application/repositories/PatientPrescriptionRepository.js";
 import { PatientPrescription } from "../../domain/entities/PatientPrescription.js";
 import type { PrescriptionItem } from "../../domain/entities/PrescriptionItem.js";
+import type { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import type { PrescriptionPeriod } from "../../domain/enums/PrescriptionPeriod.js";
 
 type PrismaPrescriptionItemWithProduct = PrismaPrescriptionItem & {
-  product: { name: string; unit: string };
+  product: { name: string; unit: string } | null;
 };
 
 type PrismaPatientPrescriptionWithRelations = PrismaPatientPrescription & {
@@ -45,9 +47,11 @@ export class PatientPrescriptionMapper {
       observations: record.observations,
       items: record.items.map((item) => ({
         id: item.id,
+        scope: item.scope as PrescriptionItemScope,
         productId: item.productId,
-        productName: item.product.name,
-        productUnit: item.product.unit as ProductUnit,
+        productName: item.product?.name ?? null,
+        productUnit: (item.product?.unit ?? null) as ProductUnit | null,
+        category: item.category as ProductCategory | null,
         allowedQuantity: item.allowedQuantity,
         period: item.period as PrescriptionPeriod,
         notes: item.notes,
@@ -86,7 +90,9 @@ export class PatientPrescriptionMapper {
     return {
       id: item.id,
       prescriptionId: item.prescriptionId,
+      scope: item.scope,
       productId: item.productId,
+      category: item.category,
       allowedQuantity: item.allowedQuantity,
       period: item.period,
       notes: item.notes,

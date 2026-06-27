@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import { prescriptionToFormValues } from "@/components/domain/prescription-editor";
 import { usePatients } from "../../approvals/queries/use-patients";
 import { useProducts } from "../../products/queries/use-products";
-import { PRODUCT_UNIT_LABELS } from "../../products/types";
+import { PRODUCT_CATEGORIES, PRODUCT_CATEGORY_LABELS, PRODUCT_UNIT_LABELS } from "../../products/types";
 import { PrescriptionFormDialog } from "./prescription-form-dialog";
 import { PrescriptionsTable } from "./prescriptions-table";
 import {
@@ -35,6 +35,15 @@ export function PrescriptionsView({ organizationId }: { organizationId: string }
           unitLabel: PRODUCT_UNIT_LABELS[product.unit],
         })),
     [productsQuery.data],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      PRODUCT_CATEGORIES.map((category) => ({
+        value: category,
+        label: PRODUCT_CATEGORY_LABELS[category],
+      })),
+    [],
   );
 
   const [formRow, setFormRow] = useState<PrescriptionRow | null>(null);
@@ -158,6 +167,7 @@ export function PrescriptionsView({ organizationId }: { organizationId: string }
         patientName={formRow?.patientName ?? ""}
         hasExisting={formRow?.prescription !== null && formRow?.prescription !== undefined}
         products={productOptions}
+        categories={categoryOptions}
         productsLoading={productsQuery.isLoading}
         initialValues={formInitialValues}
         pending={upsertMutation.isPending}

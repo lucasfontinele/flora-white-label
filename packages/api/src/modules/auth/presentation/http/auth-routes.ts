@@ -6,6 +6,7 @@ import {
   loginBodyJsonSchema,
   loginBodySchema,
   loginResponseSchema,
+  meResponseSchema,
 } from "./auth-schemas.js";
 
 function sendValidationError(reply: FastifyReply, message: string): FastifyReply {
@@ -43,6 +44,36 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const output = await useCases.authenticateUserUseCase.execute(body.data);
 
       return AuthPresenter.loginToHttp(output);
+    },
+  );
+
+  app.get(
+    "/me",
+    {
+      schema: {
+        tags: ["Auth"],
+        summary:
+          "Retorna o contexto do usuário autenticado e reavalia o status do paciente (receita vencida / documentos pendentes ⇒ WAITING_DOCUMENTS).",
+        response: {
+          200: meResponseSchema,
+          401: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      // No server-side session: the web forwards the authenticated user id
+      // (same URL/header-trust model used by the org-scoped routes).
+      const headerUserId = request.headers["x-user-id"];
+      const userId = (Array.isArray(headerUserId) ? headerUserId[0] : headerUserId)?.trim();
+
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized", message: "Missing user id." });
+      }
+
+      const output = await useCases.getMeUseCase.execute({ userId });
+
+      return AuthPresenter.meToHttp(output);
     },
   );
 }

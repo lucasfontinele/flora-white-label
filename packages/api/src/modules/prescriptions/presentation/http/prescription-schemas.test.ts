@@ -5,7 +5,19 @@ import {
   upsertPrescriptionBodySchema,
 } from "./prescription-schemas.js";
 
-const validItem = { productId: "prod-1", allowedQuantity: 12, period: "ANNUAL" } as const;
+const validItem = {
+  scope: "PRODUCT",
+  productId: "prod-1",
+  allowedQuantity: 12,
+  period: "ANNUAL",
+} as const;
+
+const validCategoryItem = {
+  scope: "CATEGORY",
+  category: "OIL",
+  allowedQuantity: 12,
+  period: "ANNUAL",
+} as const;
 
 describe("prescription schemas", () => {
   it("accepts list and patient params", () => {
@@ -57,17 +69,43 @@ describe("prescription schemas", () => {
     ).toBe(false);
   });
 
+  it("accepts a category-scoped posology item", () => {
+    expect(
+      upsertPrescriptionBodySchema.safeParse({
+        issuedAt: "2026-06-26",
+        items: [validCategoryItem],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a posology item whose scope and id/category do not match", () => {
+    // PRODUCT scope without a productId.
+    expect(
+      upsertPrescriptionBodySchema.safeParse({
+        issuedAt: "2026-06-26",
+        items: [{ scope: "PRODUCT", allowedQuantity: 5, period: "ANNUAL" }],
+      }).success,
+    ).toBe(false);
+    // CATEGORY scope without a category.
+    expect(
+      upsertPrescriptionBodySchema.safeParse({
+        issuedAt: "2026-06-26",
+        items: [{ scope: "CATEGORY", allowedQuantity: 5, period: "ANNUAL" }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects posology items with invalid quantity or period", () => {
     expect(
       upsertPrescriptionBodySchema.safeParse({
         issuedAt: "2026-06-26",
-        items: [{ productId: "prod-1", allowedQuantity: 0, period: "ANNUAL" }],
+        items: [{ scope: "PRODUCT", productId: "prod-1", allowedQuantity: 0, period: "ANNUAL" }],
       }).success,
     ).toBe(false);
     expect(
       upsertPrescriptionBodySchema.safeParse({
         issuedAt: "2026-06-26",
-        items: [{ productId: "prod-1", allowedQuantity: 5, period: "WEEKLY" }],
+        items: [{ scope: "PRODUCT", productId: "prod-1", allowedQuantity: 5, period: "WEEKLY" }],
       }).success,
     ).toBe(false);
   });

@@ -1,10 +1,13 @@
+import type { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import type { TransactionalPrisma } from "../../../../shared/infrastructure/database/prisma/PrismaTransactionManager.js";
 import type {
+  PatientCatalogAccess,
   PatientPrescriptionReadModel,
   PatientPrescriptionRepository,
 } from "../../application/repositories/PatientPrescriptionRepository.js";
 import type { PatientPrescription } from "../../domain/entities/PatientPrescription.js";
 import type { PrescriptionItem } from "../../domain/entities/PrescriptionItem.js";
+import { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import { PatientPrescriptionMapper } from "./PatientPrescriptionMapper.js";
 
 const readModelInclude = {
@@ -51,6 +54,35 @@ export class PrismaPatientPrescriptionRepository implements PatientPrescriptionR
     });
 
     return records.map((record) => PatientPrescriptionMapper.toReadModel(record));
+  }
+
+  async findAccessByPatient(
+    organizationId: string,
+    patientId: string,
+  ): Promise<PatientCatalogAccess | null> {
+    const prescription = await this.prisma.getClient().patientPrescription.findFirst({
+      where: { organizationId, patientId },
+      select: {
+        items: { select: { scope: true, productId: true, category: true } },
+      },
+    });
+
+    if (!prescription) {
+      return null;
+    }
+
+    const productIds: string[] = [];
+    const categories: ProductCategory[] = [];
+
+    for (const item of prescription.items) {
+      if (item.scope === PrescriptionItemScope.Product && item.productId) {
+        productIds.push(item.productId);
+      } else if (item.scope === PrescriptionItemScope.Category && item.category) {
+        categories.push(item.category as ProductCategory);
+      }
+    }
+
+    return { productIds, categories };
   }
 
   async create(prescription: PatientPrescription): Promise<PatientPrescriptionReadModel> {

@@ -7,9 +7,11 @@ import type {
   PatientPrescriptionReadModel,
   PatientPrescriptionRepository,
 } from "../../../prescriptions/application/repositories/PatientPrescriptionRepository.js";
+import { PrescriptionItemScope } from "../../../prescriptions/domain/enums/PrescriptionItemScope.js";
 import { PrescriptionPeriod } from "../../../prescriptions/domain/enums/PrescriptionPeriod.js";
 import { currentPeriodWindow } from "../../../prescriptions/domain/posology-window.js";
 import type { ProductRepository } from "../../../products/application/repositories/ProductRepository.js";
+import type { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
 import { Order } from "../../domain/entities/Order.js";
 import type { OrderDeliveryType } from "../../domain/enums/OrderDeliveryType.js";
 import type { CreateOrderItemData } from "../../domain/entities/Order.js";
@@ -86,8 +88,12 @@ export class CreateOrderUseCase {
     prescription: PatientPrescriptionReadModel,
   ): Promise<CreateOrderItemData[]> {
     const resolved: CreateOrderItemData[] = [];
-    // Total quantity requested per product (an order may list a product twice).
-    const requestedByProduct = new Map<string, { quantity: number; name: string }>();
+    // Total quantity requested per product (an order may list a product twice),
+    // carrying the product's display name + category for posology enforcement.
+    const requestedByProduct = new Map<
+      string,
+      { quantity: number; name: string; category: ProductCategory }
+    >();
 
     for (const item of input.items) {
       const product = await this.deps.productRepository.findByIdInOrganization(
@@ -105,6 +111,7 @@ export class CreateOrderUseCase {
       const previous = requestedByProduct.get(product.id);
       requestedByProduct.set(product.id, {
         name: product.name,
+        category: product.category,
         quantity: (previous?.quantity ?? 0) + item.quantity,
       });
 
@@ -121,45 +128,93 @@ export class CreateOrderUseCase {
   }
 
   /**
-   * Enforces, per product, that the requested quantity plus what the patient has
-   * already consumed in the current period does not exceed the posology
-   * allowance. A product without a posology line cannot be ordered at all.
+   * Enforces that every requested product is covered by the posology and stays
+   * within its allowance for the current period. A product is matched first by a
+   * product-scoped line (limit per product) and otherwise by a category-scoped
+   * line (limit summed across the whole category). A product matched by neither
+   * cannot be ordered.
    */
   private async enforcePosology(
     input: CreateOrderInput,
     prescription: PatientPrescriptionReadModel,
-    requestedByProduct: Map<string, { quantity: number; name: string }>,
+    requestedByProduct: Map<string, { quantity: number; name: string; category: ProductCategory }>,
   ): Promise<void> {
-    const posologyByProduct = new Map(
-      prescription.items.map((item) => [item.productId, item]),
+    const productRules = new Map(
+      prescription.items
+        .filter((item) => item.scope === PrescriptionItemScope.Product && item.productId)
+        .map((item) => [item.productId as string, item]),
+    );
+    const categoryRules = new Map(
+      prescription.items
+        .filter((item) => item.scope === PrescriptionItemScope.Category && item.category)
+        .map((item) => [item.category as ProductCategory, item]),
     );
 
+    // Requested quantity grouped per governing category rule (so multiple
+    // products of the same category share the category allowance).
+    const requestedByCategory = new Map<ProductCategory, number>();
+
     for (const [productId, requested] of requestedByProduct) {
-      const posology = posologyByProduct.get(productId);
-      if (!posology) {
-        throw new ConflictError(
-          `O produto "${requested.name}" não está na posologia da receita do paciente.`,
+      const productRule = productRules.get(productId);
+
+      if (productRule) {
+        const window = currentPeriodWindow(productRule.period);
+        const used = await this.deps.orderRepository.sumProductQuantityInRange(
+          input.organizationId,
+          input.patientId,
+          productId,
+          window.from,
+          window.to,
         );
+        this.ensureWithinAllowance(productRule, requested.name, used, requested.quantity);
+        continue;
       }
 
-      const window = currentPeriodWindow(posology.period);
-      const used = await this.deps.orderRepository.sumProductQuantityInRange(
+      if (categoryRules.has(requested.category)) {
+        requestedByCategory.set(
+          requested.category,
+          (requestedByCategory.get(requested.category) ?? 0) + requested.quantity,
+        );
+        continue;
+      }
+
+      throw new ConflictError(
+        `O produto "${requested.name}" não está na posologia da receita do paciente.`,
+      );
+    }
+
+    for (const [category, quantity] of requestedByCategory) {
+      const rule = categoryRules.get(category);
+      if (!rule) continue;
+
+      const window = currentPeriodWindow(rule.period);
+      const used = await this.deps.orderRepository.sumCategoryQuantityInRange(
         input.organizationId,
         input.patientId,
-        productId,
+        category,
         window.from,
         window.to,
       );
-
-      if (used + requested.quantity > posology.allowedQuantity) {
-        const periodLabel = posology.period === PrescriptionPeriod.Monthly ? "mês" : "ano";
-        const remaining = Math.max(posology.allowedQuantity - used, 0);
-        throw new ConflictError(
-          `Limite da posologia excedido para "${requested.name}": permitido ${posology.allowedQuantity} por ${periodLabel}, ` +
-            `já utilizado ${used}, restante ${remaining}, solicitado ${requested.quantity}.`,
-        );
-      }
+      this.ensureWithinAllowance(rule, `categoria ${category}`, used, quantity);
     }
+  }
+
+  private ensureWithinAllowance(
+    rule: { allowedQuantity: number; period: PrescriptionPeriod },
+    label: string,
+    used: number,
+    requested: number,
+  ): void {
+    if (used + requested <= rule.allowedQuantity) {
+      return;
+    }
+
+    const periodLabel = rule.period === PrescriptionPeriod.Monthly ? "mês" : "ano";
+    const remaining = Math.max(rule.allowedQuantity - used, 0);
+    throw new ConflictError(
+      `Limite da posologia excedido para "${label}": permitido ${rule.allowedQuantity} por ${periodLabel}, ` +
+        `já utilizado ${used}, restante ${remaining}, solicitado ${requested}.`,
+    );
   }
 
   private async generateUniqueToken(organizationId: string): Promise<string> {

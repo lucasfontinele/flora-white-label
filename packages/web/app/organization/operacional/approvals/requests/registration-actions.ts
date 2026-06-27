@@ -18,3 +18,10 @@ export async function rejectPatientRegistration(
     { method: "POST", body: JSON.stringify({ reason }), skipMasterHeaders: true },
   );
 }
+
+export async function revokePatientAccess(organizationId: string, patientId: string) {
+  return apiFetch<Patient>(
+    `/organizations/${organizationId}/patients/${patientId}/revoke-access`,
+    { method: "POST", skipMasterHeaders: true },
+  );
+}

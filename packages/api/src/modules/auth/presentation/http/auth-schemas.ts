@@ -252,4 +252,14 @@ export const loginResponseSchema = {
   },
 } as const;
 
+export const meResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["user", "context"],
+  properties: {
+    user: authUserResponseSchema,
+    context: authContextResponseSchema,
+  },
+} as const;
+
 export type LoginBody = z.infer<typeof loginBodySchema>;

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import type { IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
+import { PRODUCT_CATEGORY_LABELS, type ProductCategory } from "@/app/organization/operacional/products/types";
 import type { PurchaseLimitItem, PurchaseLimitUnit } from "../types";
 
 const unitIcon: Record<PurchaseLimitUnit, IconName> = {
@@ -11,11 +12,17 @@ const unitIcon: Record<PurchaseLimitUnit, IconName> = {
   UNIT: "package",
 };
 
-// Grams/millilitres carry a measurement suffix; units are counted as items.
-function formatUnit(value: number, unit: PurchaseLimitUnit) {
+// Grams/millilitres carry a measurement suffix; everything else (incl.
+// category-scoped lines, which have no single unit) is counted as items.
+function formatUnit(value: number, unit: PurchaseLimitUnit | null) {
   if (unit === "GRAM") return `${value} g`;
   if (unit === "MILLILITER") return `${value} ml`;
-  return `${value} ${value === 1 ? "unidade" : "unidades"}`;
+  return `${value} ${value === 1 ? "item" : "itens"}`;
+}
+
+function categoryLabel(category: string | null): string {
+  if (!category) return "Categoria";
+  return PRODUCT_CATEGORY_LABELS[category as ProductCategory] ?? category;
 }
 
 export function LimitCard({
@@ -25,6 +32,8 @@ export function LimitCard({
   item: PurchaseLimitItem;
   validUntilLabel: string;
 }) {
+  const isCategory = item.scope === "CATEGORY";
+  const title = isCategory ? categoryLabel(item.category) : (item.productName ?? "Produto");
   const usedPct =
     item.allowedQuantity > 0
       ? Math.min(100, Math.round((item.used / item.allowedQuantity) * 100))
@@ -35,6 +44,7 @@ export function LimitCard({
   const tone = exhausted ? "error" : low ? "warning" : "primary";
   const barColor = exhausted ? "bg-error" : low ? "bg-warning" : "bg-primary";
   const windowLabel = item.period === "MONTHLY" ? "este mês" : "este ano";
+  const icon: IconName = isCategory ? "boxes" : item.unit ? unitIcon[item.unit] : "package";
 
   return (
     <Card className="flex flex-col p-5">
@@ -47,11 +57,13 @@ export function LimitCard({
               : "bg-primary-subtle text-[var(--green-700)]",
           )}
         >
-          <Icon name={unitIcon[item.unit]} size={20} />
+          <Icon name={icon} size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-bold leading-snug">{item.productName}</p>
-          {item.notes ? (
+          <p className="font-bold leading-snug">{title}</p>
+          {isCategory ? (
+            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">Toda a categoria</p>
+          ) : item.notes ? (
             <p className="mt-0.5 line-clamp-2 text-sm text-[var(--text-secondary)]">{item.notes}</p>
           ) : null}
         </div>
@@ -86,7 +98,7 @@ export function LimitCard({
           aria-valuenow={usedPct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Consumo de ${item.productName}`}
+          aria-label={`Consumo de ${title}`}
         >
           <div
             className={cn("h-full rounded-pill transition-all", barColor)}

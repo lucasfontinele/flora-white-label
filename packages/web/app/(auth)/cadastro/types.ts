@@ -25,13 +25,26 @@ export type RegistrationPatient = RegistrationPerson & {
   underPrivileged: boolean;
 };
 
+// Médico prescritor atrelado ao paciente (nome, CRM e UF do CRM).
+export type RegistrationPrescriber = {
+  fullName: string;
+  crm: string;
+  crmState: string;
+};
+
 export type PatientRegistrationBody =
-  | { registrationType: "Patient"; user: RegistrationUser; patient: RegistrationPatient }
+  | {
+      registrationType: "Patient";
+      user: RegistrationUser;
+      patient: RegistrationPatient;
+      prescribers: RegistrationPrescriber[];
+    }
   | {
       registrationType: "LegalGuardian";
       user: RegistrationUser;
       guardian: RegistrationPerson;
       patient: RegistrationPatient;
+      prescribers: RegistrationPrescriber[];
     }
   | { registrationType: "PetTutor"; user: RegistrationUser; guardian: RegistrationPerson };
 

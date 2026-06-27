@@ -4,6 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import {
   PrescriptionEditor,
+  type CategoryOption,
   type ProductOption,
 } from "@/components/domain/prescription-editor";
 import type { PrescriptionFormValues } from "../schemas/prescription-schema";
@@ -14,6 +15,7 @@ type PrescriptionFormDialogProps = {
   patientName: string;
   hasExisting: boolean;
   products: ProductOption[];
+  categories: CategoryOption[];
   productsLoading?: boolean;
   initialValues?: PrescriptionFormValues;
   pending: boolean;
@@ -32,6 +34,7 @@ export function PrescriptionFormDialog({
   patientName,
   hasExisting,
   products,
+  categories,
   productsLoading,
   initialValues,
   pending,
@@ -90,6 +93,7 @@ export function PrescriptionFormDialog({
         <div className="mt-5">
           <PrescriptionEditor
             products={products}
+            categories={categories}
             productsLoading={productsLoading}
             defaultValues={initialValues}
             pending={pending}

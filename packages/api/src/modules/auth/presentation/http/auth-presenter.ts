@@ -1,9 +1,13 @@
 import type { LoginResponse } from "../../application/use-cases/AuthenticateUserUseCase.js";
+import type { MeResponse } from "../../application/use-cases/GetMeUseCase.js";
 
 export class AuthPresenter {
-  static loginToHttp(output: LoginResponse): LoginResponse {
+  static meToHttp(output: MeResponse): MeResponse {
+    return AuthPresenter.contextToHttp(output) as MeResponse;
+  }
+
+  private static contextToHttp(output: MeResponse): MeResponse {
     return {
-      accessToken: output.accessToken,
       user: {
         id: output.user.id,
         email: output.user.email,
@@ -29,6 +33,13 @@ export class AuthPresenter {
         employee: output.context.employee,
         managedPatients: output.context.managedPatients,
       },
+    };
+  }
+
+  static loginToHttp(output: LoginResponse): LoginResponse {
+    return {
+      accessToken: output.accessToken,
+      ...AuthPresenter.contextToHttp(output),
     };
   }
 }

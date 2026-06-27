@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { BRAZILIAN_UFS } from "@/lib/brazilian-ufs";
 import { cn } from "@/lib/utils";
 import { becomePatientSchema } from "../schemas/become-patient-schema";
 
 type FormState = {
   condition: string;
-  prescriber: string;
+  prescriber: { name: string; crm: string; uf: string };
   hasPrescription: "sim" | "nao";
   notes: string;
   consent: boolean;
@@ -21,7 +22,7 @@ type FormState = {
 
 const initialState: FormState = {
   condition: "",
-  prescriber: "",
+  prescriber: { name: "", crm: "", uf: "" },
   hasPrescription: "sim",
   notes: "",
   consent: false,
@@ -41,6 +42,10 @@ export function BecomePatientForm() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updatePrescriber(key: keyof FormState["prescriber"], value: string) {
+    setForm((current) => ({ ...current, prescriber: { ...current.prescriber, [key]: value } }));
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
@@ -48,7 +53,7 @@ export function BecomePatientForm() {
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       for (const issue of result.error.issues) {
-        const key = String(issue.path[0] ?? "");
+        const key = issue.path.join(".");
         if (key && !fieldErrors[key]) fieldErrors[key] = issue.message;
       }
       setErrors(fieldErrors);
@@ -83,19 +88,50 @@ export function BecomePatientForm() {
             />
           </Field>
 
-          <Field
-            error={errors.prescriber}
-            hint="Opcional — se já tem acompanhamento médico."
-            htmlFor={`${fieldId}-prescriber`}
-            label="Médico prescritor"
-          >
-            <Input
-              id={`${fieldId}-prescriber`}
-              placeholder="Ex.: Dra. Helena Costa"
-              value={form.prescriber}
-              onChange={(event) => update("prescriber", event.target.value)}
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-12">
+            <div className="sm:col-span-6">
+              <Field
+                error={errors["prescriber.name"]}
+                hint="Opcional — se já tem acompanhamento médico."
+                htmlFor={`${fieldId}-prescriber-name`}
+                label="Médico prescritor"
+              >
+                <Input
+                  id={`${fieldId}-prescriber-name`}
+                  placeholder="Ex.: Dra. Helena Costa"
+                  value={form.prescriber.name}
+                  onChange={(event) => updatePrescriber("name", event.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-4">
+              <Field error={errors["prescriber.crm"]} htmlFor={`${fieldId}-prescriber-crm`} label="CRM">
+                <Input
+                  id={`${fieldId}-prescriber-crm`}
+                  placeholder="Número do CRM"
+                  value={form.prescriber.crm}
+                  onChange={(event) => updatePrescriber("crm", event.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field error={errors["prescriber.uf"]} htmlFor={`${fieldId}-prescriber-uf`} label="UF">
+                <select
+                  id={`${fieldId}-prescriber-uf`}
+                  className="h-11 w-full rounded-md border border-input bg-card px-4 text-base shadow-xs focus:border-[var(--border-focus)]"
+                  value={form.prescriber.uf}
+                  onChange={(event) => updatePrescriber("uf", event.target.value)}
+                >
+                  <option value="">UF</option>
+                  {BRAZILIAN_UFS.map((uf) => (
+                    <option key={uf} value={uf}>
+                      {uf}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </div>
 
           <Field error={errors.hasPrescription} label="Já possui receita ou laudo médico?">
             <div className="inline-flex rounded-md border border-input bg-card p-1">

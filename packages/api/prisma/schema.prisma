@@ -71,9 +71,28 @@ model Patient {
   documentApprovals OrganizationDocumentPatientApproval[]
   orders            Order[]
   prescription      PatientPrescription?
+  prescribers       Prescriber[]
 
   @@unique([organizationId, document])
   @@map("patients")
+}
+
+model Prescriber {
+  id             String   @id @default(uuid())
+  organizationId String
+  patientId      String
+  fullName       String
+  crm            String
+  crmState       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@unique([patientId, crm, crmState])
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("prescribers")
 }
 
 model PatientPrescription {
@@ -95,19 +114,22 @@ model PatientPrescription {
 }
 
 model PrescriptionItem {
-  id              String             @id @default(uuid())
+  id              String                @id @default(uuid())
   prescriptionId  String
-  productId       String
+  scope           PrescriptionItemScope @default(PRODUCT)
+  productId       String?
+  category        ProductCategory?
   allowedQuantity Int
   period          PrescriptionPeriod
   notes           String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   prescription PatientPrescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  product      Product             @relation(fields: [productId], references: [id])
+  product      Product?            @relation(fields: [productId], references: [id])
 
   @@unique([prescriptionId, productId])
+  @@unique([prescriptionId, category])
   @@index([prescriptionId])
   @@index([productId])
   @@map("prescription_items")
@@ -485,6 +507,11 @@ enum PatientStatus {
 enum PrescriptionPeriod {
   MONTHLY
   ANNUAL
+}
+
+enum PrescriptionItemScope {
+  PRODUCT
+  CATEGORY
 }
 
 enum ProductCategory {

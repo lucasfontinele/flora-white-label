@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { ProductCategory } from "../../../products/domain/enums/ProductCategory.js";
+import { PrescriptionItemScope } from "../../domain/enums/PrescriptionItemScope.js";
 import { PrescriptionPeriod } from "../../domain/enums/PrescriptionPeriod.js";
 
 const nonBlankString = (field: string) => z.string().trim().min(1, `${field} is required.`);
@@ -17,12 +19,23 @@ export const patientPrescriptionParamsSchema = prescriptionListParamsSchema
 
 const upsertPrescriptionItemSchema = z
   .object({
-    productId: nonBlankString("productId"),
+    scope: z.nativeEnum(PrescriptionItemScope),
+    productId: z.string().trim().min(1).nullish(),
+    category: z.nativeEnum(ProductCategory).nullish(),
     allowedQuantity: z.number().int().min(1, "allowedQuantity must be at least 1."),
     period: z.nativeEnum(PrescriptionPeriod),
     notes: z.string().trim().nullish(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (item) =>
+      item.scope === PrescriptionItemScope.Product
+        ? Boolean(item.productId)
+        : Boolean(item.category),
+    {
+      message: "productId is required for PRODUCT scope, category for CATEGORY scope.",
+    },
+  );
 
 export const upsertPrescriptionBodySchema = z
   .object({
@@ -70,9 +83,11 @@ export const upsertPrescriptionBodyJsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["productId", "allowedQuantity", "period"],
+        required: ["scope", "allowedQuantity", "period"],
         properties: {
-          productId: idParamJsonProperty,
+          scope: { type: "string", enum: ["PRODUCT", "CATEGORY"] },
+          productId: { type: ["string", "null"] },
+          category: { type: ["string", "null"] },
           allowedQuantity: { type: "integer", minimum: 1 },
           period: { type: "string", enum: ["MONTHLY", "ANNUAL"] },
           notes: { type: ["string", "null"] },
@@ -95,12 +110,24 @@ export const errorResponseSchema = {
 const prescriptionItemResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "productId", "productName", "productUnit", "allowedQuantity", "period", "notes"],
+  required: [
+    "id",
+    "scope",
+    "productId",
+    "productName",
+    "productUnit",
+    "category",
+    "allowedQuantity",
+    "period",
+    "notes",
+  ],
   properties: {
     id: idParamJsonProperty,
-    productId: idParamJsonProperty,
-    productName: { type: "string" },
-    productUnit: { type: "string" },
+    scope: { type: "string" },
+    productId: { type: ["string", "null"] },
+    productName: { type: ["string", "null"] },
+    productUnit: { type: ["string", "null"] },
+    category: { type: ["string", "null"] },
     allowedQuantity: { type: "integer" },
     period: { type: "string" },
     notes: { type: ["string", "null"] },
@@ -161,8 +188,10 @@ const purchaseLimitItemResponseSchema = {
   type: "object",
   additionalProperties: false,
   required: [
+    "scope",
     "productId",
     "productName",
+    "category",
     "unit",
     "period",
     "allowedQuantity",
@@ -171,9 +200,11 @@ const purchaseLimitItemResponseSchema = {
     "notes",
   ],
   properties: {
-    productId: idParamJsonProperty,
-    productName: { type: "string" },
-    unit: { type: "string" },
+    scope: { type: "string" },
+    productId: { type: ["string", "null"] },
+    productName: { type: ["string", "null"] },
+    category: { type: ["string", "null"] },
+    unit: { type: ["string", "null"] },
     period: { type: "string" },
     allowedQuantity: { type: "integer" },
     used: { type: "integer" },

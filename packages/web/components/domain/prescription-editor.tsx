@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
   prescriptionFormSchema,
   type PrescriptionFormValues,
@@ -16,6 +17,7 @@ import type {
 } from "@/app/organization/operacional/prescriptions/types";
 
 export type ProductOption = { id: string; name: string; unitLabel: string };
+export type CategoryOption = { value: string; label: string };
 
 const PRESCRIPTION_VALIDITY_MONTHS = 6;
 
@@ -26,7 +28,9 @@ const labelClassName = "text-sm font-bold text-[var(--text-primary)]";
 const EMPTY_VALUES: PrescriptionFormValues = { issuedAt: "", observations: "", items: [] };
 
 const EMPTY_ITEM = {
+  scope: "PRODUCT" as const,
   productId: "",
+  category: "",
   allowedQuantity: "",
   period: "MONTHLY" as const,
   notes: "",
@@ -41,9 +45,7 @@ function addMonthsUtc(dateInput: string, months: number): Date | null {
   const base = new Date(`${dateInput}T00:00:00.000Z`);
   if (Number.isNaN(base.getTime())) return null;
 
-  const target = new Date(
-    Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + months, 1),
-  );
+  const target = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + months, 1));
   const lastDay = new Date(
     Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
   ).getUTCDate();
@@ -66,7 +68,9 @@ export function prescriptionToFormValues(prescription: Prescription): Prescripti
     issuedAt: prescription.issuedAt.slice(0, 10),
     observations: prescription.observations ?? "",
     items: prescription.items.map((item) => ({
-      productId: item.productId,
+      scope: item.scope,
+      productId: item.productId ?? "",
+      category: item.category ?? "",
       allowedQuantity: String(item.allowedQuantity),
       period: item.period,
       notes: item.notes ?? "",
@@ -82,8 +86,11 @@ export function formValuesToWriteBody(values: PrescriptionFormValues): Prescript
     observations: observations.length > 0 ? observations : null,
     items: values.items.map((item) => {
       const notes = item.notes.trim();
+      const isProduct = item.scope === "PRODUCT";
       return {
-        productId: item.productId,
+        scope: item.scope,
+        productId: isProduct ? item.productId : null,
+        category: isProduct ? null : item.category,
         allowedQuantity: Number(item.allowedQuantity),
         period: item.period,
         notes: notes.length > 0 ? notes : null,
@@ -94,6 +101,7 @@ export function formValuesToWriteBody(values: PrescriptionFormValues): Prescript
 
 type PrescriptionEditorProps = {
   products: ProductOption[];
+  categories: CategoryOption[];
   productsLoading?: boolean;
   defaultValues?: PrescriptionFormValues;
   pending: boolean;
@@ -104,12 +112,13 @@ type PrescriptionEditorProps = {
 
 /**
  * Form to transcribe a patient's receita: emission date (validity is derived as
- * +6 months) plus the posology — one purchase allowance per catalog product.
- * Presentational/controlled: the parent supplies products and handles the
- * mutation + toasts.
+ * +6 months) plus the posology — one purchase allowance per catalog product or
+ * per whole product category. Presentational/controlled: the parent supplies
+ * products/categories and handles the mutation + toasts.
  */
 export function PrescriptionEditor({
   products,
+  categories,
   productsLoading,
   defaultValues,
   pending,
@@ -122,6 +131,7 @@ export function PrescriptionEditor({
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<PrescriptionFormValues>({
     resolver: zodResolver(prescriptionFormSchema),
@@ -131,6 +141,7 @@ export function PrescriptionEditor({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   const issuedAt = watch("issuedAt");
+  const watchedItems = watch("items");
   const validUntil = addMonthsUtc(issuedAt, PRESCRIPTION_VALIDITY_MONTHS);
 
   return (
@@ -149,9 +160,7 @@ export function PrescriptionEditor({
           <span className={labelClassName}>Válida até</span>
           <div className="flex h-11 items-center rounded-md border border-dashed border-border bg-muted px-3 text-sm">
             {validUntil ? (
-              <span className="font-bold text-[var(--text-primary)]">
-                {formatDateUtc(validUntil)}
-              </span>
+              <span className="font-bold text-[var(--text-primary)]">{formatDateUtc(validUntil)}</span>
             ) : (
               <span className="text-[var(--text-tertiary)]">Emissão + 6 meses</span>
             )}
@@ -178,18 +187,18 @@ export function PrescriptionEditor({
           <div>
             <h4 className="font-bold text-[var(--text-primary)]">Posologia</h4>
             <p className="text-sm text-[var(--text-secondary)]">
-              Limite de compra por produto e período.
+              Limite de compra por produto ou por categoria, no período.
             </p>
           </div>
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            disabled={productsLoading || products.length === 0}
+            disabled={productsLoading || (products.length === 0 && categories.length === 0)}
             onClick={() => append({ ...EMPTY_ITEM })}
           >
             <Icon name="plus" size={16} />
-            Adicionar produto
+            Adicionar item
           </Button>
         </div>
 
@@ -201,80 +210,113 @@ export function PrescriptionEditor({
 
         {fields.length === 0 ? (
           <p className="rounded-md bg-muted p-3 text-sm text-[var(--text-secondary)]">
-            Nenhum produto na posologia. Adicione ao menos um para liberar a aprovação.
+            Nenhum item na posologia. Adicione ao menos um para liberar a aprovação.
           </p>
         ) : (
           <div className="space-y-3">
-            {fields.map((field, index) => (
-              <div
-                key={field.id}
-                className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[1.6fr_0.8fr_0.9fr_auto]"
-              >
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-[var(--text-tertiary)]">Produto</span>
-                  <select className={selectClassName} {...register(`items.${index}.productId`)}>
-                    <option value="">Selecione…</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.items?.[index]?.productId ? (
-                    <p className="text-xs text-error">{errors.items[index]?.productId?.message}</p>
-                  ) : null}
-                </div>
+            {fields.map((field, index) => {
+              const scope = watchedItems?.[index]?.scope ?? "PRODUCT";
+              const itemErrors = errors.items?.[index];
 
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-[var(--text-tertiary)]">Quantidade</span>
-                  <Input
-                    type="number"
-                    min={1}
-                    step={1}
-                    placeholder="0"
-                    {...register(`items.${index}.allowedQuantity`)}
-                  />
-                  {errors.items?.[index]?.allowedQuantity ? (
-                    <p className="text-xs text-error">
-                      {errors.items[index]?.allowedQuantity?.message}
-                    </p>
-                  ) : null}
-                </div>
+              return (
+                <div key={field.id} className="space-y-3 rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="inline-flex rounded-md border border-border p-0.5">
+                      <ScopeToggle
+                        active={scope === "PRODUCT"}
+                        onClick={() => setValue(`items.${index}.scope`, "PRODUCT")}
+                      >
+                        Produto
+                      </ScopeToggle>
+                      <ScopeToggle
+                        active={scope === "CATEGORY"}
+                        onClick={() => setValue(`items.${index}.scope`, "CATEGORY")}
+                      >
+                        Categoria
+                      </ScopeToggle>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Remover item"
+                      onClick={() => remove(index)}
+                    >
+                      <Icon name="trash-2" size={18} />
+                    </Button>
+                  </div>
 
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-[var(--text-tertiary)]">Período</span>
-                  <select className={selectClassName} {...register(`items.${index}.period`)}>
-                    <option value="MONTHLY">Mensal</option>
-                    <option value="ANNUAL">Anual</option>
-                  </select>
-                </div>
+                  <div className="grid gap-3 md:grid-cols-[1.6fr_0.8fr_0.9fr]">
+                    {scope === "PRODUCT" ? (
+                      <div className="space-y-1">
+                        <span className="text-xs font-bold text-[var(--text-tertiary)]">Produto</span>
+                        <select className={selectClassName} {...register(`items.${index}.productId`)}>
+                          <option value="">Selecione…</option>
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name}
+                            </option>
+                          ))}
+                        </select>
+                        {itemErrors?.productId ? (
+                          <p className="text-xs text-error">{itemErrors.productId.message}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <span className="text-xs font-bold text-[var(--text-tertiary)]">Categoria</span>
+                        <select className={selectClassName} {...register(`items.${index}.category`)}>
+                          <option value="">Selecione…</option>
+                          {categories.map((category) => (
+                            <option key={category.value} value={category.value}>
+                              {category.label}
+                            </option>
+                          ))}
+                        </select>
+                        {itemErrors?.category ? (
+                          <p className="text-xs text-error">{itemErrors.category.message}</p>
+                        ) : null}
+                      </div>
+                    )}
 
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Remover produto"
-                    onClick={() => remove(index)}
-                  >
-                    <Icon name="trash-2" size={18} />
-                  </Button>
-                </div>
+                    <div className="space-y-1">
+                      <span className="text-xs font-bold text-[var(--text-tertiary)]">Quantidade</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        placeholder="0"
+                        {...register(`items.${index}.allowedQuantity`)}
+                      />
+                      {itemErrors?.allowedQuantity ? (
+                        <p className="text-xs text-error">{itemErrors.allowedQuantity.message}</p>
+                      ) : null}
+                    </div>
 
-                <div className="space-y-1 md:col-span-4">
-                  <span className="text-xs font-bold text-[var(--text-tertiary)]">
-                    Posologia <span className="font-normal text-[var(--text-tertiary)]">(opcional)</span>
-                  </span>
-                  <Input
-                    placeholder="Ex.: Vaporizar 0,2 a 0,3 g de 1 a 3x ao dia"
-                    {...register(`items.${index}.notes`)}
-                  />
-                  {errors.items?.[index]?.notes ? (
-                    <p className="text-xs text-error">{errors.items[index]?.notes?.message}</p>
-                  ) : null}
+                    <div className="space-y-1">
+                      <span className="text-xs font-bold text-[var(--text-tertiary)]">Período</span>
+                      <select className={selectClassName} {...register(`items.${index}.period`)}>
+                        <option value="MONTHLY">Mensal</option>
+                        <option value="ANNUAL">Anual</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-[var(--text-tertiary)]">
+                      Posologia <span className="font-normal text-[var(--text-tertiary)]">(opcional)</span>
+                    </span>
+                    <Input
+                      placeholder="Ex.: Vaporizar 0,2 a 0,3 g de 1 a 3x ao dia"
+                      {...register(`items.${index}.notes`)}
+                    />
+                    {itemErrors?.notes ? (
+                      <p className="text-xs text-error">{itemErrors.notes.message}</p>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -290,5 +332,30 @@ export function PrescriptionEditor({
         </Button>
       </div>
     </form>
+  );
+}
+
+function ScopeToggle({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded px-3 py-1 text-sm font-bold transition-colors",
+        active
+          ? "bg-primary text-[var(--on-primary,white)]"
+          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+      )}
+    >
+      {children}
+    </button>
   );
 }

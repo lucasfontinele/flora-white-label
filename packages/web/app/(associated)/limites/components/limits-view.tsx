@@ -149,7 +149,11 @@ function LimitSection({
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => (
-          <LimitCard key={item.productId} item={item} validUntilLabel={validUntilLabel} />
+          <LimitCard
+            key={item.productId ?? `category:${item.category}`}
+            item={item}
+            validUntilLabel={validUntilLabel}
+          />
         ))}
       </div>
     </section>

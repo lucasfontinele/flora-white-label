@@ -70,6 +70,13 @@ export const productParamsSchema = organizationProductParamsSchema
 
 export const listProductsQuerySchema = z.object({}).strict();
 
+export const patientCatalogParamsSchema = z
+  .object({
+    organizationId: nonBlankString("organizationId"),
+    patientId: nonBlankString("patientId"),
+  })
+  .strict();
+
 const idParamJsonProperty = {
   type: "string",
   minLength: 1,
@@ -91,6 +98,16 @@ export const productParamsJsonSchema = {
   properties: {
     organizationId: idParamJsonProperty,
     productId: idParamJsonProperty,
+  },
+} as const;
+
+export const patientCatalogParamsJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["organizationId", "patientId"],
+  properties: {
+    organizationId: idParamJsonProperty,
+    patientId: idParamJsonProperty,
   },
 } as const;
 
@@ -212,8 +229,25 @@ export const productListResponseSchema = {
   },
 } as const;
 
+export const patientCatalogResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["categories", "products"],
+  properties: {
+    categories: {
+      type: "array",
+      items: { type: "string", enum: productCategoryValues },
+    },
+    products: {
+      type: "array",
+      items: productResponseSchema,
+    },
+  },
+} as const;
+
 export type CreateProductBody = z.infer<typeof createProductBodySchema>;
 export type UpdateProductBody = z.infer<typeof updateProductBodySchema>;
 export type OrganizationProductParams = z.infer<typeof organizationProductParamsSchema>;
 export type ProductParams = z.infer<typeof productParamsSchema>;
+export type PatientCatalogParams = z.infer<typeof patientCatalogParamsSchema>;
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
